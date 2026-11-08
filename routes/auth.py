@@ -13,7 +13,7 @@ auth_bp = Blueprint("auth", __name__)
 
 @auth_bp.route("/login", methods=["GET", "POST"])
 def login():
-    """Handle user login with username/password."""
+    """Handle customer login by name/email and staff login by username/email."""
     if "user" in session:
         endpoint = "customer_portal.home" if session["user"]["role"] == "Customer" else "dashboard.dashboard"
         return redirect(url_for(endpoint))
@@ -30,12 +30,18 @@ def login():
 
         conn = get_db()
         if mode == "staff":
-            user = conn.execute(
+            candidates = conn.execute(
                 """SELECT * FROM USERS
-                   WHERE Username=? AND Role IN ('Owner','Admin','Employee')
+                   WHERE (Username=? OR lower(Email)=lower(?))
+                     AND Role IN ('Owner','Admin','Employee')
                      AND ApprovalStatus='Approved'""",
-                (identifier,),
-            ).fetchone()
+                (identifier, identifier),
+            ).fetchall()
+            user = candidates[0] if len(candidates) == 1 else None
+            if len(candidates) > 1:
+                flash("That identifier matches multiple staff accounts. Use your email address.", "danger")
+                conn.close()
+                return render_template("login.html", mode=mode)
         else:
             candidates = conn.execute(
                 """SELECT * FROM USERS

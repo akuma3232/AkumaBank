@@ -1,6 +1,7 @@
 """Create the first AkumaBank owner account interactively."""
 
 import getpass
+import re
 import sys
 from pathlib import Path
 
@@ -22,6 +23,14 @@ def main():
         if not username:
             raise SystemExit("Username cannot be empty.")
 
+        email = input("Owner email: ").strip().lower()
+        if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email):
+            raise SystemExit("Enter a valid email address.")
+        if conn.execute(
+            "SELECT 1 FROM USERS WHERE lower(Email)=lower(?) LIMIT 1", (email,)
+        ).fetchone():
+            raise SystemExit("That email address is already in use.")
+
         password = getpass.getpass("Owner password (minimum 12 characters): ")
         confirmation = getpass.getpass("Confirm owner password: ")
         if len(password) < 12:
@@ -30,14 +39,14 @@ def main():
             raise SystemExit("Passwords do not match.")
 
         conn.execute(
-            "INSERT INTO USERS (Username, Password, Role) VALUES (?, ?, 'Owner')",
-            (username, generate_password_hash(password)),
+            "INSERT INTO USERS (Username, Password, Email, Role) VALUES (?, ?, ?, 'Owner')",
+            (username, generate_password_hash(password), email),
         )
         conn.commit()
     finally:
         conn.close()
 
-    print(f"Owner account '{username}' created.")
+    print(f"Owner account '{username}' ({email}) created.")
 
 
 if __name__ == "__main__":

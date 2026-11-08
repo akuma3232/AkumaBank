@@ -1,6 +1,7 @@
 """Owner-only staff account management."""
 
 from functools import wraps
+import re
 
 from flask import Blueprint, flash, redirect, render_template, request, session, url_for
 from werkzeug.security import generate_password_hash
@@ -33,12 +34,19 @@ def users():
             return redirect(url_for("users.users"))
 
         username = request.form.get("username", "").strip()
+        email = request.form.get("email", "").strip().lower()
         password = request.form.get("password", "")
         password_confirmation = request.form.get("password_confirmation", "")
         role = request.form.get("role", "")
 
         if not username or role not in ("Admin", "Employee"):
             flash("Enter a username and choose Admin or Employee.", "danger")
+        elif not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email):
+            flash("Enter a valid email address.", "danger")
+        elif conn.execute(
+            "SELECT 1 FROM USERS WHERE lower(Email)=lower(?) LIMIT 1", (email,)
+        ).fetchone():
+            flash("That email address is already in use.", "danger")
         elif len(password) < 12:
             flash("Passwords must be at least 12 characters.", "danger")
         elif password != password_confirmation:
@@ -46,17 +54,17 @@ def users():
         else:
             try:
                 conn.execute(
-                    "INSERT INTO USERS (Username, Password, Role) VALUES (?, ?, ?)",
-                    (username, generate_password_hash(password), role),
+                    "INSERT INTO USERS (Username, Password, Email, Role) VALUES (?, ?, ?, ?)",
+                    (username, generate_password_hash(password), email, role),
                 )
                 conn.commit()
-                flash(f"{role} account '{username}' created.", "success")
+                flash(f"{role} account '{username}' ({email}) created.", "success")
             except Exception as error:
                 conn.rollback()
                 flash(f"Could not create account: {error}", "danger")
 
     staff = conn.execute(
-        "SELECT UserID, Username, Role FROM USERS WHERE Role IN ('Owner','Admin','Employee') ORDER BY "
+        "SELECT UserID, Username, Email, Role FROM USERS WHERE Role IN ('Owner','Admin','Employee') ORDER BY "
         "CASE Role WHEN 'Owner' THEN 0 WHEN 'Admin' THEN 1 ELSE 2 END, Username"
     ).fetchall()
     pending_customers = conn.execute(

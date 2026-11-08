@@ -54,6 +54,10 @@
             <input class="form-control" id="username" name="username" required maxlength="80" autocomplete="off" />
           </div>
           <div class="mb-3">
+            <label class="form-label" for="email">Email</label>
+            <input class="form-control" type="email" id="email" name="email" required maxlength="254" autocomplete="email" />
+          </div>
+          <div class="mb-3">
             <label class="form-label" for="role">Role</label>
             <select class="form-select" id="role" name="role" required>
               <option value="Admin">Admin</option>
@@ -81,12 +85,12 @@
       <div class="panel-body p-0">
         <div class="table-responsive">
           <table class="table table-hover align-middle mb-0">
-            <thead><tr><th>Username</th><th>Role</th></tr></thead>
+            <thead><tr><th>Username</th><th>Email</th><th>Role</th></tr></thead>
             <tbody>
               {% for account in staff %}
-              <tr><td class="fw-semibold">{{ account.Username }}</td><td>{{ account.Role }}</td></tr>
+              <tr><td class="fw-semibold">{{ account.Username }}</td><td>{{ account.Email or '—' }}</td><td>{{ account.Role }}</td></tr>
               {% else %}
-              <tr><td colspan="2" class="text-center text-muted py-4">No staff accounts.</td></tr>
+              <tr><td colspan="3" class="text-center text-muted py-4">No staff accounts.</td></tr>
               {% endfor %}
             </tbody>
           </table>

@@ -19,6 +19,16 @@ def login_required(f):
     return decorated
 
 
+def owner_or_admin_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if session.get("user", {}).get("role") not in ("Owner", "Admin"):
+            flash("Only an owner or admin can make deposits.", "danger")
+            return redirect(url_for("transactions.transactions"))
+        return f(*args, **kwargs)
+    return decorated
+
+
 @transactions_bp.route("/transactions")
 @login_required
 def transactions():
@@ -66,11 +76,13 @@ def transactions():
         stats=stats,
         search=search,
         txn_type=txn_type,
+        can_deposit=session.get("user", {}).get("role") in ("Owner", "Admin"),
     )
 
 
 @transactions_bp.route("/transactions/deposit", methods=["POST"])
 @login_required
+@owner_or_admin_required
 def deposit():
     """Credit an amount to an account — trigger fires to update balance."""
     account_id  = request.form.get("account_id")

@@ -6,7 +6,7 @@
 <div class="page-header-row">
   <div>
     <h4 class="page-heading">Welcome, {{ session.user.username }}</h4>
-    <p class="page-sub">Your personal AkumaBank information.</p>
+    <p class="page-sub">Your personal AkumaBank information. Cash deposits are handled by an owner or admin.</p>
   </div>
 </div>
 
@@ -57,6 +57,60 @@
     </div>
   </div>
 </div>
+
+{% if accounts %}
+<div class="card-panel mb-4">
+  <div class="panel-header"><span class="panel-title">Make a Withdrawal or Transfer</span></div>
+  <div class="panel-body">
+    <div class="row g-4">
+      <div class="col-lg-6">
+        <form method="POST" action="{{ url_for('customer_portal.withdraw') }}">
+          <h6 class="fw-semibold">Withdraw from my account</h6>
+          <div class="mb-3">
+            <label class="form-label" for="withdraw_account">Account</label>
+            <select class="form-select" id="withdraw_account" name="account_id" required>
+              {% for account in accounts if account.Status == 'Active' %}
+              <option value="{{ account.AccountID }}">{{ account.AccountNumber }} — MAD {{ "{:,.2f}".format(account.Balance) }}</option>
+              {% else %}
+              <option value="" disabled>No active accounts</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="withdraw_amount">Amount (MAD)</label>
+            <input class="form-control" type="number" id="withdraw_amount" name="amount" min="0.01" step="0.01" required />
+          </div>
+          <button class="btn btn-danger" type="submit">Withdraw</button>
+        </form>
+      </div>
+      <div class="col-lg-6">
+        <form method="POST" action="{{ url_for('customer_portal.transfer') }}">
+          <h6 class="fw-semibold">Transfer to an AkumaBank account</h6>
+          <div class="mb-3">
+            <label class="form-label" for="transfer_source">From my account</label>
+            <select class="form-select" id="transfer_source" name="from_account_id" required>
+              {% for account in accounts if account.Status == 'Active' %}
+              <option value="{{ account.AccountID }}">{{ account.AccountNumber }} — MAD {{ "{:,.2f}".format(account.Balance) }}</option>
+              {% else %}
+              <option value="" disabled>No active accounts</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="destination_account">Recipient account number</label>
+            <input class="form-control" type="text" id="destination_account" name="to_account_number" maxlength="32" required />
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="transfer_amount">Amount (MAD)</label>
+            <input class="form-control" type="number" id="transfer_amount" name="amount" min="0.01" step="0.01" required />
+          </div>
+          <button class="btn btn-primary" type="submit">Transfer</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
 
 <div class="card-panel">
   <div class="panel-header"><span class="panel-title">Recent Transactions</span></div>

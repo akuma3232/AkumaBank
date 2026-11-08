@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Account Settings — AkumaBank{% endblock %}
+{% block page_title %}Account Settings{% endblock %}
+
+{% block content %}
+<div class="page-header-row">
+  <div>
+    <h4 class="page-heading">Account Settings</h4>
+    <p class="page-sub">Personalize your account with a profile picture.</p>
+  </div>
+</div>
+
+<div class="row justify-content-center">
+  <div class="col-lg-7 col-xl-6">
+    <div class="card-panel">
+      <div class="panel-header"><span class="panel-title">Profile Picture</span></div>
+      <div class="panel-body">
+        <div class="profile-picture-preview mb-4">
+          {% if profile_picture %}
+          <img src="{{ url_for('profiles.picture', filename=profile_picture) }}" alt="Current profile picture" />
+          {% else %}
+          <div class="profile-picture-placeholder"><i class="bi bi-person-fill"></i></div>
+          {% endif %}
+        </div>
+        <form method="POST" enctype="multipart/form-data">
+          <label class="form-label" for="profile_picture">Choose an image</label>
+          <input class="form-control mb-2" type="file" id="profile_picture" name="profile_picture"
+                 accept="image/jpeg,image/png,image/gif,image/webp,.jpg,.jpeg,.png,.gif,.webp" required />
+          <div class="form-text mb-3">JPEG, PNG, GIF (including animated GIF), or WebP. Maximum 5 MB.</div>
+          <button class="btn btn-primary" type="submit"><i class="bi bi-upload me-2"></i>Save Picture</button>
+        </form>
+        {% if profile_picture %}
+        <hr />
+        <form method="POST" action="{{ url_for('profiles.remove_picture') }}">
+          <button class="btn btn-outline-danger" type="submit"><i class="bi bi-trash me-2"></i>Remove Picture</button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

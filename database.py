@@ -109,6 +109,7 @@ def init_db(seed_demo_data=False):
             UserID   INTEGER PRIMARY KEY AUTOINCREMENT,
             Username TEXT    NOT NULL UNIQUE,
             Password TEXT    NOT NULL,
+            ProfilePicture TEXT,
             Role     TEXT    NOT NULL DEFAULT 'Employee' CHECK(Role IN ('Owner','Admin','Employee'))
         )
     """)
@@ -132,6 +133,10 @@ def init_db(seed_demo_data=False):
             SELECT UserID, Username, Password, Role FROM USERS_legacy_roles
         """)
         cur.execute("DROP TABLE USERS_legacy_roles")
+
+    user_columns = {row["name"] for row in cur.execute("PRAGMA table_info(USERS)")}
+    if "ProfilePicture" not in user_columns:
+        cur.execute("ALTER TABLE USERS ADD COLUMN ProfilePicture TEXT")
 
     cur.execute(
         "DELETE FROM USERS WHERE (Username='admin' AND Password='admin123') "

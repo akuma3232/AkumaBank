@@ -33,7 +33,11 @@
 
   <!-- User info -->
   <div class="sidebar-user">
+    {% if session.user.profile_picture %}
+    <img class="user-avatar" src="{{ url_for('profiles.picture', filename=session.user.profile_picture) }}" alt="" />
+    {% else %}
     <div class="user-avatar">{{ session.user.username[0]|upper }}</div>
+    {% endif %}
     <div class="user-info">
       <div class="user-name">{{ session.user.username }}</div>
       <div class="user-role badge-role">{{ session.user.role }}</div>
@@ -76,6 +80,9 @@
     {% endif %}
 
     <div class="nav-section-title">Account</div>
+    <a href="{{ url_for('profiles.settings') }}" class="nav-link {% if request.endpoint and 'profiles.' in request.endpoint %}active{% endif %}">
+      <i class="bi bi-person-circle"></i><span>Account Settings</span>
+    </a>
     <a href="{{ url_for('auth.logout') }}" class="nav-link text-danger-soft">
       <i class="bi bi-box-arrow-right"></i><span>Logout</span>
     </a>
@@ -98,7 +105,11 @@
     <div class="topbar-actions ms-auto">
       <span class="topbar-date"><i class="bi bi-calendar3 me-1"></i>{% block topbar_date %}{% endblock %}</span>
       <div class="topbar-user">
+        {% if session.user.profile_picture %}
+        <img class="topbar-avatar" src="{{ url_for('profiles.picture', filename=session.user.profile_picture) }}" alt="" />
+        {% else %}
         <div class="topbar-avatar">{{ session.user.username[0]|upper }}</div>
+        {% endif %}
         <span class="d-none d-md-inline">{{ session.user.username }}</span>
       </div>
     </div>

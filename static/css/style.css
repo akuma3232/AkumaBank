@@ -76,7 +76,11 @@ body {
   border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   font-weight: 700; color: #fff; font-size: .9rem;
+  object-fit: cover;
 }
+.profile-picture-preview { width: 144px; height: 144px; border-radius: 50%; overflow: hidden; background: var(--bg); display: flex; align-items: center; justify-content: center; }
+.profile-picture-preview img { width: 100%; height: 100%; object-fit: cover; }
+.profile-picture-placeholder { color: var(--muted); font-size: 4rem; }
 .user-name   { font-size: .85rem; font-weight: 600; color: #fff; }
 .badge-role  { font-size: .65rem; background: rgba(255,255,255,.15); color: rgba(255,255,255,.8); border-radius: 6px; padding: 2px 8px; display: inline-block; }
 
@@ -138,7 +142,7 @@ body {
 .page-title { font-size: 1rem; font-weight: 600; color: var(--text); }
 .topbar-actions { display: flex; align-items: center; gap: 16px; }
 .topbar-date { font-size: .8rem; color: var(--muted); }
-.topbar-avatar { width: 32px; height: 32px; background: var(--primary-light); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; color: #fff; font-size: .8rem; }
+.topbar-avatar { width: 32px; height: 32px; background: var(--primary-light); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; color: #fff; font-size: .8rem; object-fit: cover; }
 .topbar-user { display: flex; align-items: center; gap: 8px; font-size: .85rem; font-weight: 500; }
 
 /* ── PAGE CONTENT ─────────────────────────────────────────── */

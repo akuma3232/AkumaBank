@@ -48,6 +48,7 @@ def login():
                 "id": user["UserID"],
                 "username": user["Username"],
                 "role": user["Role"],
+                "profile_picture": user["ProfilePicture"],
             }
             flash(f"Welcome back, {user['Username']}!", "success")
             return redirect(url_for("dashboard.dashboard"))

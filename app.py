@@ -14,9 +14,11 @@ from routes.branches import branches_bp
 from routes.reports import reports_bp
 from routes.database_panel import database_bp
 from routes.users import users_bp
+from routes.profiles import profiles_bp
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SESSION_SECRET") or os.urandom(32)
+app.config["MAX_CONTENT_LENGTH"] = 6 * 1024 * 1024
 
 # Create the schema for a new database without inserting demo banking records.
 init_db(seed_demo_data=False)
@@ -31,6 +33,7 @@ app.register_blueprint(branches_bp)
 app.register_blueprint(reports_bp)
 app.register_blueprint(database_bp)
 app.register_blueprint(users_bp)
+app.register_blueprint(profiles_bp)
 
 
 @app.route("/")

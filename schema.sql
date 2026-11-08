@@ -92,6 +92,7 @@ CREATE TABLE IF NOT EXISTS USERS (
     UserID   INTEGER PRIMARY KEY AUTOINCREMENT,
     Username TEXT    NOT NULL UNIQUE,
     Password TEXT    NOT NULL,
+    ProfilePicture TEXT,
     Role     TEXT    NOT NULL DEFAULT 'Employee' CHECK(Role IN ('Owner','Admin','Employee'))
 );
 

@@ -1,0 +1,242 @@
+{% extends "base.html" %}
+{% block title %}Transactions — AkumaBank{% endblock %}
+{% block page_title %}Transaction Management{% endblock %}
+
+{% block content %}
+<!-- Stats -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="mini-stat">
+      <div class="mini-stat-val">{{ stats.total_count }}</div>
+      <div class="mini-stat-label">Total Transactions</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="mini-stat mini-stat-green">
+      <div class="mini-stat-val">MAD {{ "{:,.0f}".format(stats.total_deposits) }}</div>
+      <div class="mini-stat-label">Total Deposits</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="mini-stat mini-stat-red">
+      <div class="mini-stat-val">MAD {{ "{:,.0f}".format(stats.total_withdrawals) }}</div>
+      <div class="mini-stat-label">Total Withdrawals</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="mini-stat mini-stat-blue">
+      <div class="mini-stat-val">MAD {{ "{:,.0f}".format(stats.total_transfers) }}</div>
+      <div class="mini-stat-label">Total Transfers</div>
+    </div>
+  </div>
+</div>
+
+<!-- Action Buttons -->
+<div class="page-header-row">
+  <div>
+    <h4 class="page-heading">Transactions</h4>
+    <p class="page-sub">Deposit · Withdraw · Transfer — trigger <code>UpdateBalanceAfterTransaction</code> fires on every insert</p>
+  </div>
+  <div class="d-flex gap-2 flex-wrap">
+    <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#depositModal">
+      <i class="bi bi-arrow-down-circle-fill me-1"></i>Deposit
+    </button>
+    <button class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#withdrawModal">
+      <i class="bi bi-arrow-up-circle-fill me-1"></i>Withdraw
+    </button>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#transferModal">
+      <i class="bi bi-arrow-left-right me-1"></i>Transfer
+    </button>
+  </div>
+</div>
+
+<!-- Filter Row -->
+<div class="search-bar-row mb-4">
+  <form class="d-flex gap-2 flex-wrap" method="GET">
+    <div class="input-group" style="max-width:340px">
+      <span class="input-group-text bg-white"><i class="bi bi-search text-muted"></i></span>
+      <input type="text" name="q" value="{{ search }}" class="form-control" placeholder="Search customer or account..." />
+    </div>
+    <select name="type" class="form-select" style="max-width:160px">
+      <option value="">All Types</option>
+      <option value="Deposit"    {% if txn_type=='Deposit'    %}selected{% endif %}>Deposit</option>
+      <option value="Withdrawal" {% if txn_type=='Withdrawal' %}selected{% endif %}>Withdrawal</option>
+      <option value="Transfer"   {% if txn_type=='Transfer'   %}selected{% endif %}>Transfer</option>
+    </select>
+    <button class="btn btn-outline-primary" type="submit">Filter</button>
+    {% if search or txn_type %}<a href="{{ url_for('transactions.transactions') }}" class="btn btn-outline-secondary">Clear</a>{% endif %}
+  </form>
+  <div class="result-count ms-auto text-muted small">{{ txns|length }} record(s)</div>
+</div>
+
+<!-- Table -->
+<div class="card-panel">
+  <div class="panel-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Customer</th>
+            <th>Account</th>
+            <th>Type</th>
+            <th>Amount</th>
+            <th>Balance After</th>
+            <th>Description</th>
+            <th>Date</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for t in txns %}
+          <tr>
+            <td class="text-muted small">{{ t.TransactionID }}</td>
+            <td class="fw-semibold">{{ t.CustomerName }}</td>
+            <td><span class="mono-text">{{ t.AccountNumber }}</span></td>
+            <td>
+              <span class="badge-txn badge-txn-{{ t.TransactionType|lower }}">
+                <i class="bi {{ 'bi-arrow-down-circle' if t.TransactionType=='Deposit' else ('bi-arrow-up-circle' if t.TransactionType=='Withdrawal' else 'bi-arrow-left-right') }} me-1"></i>
+                {{ t.TransactionType }}
+              </span>
+            </td>
+            <td class="fw-semibold {{ 'text-success' if t.TransactionType=='Deposit' else 'text-danger' }}">
+              {{ '+' if t.TransactionType=='Deposit' else '-' }}MAD {{ "{:,.2f}".format(t.Amount) }}
+            </td>
+            <td class="text-muted">MAD {{ "{:,.2f}".format(t.BalanceAfter) }}</td>
+            <td class="text-muted small">{{ t.Description or '—' }}</td>
+            <td class="text-muted small">{{ t.TransactionDate[:16] }}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="8" class="text-center py-5 text-muted">No transactions found.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ DEPOSIT MODAL ═══ -->
+<div class="modal fade" id="depositModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-success text-white">
+        <h5 class="modal-title"><i class="bi bi-arrow-down-circle-fill me-2"></i>Deposit Funds</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="POST" action="{{ url_for('transactions.deposit') }}">
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Account *</label>
+            <select name="account_id" class="form-select" required>
+              <option value="">— Select Account —</option>
+              {% for a in accounts %}
+              <option value="{{ a.AccountID }}">{{ a.AccountNumber }} — {{ a.Name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Amount (MAD) *</label>
+            <div class="input-group">
+              <span class="input-group-text">MAD</span>
+              <input type="number" name="amount" class="form-control" min="1" step="0.01" placeholder="0.00" required />
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Description</label>
+            <input type="text" name="description" class="form-control" value="Cash deposit" />
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-success"><i class="bi bi-check-lg me-1"></i>Deposit</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ WITHDRAW MODAL ═══ -->
+<div class="modal fade" id="withdrawModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title"><i class="bi bi-arrow-up-circle-fill me-2"></i>Withdraw Funds</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="POST" action="{{ url_for('transactions.withdraw') }}">
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Account *</label>
+            <select name="account_id" class="form-select" required>
+              <option value="">— Select Account —</option>
+              {% for a in accounts %}
+              <option value="{{ a.AccountID }}">{{ a.AccountNumber }} — {{ a.Name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Amount (MAD) *</label>
+            <div class="input-group">
+              <span class="input-group-text">MAD</span>
+              <input type="number" name="amount" class="form-control" min="1" step="0.01" placeholder="0.00" required />
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Description</label>
+            <input type="text" name="description" class="form-control" value="ATM withdrawal" />
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-danger"><i class="bi bi-check-lg me-1"></i>Withdraw</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ TRANSFER MODAL ═══ -->
+<div class="modal fade" id="transferModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title"><i class="bi bi-arrow-left-right me-2"></i>Fund Transfer</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="POST" action="{{ url_for('transactions.transfer') }}">
+        <div class="modal-body">
+          <div class="alert alert-info py-2 small"><i class="bi bi-info-circle me-1"></i>Uses the <strong>TransferMoney()</strong> stored-procedure equivalent — atomic debit + credit.</div>
+          <div class="mb-3">
+            <label class="form-label">From Account *</label>
+            <select name="from_account_id" class="form-select" required>
+              <option value="">— Select Source —</option>
+              {% for a in accounts %}
+              <option value="{{ a.AccountID }}">{{ a.AccountNumber }} — {{ a.Name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">To Account *</label>
+            <select name="to_account_id" class="form-select" required>
+              <option value="">— Select Destination —</option>
+              {% for a in accounts %}
+              <option value="{{ a.AccountID }}">{{ a.AccountNumber }} — {{ a.Name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Amount (MAD) *</label>
+            <div class="input-group">
+              <span class="input-group-text">MAD</span>
+              <input type="number" name="amount" class="form-control" min="1" step="0.01" placeholder="0.00" required />
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Transfer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en-MA">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}AkumaBank — Morocco{% endblock %}</title>
+
+  <!-- Bootstrap 5 -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <!-- Bootstrap Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet" />
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+
+  {% block head %}{% endblock %}
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════
+     SIDEBAR
+══════════════════════════════════════════════════ -->
+<div class="sidebar" id="sidebar">
+  <!-- Logo -->
+  <div class="sidebar-brand">
+    <div class="brand-icon"><i class="bi bi-bank2"></i></div>
+    <div class="brand-text">
+      <span class="brand-name">AkumaBank</span>
+      <span class="brand-sub">Morocco Banking</span>
+    </div>
+  </div>
+
+  <!-- User info -->
+  <div class="sidebar-user">
+    <div class="user-avatar">{{ session.user.username[0]|upper }}</div>
+    <div class="user-info">
+      <div class="user-name">{{ session.user.username }}</div>
+      <div class="user-role badge-role">{{ session.user.role }}</div>
+    </div>
+  </div>
+
+  <!-- Navigation -->
+  <nav class="sidebar-nav">
+    <div class="nav-section-title">Main</div>
+    <a href="{{ url_for('dashboard.dashboard') }}" class="nav-link {% if request.endpoint=='dashboard.dashboard' %}active{% endif %}">
+      <i class="bi bi-speedometer2"></i><span>Dashboard</span>
+    </a>
+    <a href="{{ url_for('customers.customers') }}" class="nav-link {% if request.endpoint and 'customer' in request.endpoint %}active{% endif %}">
+      <i class="bi bi-people-fill"></i><span>Customers</span>
+    </a>
+    <a href="{{ url_for('accounts.accounts') }}" class="nav-link {% if request.endpoint and 'account' in request.endpoint %}active{% endif %}">
+      <i class="bi bi-credit-card-2-front-fill"></i><span>Accounts</span>
+    </a>
+    <a href="{{ url_for('transactions.transactions') }}" class="nav-link {% if request.endpoint and 'transaction' in request.endpoint %}active{% endif %}">
+      <i class="bi bi-arrow-left-right"></i><span>Transactions</span>
+    </a>
+
+    <div class="nav-section-title">Services</div>
+    <a href="{{ url_for('loans.loans') }}" class="nav-link {% if request.endpoint and 'loan' in request.endpoint %}active{% endif %}">
+      <i class="bi bi-cash-coin"></i><span>Loans</span>
+    </a>
+    <a href="{{ url_for('branches.branches') }}" class="nav-link {% if request.endpoint and 'branch' in request.endpoint %}active{% endif %}">
+      <i class="bi bi-building-fill"></i><span>Branches</span>
+    </a>
+    <a href="{{ url_for('reports.reports') }}" class="nav-link {% if request.endpoint and 'report' in request.endpoint %}active{% endif %}">
+      <i class="bi bi-bar-chart-line-fill"></i><span>Reports</span>
+    </a>
+    <a href="{{ url_for('database_panel.database') }}" class="nav-link {% if request.endpoint and 'database' in request.endpoint %}active{% endif %}">
+      <i class="bi bi-database-fill"></i><span>Database</span>
+    </a>
+    {% if session.user.role == 'Owner' %}
+    <a href="{{ url_for('users.users') }}" class="nav-link {% if request.endpoint and 'users.' in request.endpoint %}active{% endif %}">
+      <i class="bi bi-person-gear"></i><span>Staff Accounts</span>
+    </a>
+    {% endif %}
+
+    <div class="nav-section-title">Account</div>
+    <a href="{{ url_for('auth.logout') }}" class="nav-link text-danger-soft">
+      <i class="bi bi-box-arrow-right"></i><span>Logout</span>
+    </a>
+  </nav>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     MAIN CONTENT WRAPPER
+══════════════════════════════════════════════════ -->
+<div class="main-wrapper" id="mainWrapper">
+
+  <!-- Top Navbar -->
+  <header class="topbar">
+    <button class="sidebar-toggle" id="sidebarToggle">
+      <i class="bi bi-list"></i>
+    </button>
+    <div class="topbar-breadcrumb">
+      <span class="page-title">{% block page_title %}Dashboard{% endblock %}</span>
+    </div>
+    <div class="topbar-actions ms-auto">
+      <span class="topbar-date"><i class="bi bi-calendar3 me-1"></i>{% block topbar_date %}{% endblock %}</span>
+      <div class="topbar-user">
+        <div class="topbar-avatar">{{ session.user.username[0]|upper }}</div>
+        <span class="d-none d-md-inline">{{ session.user.username }}</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Flash Messages -->
+  <div class="flash-container">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for cat, msg in messages %}
+        <div class="alert alert-{{ cat }} alert-dismissible fade show shadow-sm" role="alert">
+          <i class="bi bi-{% if cat=='success' %}check-circle-fill{% elif cat=='danger' %}x-circle-fill{% elif cat=='warning' %}exclamation-triangle-fill{% else %}info-circle-fill{% endif %} me-2"></i>
+          {{ msg }}
+          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+      {% endfor %}
+    {% endwith %}
+  </div>
+
+  <!-- Page Content -->
+  <main class="page-content">
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- Footer -->
+  <footer class="page-footer">
+    <span>AkumaBank &copy; 2026 &mdash; Morocco Banking</span>
+  </footer>
+</div>
+
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<!-- Custom JS -->
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

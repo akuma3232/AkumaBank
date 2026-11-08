@@ -1,0 +1,784 @@
+{% extends "base.html" %}
+{% block title %}Database Explorer — AkumaBank{% endblock %}
+{% block page_title %}Database Explorer{% endblock %}
+
+{% block content %}
+
+{# ── Macros must be defined FIRST before any use ────────────────────────── #}
+{% macro result_table(cols, rows) %}
+<div class="table-responsive">
+  <table class="table table-sm table-hover align-middle mb-0">
+    <thead class="table-primary">
+      <tr>{% for c in cols %}<th>{{ c }}</th>{% endfor %}</tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+      <tr>{% for cell in row %}<td class="small mono-text">{{ cell if cell is not none else '—' }}</td>{% endfor %}</tr>
+      {% else %}
+      <tr><td colspan="{{ cols|length }}" class="text-center text-muted py-3">No rows returned.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endmacro %}
+
+{% macro status_badge(err) %}
+  {% if not err %}
+    <span class="badge bg-success-soft text-success ms-2">
+      <i class="bi bi-check-circle-fill me-1"></i>PASS
+    </span>
+  {% else %}
+    <span class="badge bg-danger-soft text-danger ms-2">
+      <i class="bi bi-x-circle-fill me-1"></i>ERROR
+    </span>
+  {% endif %}
+{% endmacro %}
+
+{# ── Quick stats ─────────────────────────────────────────────────────────── #}
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="mini-stat mini-stat-blue">
+      <div class="mini-stat-val">{{ tables|length }}</div>
+      <div class="mini-stat-label"><i class="bi bi-table me-1"></i>Tables</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="mini-stat mini-stat-green">
+      <div class="mini-stat-val">{{ views|length }}</div>
+      <div class="mini-stat-label"><i class="bi bi-eye-fill me-1"></i>Views</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="mini-stat mini-stat-orange">
+      <div class="mini-stat-val">{{ triggers|length }}</div>
+      <div class="mini-stat-label"><i class="bi bi-lightning-charge-fill me-1"></i>Triggers</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="mini-stat mini-stat-red">
+      <div class="mini-stat-val">{{ indexes|length }}</div>
+      <div class="mini-stat-label"><i class="bi bi-search me-1"></i>Indexes</div>
+    </div>
+  </div>
+</div>
+
+{# ── Tab nav ──────────────────────────────────────────────────────────────── #}
+<ul class="nav nav-tabs mb-4" id="dbTabs">
+  <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#tab-schema">
+    <i class="bi bi-diagram-3-fill me-1"></i>Schema</a></li>
+  <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-join">
+    <i class="bi bi-arrow-left-right me-1"></i>JOIN</a></li>
+  <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-agg">
+    <i class="bi bi-calculator-fill me-1"></i>Aggregates</a></li>
+  <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-sub">
+    <i class="bi bi-filter-circle-fill me-1"></i>Subqueries</a></li>
+  <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-views">
+    <i class="bi bi-eye-fill me-1"></i>Views</a></li>
+  <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-trigger">
+    <i class="bi bi-lightning-charge-fill me-1"></i>Trigger</a></li>
+  <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-sp">
+    <i class="bi bi-code-slash me-1"></i>Stored Proc</a></li>
+  <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-sql">
+    <i class="bi bi-terminal-fill me-1"></i>SQL Console</a></li>
+</ul>
+
+<div class="tab-content">
+
+<!-- ═══════════════════════════════════════════════════════
+     TAB 1 — SCHEMA
+════════════════════════════════════════════════════════ -->
+<div class="tab-pane fade show active" id="tab-schema">
+
+  {# ERD #}
+  <div class="card-panel mb-4">
+    <div class="panel-header">
+      <span class="panel-title"><i class="bi bi-diagram-3-fill me-2 text-primary"></i>Entity Relationship Diagram</span>
+    </div>
+    <div class="panel-body">
+      <div class="erd-row">
+        <div class="erd-box erd-branch">
+          <div class="erd-title"><i class="bi bi-building-fill"></i> BRANCH</div>
+          <div class="erd-fields">
+            <span class="pk">🔑 BranchID (PK)</span>
+            <span>BranchName</span><span>BranchCode (UNIQUE)</span>
+            <span>Address</span><span>City</span><span>Phone</span>
+          </div>
+        </div>
+        <div class="erd-conn"><span class="erd-rel">1 : N</span></div>
+        <div class="erd-box erd-account">
+          <div class="erd-title"><i class="bi bi-credit-card-2-front-fill"></i> ACCOUNT</div>
+          <div class="erd-fields">
+            <span class="pk">🔑 AccountID (PK)</span>
+            <span class="fk">🔗 CustomerID (FK)</span>
+            <span class="fk">🔗 BranchID (FK)</span>
+            <span>AccountNumber (UNIQUE)</span>
+            <span>AccountType CHECK</span>
+            <span>Balance</span><span>Status CHECK</span>
+          </div>
+        </div>
+        <div class="erd-conn"><span class="erd-rel">1 : N</span></div>
+        <div class="erd-box erd-txn">
+          <div class="erd-title"><i class="bi bi-arrow-left-right"></i> TRANSACTIONS</div>
+          <div class="erd-fields">
+            <span class="pk">🔑 TransactionID (PK)</span>
+            <span class="fk">🔗 AccountID (FK)</span>
+            <span>TransactionType CHECK</span>
+            <span>Amount CHECK(>0)</span>
+            <span>TransactionDate</span><span>BalanceAfter</span>
+          </div>
+        </div>
+      </div>
+      <div class="erd-row mt-3">
+        <div class="erd-box erd-customer">
+          <div class="erd-title"><i class="bi bi-person-fill"></i> CUSTOMER</div>
+          <div class="erd-fields">
+            <span class="pk">🔑 CustomerID (PK)</span>
+            <span>Name</span><span>DateOfBirth</span>
+            <span>Email (UNIQUE)</span><span>Phone</span>
+            <span>NationalID (UNIQUE)</span>
+          </div>
+        </div>
+        <div class="erd-conn"><span class="erd-rel">1 : N</span></div>
+        <div class="erd-box erd-loan">
+          <div class="erd-title"><i class="bi bi-cash-coin"></i> LOAN</div>
+          <div class="erd-fields">
+            <span class="pk">🔑 LoanID (PK)</span>
+            <span class="fk">🔗 CustomerID (FK)</span>
+            <span>LoanType CHECK</span>
+            <span>Amount CHECK(>0)</span>
+            <span>InterestRate</span><span>Status CHECK</span>
+          </div>
+        </div>
+        <div class="erd-conn" style="opacity:0"></div>
+        <div class="erd-box erd-users">
+          <div class="erd-title"><i class="bi bi-shield-fill-check"></i> USERS</div>
+          <div class="erd-fields">
+            <span class="pk">🔑 UserID (PK)</span>
+            <span>Username (UNIQUE)</span>
+            <span>Password</span>
+            <span>Role CHECK (Owner/Admin/Employee)</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# Table details #}
+  {% for t in tables %}
+  <div class="card-panel mb-3">
+    <div class="panel-header" style="cursor:pointer" data-bs-toggle="collapse" data-bs-target="#tbl-{{ t.name }}">
+      <i class="bi bi-table me-2 text-primary"></i>
+      <span class="mono-text fw-bold">{{ t.name }}</span>
+      <span class="badge bg-primary-soft text-primary ms-2">{{ t.count }} rows</span>
+      <span class="badge bg-secondary-soft text-secondary ms-1">{{ t.columns|length }} cols</span>
+      {% if t.foreign_keys %}
+        <span class="badge bg-warning-soft text-warning ms-1">{{ t.foreign_keys|length }} FK</span>
+      {% endif %}
+      <i class="bi bi-chevron-down ms-auto text-muted"></i>
+    </div>
+    <div class="collapse show" id="tbl-{{ t.name }}">
+      <div class="panel-body p-0">
+        <div class="table-responsive">
+          <table class="table table-sm table-bordered mb-0">
+            <thead class="table-dark">
+              <tr><th>#</th><th>Column Name</th><th>Data Type</th><th>Not Null</th><th>Default</th><th>Key / Constraint</th></tr>
+            </thead>
+            <tbody>
+              {% for col in t.columns %}
+              <tr>
+                <td class="text-muted small">{{ col.cid }}</td>
+                <td class="fw-semibold mono-text">{{ col.name }}</td>
+                <td><span class="badge bg-info-soft text-info">{{ col.type or 'TEXT' }}</span></td>
+                <td>
+                  {% if col.notnull %}<span class="badge bg-danger-soft text-danger">NOT NULL</span>
+                  {% else %}<span class="text-muted small">nullable</span>{% endif %}
+                </td>
+                <td class="text-muted small mono-text">{{ col.dflt_value or '—' }}</td>
+                <td>
+                  {% if col.pk %}<span class="badge bg-warning text-dark me-1"><i class="bi bi-key-fill"></i> PK</span>{% endif %}
+                  {% for fk in t.foreign_keys %}
+                    {% if fk.from == col.name %}
+                      <span class="badge bg-success-soft text-success"><i class="bi bi-link-45deg"></i> FK → {{ fk.table }}.{{ fk.to }}</span>
+                    {% endif %}
+                  {% endfor %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+
+  {# Views DDL #}
+  <div class="card-panel mb-3">
+    <div class="panel-header">
+      <span class="panel-title"><i class="bi bi-eye-fill me-2 text-success"></i>Views ({{ views|length }})</span>
+    </div>
+    <div class="panel-body p-0">
+      {% for v in views %}
+      <div class="p-3 {% if not loop.last %}border-bottom{% endif %}">
+        <div class="fw-bold mono-text mb-2"><i class="bi bi-eye me-1 text-success"></i>{{ v.name }}</div>
+        <pre class="sql-block">{{ v.sql }}</pre>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  {# Triggers DDL #}
+  <div class="card-panel mb-3">
+    <div class="panel-header">
+      <span class="panel-title"><i class="bi bi-lightning-charge-fill me-2 text-warning"></i>Triggers ({{ triggers|length }})</span>
+    </div>
+    <div class="panel-body p-0">
+      {% for t in triggers %}
+      <div class="p-3 {% if not loop.last %}border-bottom{% endif %}">
+        <div class="d-flex align-items-center gap-2 mb-2">
+          <span class="fw-bold mono-text"><i class="bi bi-lightning-charge me-1 text-warning"></i>{{ t.name }}</span>
+          <span class="badge bg-warning-soft text-warning">on {{ t.tbl_name }}</span>
+        </div>
+        <pre class="sql-block">{{ t.sql }}</pre>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  {# Indexes #}
+  <div class="card-panel">
+    <div class="panel-header">
+      <span class="panel-title"><i class="bi bi-search me-2 text-indigo"></i>Indexes ({{ indexes|length }})</span>
+    </div>
+    <div class="panel-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead><tr><th>Index Name</th><th>Table</th><th>SQL</th></tr></thead>
+          <tbody>
+            {% for i in indexes %}
+            <tr>
+              <td class="mono-text fw-semibold">{{ i.name }}</td>
+              <td><span class="badge bg-primary-soft text-primary">{{ i.tbl_name }}</span></td>
+              <td><code class="small">{{ i.sql }}</code></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     TAB 2 — JOIN Queries
+════════════════════════════════════════════ -->
+<div class="tab-pane fade" id="tab-join">
+  <div class="card-panel mb-4">
+    <div class="panel-header">
+      <span class="panel-title"><i class="bi bi-arrow-left-right me-2 text-primary"></i>3-Table JOIN — Customer + Account + Branch</span>
+      <span class="db-badge">INNER JOIN + LEFT JOIN</span>
+      {{ status_badge(join_err) }}
+    </div>
+    <div class="panel-body">
+      <pre class="sql-block">SELECT c.Name AS Customer, a.AccountNumber, a.AccountType,
+       a.Balance, b.BranchName
+FROM   CUSTOMER c
+JOIN   ACCOUNT  a ON c.CustomerID = a.CustomerID
+LEFT JOIN BRANCH b ON a.BranchID  = b.BranchID
+ORDER BY a.Balance DESC LIMIT 10;</pre>
+    </div>
+    {% if join_err %}<div class="alert alert-danger m-3">{{ join_err }}</div>
+    {% else %}{{ result_table(join_cols, join_rows) }}{% endif %}
+  </div>
+
+  <div class="card-panel mt-4">
+    <div class="panel-header">
+      <span class="panel-title"><i class="bi bi-table me-2 text-indigo"></i>TransactionDetails VIEW (3-Table JOIN)</span>
+      <span class="db-badge">JOIN via VIEW</span>
+      {{ status_badge(view2_err) }}
+    </div>
+    <pre class="sql-block m-3">SELECT * FROM TransactionDetails ORDER BY TransactionDate DESC LIMIT 10;</pre>
+    {% if view2_err %}<div class="alert alert-danger m-3">{{ view2_err }}</div>
+    {% else %}{{ result_table(view2_cols, view2_rows) }}{% endif %}
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     TAB 3 — Aggregate Functions
+════════════════════════════════════════════ -->
+<div class="tab-pane fade" id="tab-agg">
+  <div class="card-panel mb-4">
+    <div class="panel-header">
+      <span class="panel-title"><i class="bi bi-calculator-fill me-2 text-success"></i>Account Balance — COUNT, SUM, AVG, MAX, MIN</span>
+      <span class="db-badge">Aggregate Functions</span>
+      {{ status_badge(agg_err) }}
+    </div>
+    <div class="panel-body">
+      <pre class="sql-block">SELECT AccountType,
+       COUNT(*)     AS Total_Accounts,
+       SUM(Balance) AS Total_Balance,
+       AVG(Balance) AS Avg_Balance,
+       MAX(Balance) AS Max_Balance,
+       MIN(Balance) AS Min_Balance
+FROM ACCOUNT
+GROUP BY AccountType
+ORDER BY SUM(Balance) DESC;</pre>
+    </div>
+    {% if agg_err %}<div class="alert alert-danger m-3">{{ agg_err }}</div>
+    {% else %}{{ result_table(agg_cols, agg_rows) }}{% endif %}
+  </div>
+
+  <div class="card-panel mb-4">
+    <div class="panel-header">
+      <span class="panel-title"><i class="bi bi-calendar3 me-2 text-indigo"></i>Monthly Transaction Aggregates</span>
+      <span class="db-badge">GROUP BY + SUM + COUNT</span>
+      {{ status_badge(monthly_err) }}
+    </div>
+    <pre class="sql-block m-3">SELECT strftime('%Y-%m', TransactionDate) AS Month,
+       COUNT(*) AS Transactions, SUM(Amount) AS Total,
+       SUM(CASE WHEN TransactionType='Deposit'    THEN Amount ELSE 0 END) AS Deposits,
+       SUM(CASE WHEN TransactionType='Withdrawal' THEN Amount ELSE 0 END) AS Withdrawals
+FROM TRANSACTIONS
+GROUP BY Month ORDER BY Month DESC;</pre>
+    {% if monthly_err %}<div class="alert alert-danger m-3">{{ monthly_err }}</div>
+    {% else %}{{ result_table(monthly_cols, monthly_rows) }}{% endif %}
+  </div>
+
+  <div class="card-panel">
+    <div class="panel-header">
+      <span class="panel-title"><i class="bi bi-cash-coin me-2 text-warning"></i>Loan Summary — AVG, COUNT, SUM per Type</span>
+      <span class="db-badge">Aggregate Functions</span>
+      {{ status_badge(loan_err) }}
+    </div>
+    <pre class="sql-block m-3">SELECT LoanType, COUNT(*) AS Applications,
+       SUM(Amount) AS Total_Amount,
+       AVG(Amount) AS Avg_Amount, AVG(InterestRate) AS Avg_Rate
+FROM LOAN GROUP BY LoanType ORDER BY SUM(Amount) DESC;</pre>
+    {% if loan_err %}<div class="alert alert-danger m-3">{{ loan_err }}</div>
+    {% else %}{{ result_table(loan_cols, loan_rows) }}{% endif %}
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     TAB 4 — Subqueries
+════════════════════════════════════════════ -->
+<div class="tab-pane fade" id="tab-sub">
+  <div class="card-panel mb-4">
+    <div class="panel-header">
+      <span class="panel-title"><i class="bi bi-filter-circle-fill me-2 text-indigo"></i>HAVING + Subquery — Above-Average Balance Customers</span>
+      <span class="db-badge">Scalar Subquery</span>
+      {{ status_badge(sub_err) }}
+    </div>
+    <div class="panel-body">
+      <pre class="sql-block">SELECT c.Name, c.Email, SUM(a.Balance) AS Total_Balance
+FROM CUSTOMER c JOIN ACCOUNT a ON c.CustomerID = a.CustomerID
+WHERE a.Status = 'Active'
+GROUP BY c.CustomerID
+HAVING SUM(a.Balance) > (
+    SELECT AVG(Balance) FROM ACCOUNT WHERE Status = 'Active'
+)
+ORDER BY SUM(a.Balance) DESC;</pre>
+    </div>
+    {% if sub_err %}<div class="alert alert-danger m-3">{{ sub_err }}</div>
+    {% else %}{{ result_table(sub_cols, sub_rows) }}{% endif %}
+  </div>
+
+  <div class="card-panel">
+    <div class="panel-header">
+      <span class="panel-title"><i class="bi bi-exclamation-triangle-fill me-2 text-danger"></i>NOT IN Subquery — Accounts Inactive 90+ Days</span>
+      <span class="db-badge">NOT IN Subquery</span>
+      {{ status_badge(inactive_err) }}
+    </div>
+    <pre class="sql-block m-3">SELECT a.AccountNumber, c.Name, a.Balance, a.Status
+FROM ACCOUNT a JOIN CUSTOMER c ON a.CustomerID = c.CustomerID
+WHERE a.AccountID NOT IN (
+    SELECT DISTINCT AccountID FROM TRANSACTIONS
+    WHERE TransactionDate >= date('now', '-90 days')
+);</pre>
+    {% if inactive_err %}<div class="alert alert-danger m-3">{{ inactive_err }}</div>
+    {% else %}{{ result_table(inactive_cols, inactive_rows) }}{% endif %}
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     TAB 5 — Views
+════════════════════════════════════════════ -->
+<div class="tab-pane fade" id="tab-views">
+  <div class="card-panel mb-4">
+    <div class="panel-header">
+      <span class="panel-title"><i class="bi bi-eye-fill me-2 text-success"></i>VIEW: CustomerAccountSummary</span>
+      <span class="db-badge">INNER JOIN + LEFT JOIN</span>
+      {{ status_badge(view1_err) }}
+    </div>
+    <div class="panel-body">
+      <p class="text-muted small mb-2">Joins <strong>CUSTOMER + ACCOUNT + BRANCH</strong> — used on the Accounts page.</p>
+      <pre class="sql-block">CREATE VIEW CustomerAccountSummary AS
+SELECT c.CustomerID, c.Name AS CustomerName, c.Email, c.Phone,
+       a.AccountID, a.AccountNumber, a.AccountType, a.Balance,
+       a.OpeningDate, a.Status AS AccountStatus,
+       b.BranchName, b.City, b.BranchCode
+FROM   CUSTOMER c
+JOIN   ACCOUNT  a ON c.CustomerID = a.CustomerID
+LEFT JOIN BRANCH b ON a.BranchID  = b.BranchID;</pre>
+      <p class="text-success small fw-semibold mt-3 mb-0"><i class="bi bi-check-circle-fill me-1"></i>Live result from <code>SELECT * FROM CustomerAccountSummary</code>:</p>
+    </div>
+    {% if view1_err %}<div class="alert alert-danger m-3">{{ view1_err }}</div>
+    {% else %}{{ result_table(view1_cols, view1_rows) }}{% endif %}
+  </div>
+
+  <div class="card-panel">
+    <div class="panel-header">
+      <span class="panel-title"><i class="bi bi-eye-fill me-2 text-success"></i>VIEW: TransactionDetails</span>
+      <span class="db-badge">3-Table JOIN</span>
+      {{ status_badge(view2_err) }}
+    </div>
+    <div class="panel-body">
+      <p class="text-muted small mb-2">Joins <strong>TRANSACTIONS + ACCOUNT + CUSTOMER</strong> — used on Transactions and Reports pages.</p>
+      <pre class="sql-block">CREATE VIEW TransactionDetails AS
+SELECT t.TransactionID, t.TransactionDate, t.TransactionType,
+       t.Amount, t.BalanceAfter, t.Description,
+       a.AccountNumber, a.AccountType,
+       c.CustomerID, c.Name AS CustomerName, c.Email
+FROM   TRANSACTIONS t
+JOIN   ACCOUNT  a ON t.AccountID  = a.AccountID
+JOIN   CUSTOMER c ON a.CustomerID = c.CustomerID;</pre>
+      <p class="text-success small fw-semibold mt-3 mb-0"><i class="bi bi-check-circle-fill me-1"></i>Live result:</p>
+    </div>
+    {% if view2_err %}<div class="alert alert-danger m-3">{{ view2_err }}</div>
+    {% else %}{{ result_table(view2_cols, view2_rows) }}{% endif %}
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     TAB 6 — Trigger
+════════════════════════════════════════════ -->
+<div class="tab-pane fade" id="tab-trigger">
+  <div class="card-panel mb-4">
+    <div class="panel-header">
+      <span class="panel-title"><i class="bi bi-lightning-charge-fill me-2 text-warning"></i>TRIGGER: UpdateBalanceAfterTransaction</span>
+      <span class="db-badge">AFTER INSERT</span>
+    </div>
+    <div class="panel-body">
+      <div class="alert alert-info py-2 small mb-3">
+        <i class="bi bi-info-circle-fill me-1"></i>
+        Fires automatically <strong>after every INSERT into TRANSACTIONS</strong>.
+        It sets <code>ACCOUNT.Balance = NEW.BalanceAfter</code> — no manual UPDATE needed.
+      </div>
+      <pre class="sql-block">CREATE TRIGGER UpdateBalanceAfterTransaction
+AFTER INSERT ON TRANSACTIONS
+FOR EACH ROW
+BEGIN
+    UPDATE ACCOUNT
+    SET    Balance = NEW.BalanceAfter
+    WHERE  AccountID = NEW.AccountID;
+END;</pre>
+    </div>
+  </div>
+
+  <div class="card-panel mb-4">
+    <div class="panel-header">
+      <span class="panel-title"><i class="bi bi-check2-all me-2 text-success"></i>Live Trigger Proof — Balance Sync Check</span>
+      {{ status_badge(trig_err) }}
+    </div>
+    <div class="panel-body">
+      <p class="text-muted small mb-3">
+        Compares <code>TRANSACTIONS.BalanceAfter</code> (set at insert time)
+        with current <code>ACCOUNT.Balance</code> (set by the trigger).
+        Every row should show <strong class="text-success">✓ Trigger Synced</strong>.
+      </p>
+    </div>
+    {% if trig_err %}<div class="alert alert-danger m-3">{{ trig_err }}</div>
+    {% else %}{{ result_table(trig_cols, trig_rows) }}{% endif %}
+  </div>
+
+  <div class="card-panel">
+    <div class="panel-header">
+      <span class="panel-title"><i class="bi bi-play-circle-fill me-2 text-primary"></i>How to Verify the Trigger Yourself</span>
+    </div>
+    <div class="panel-body">
+      <ol class="small text-muted mb-0">
+        <li class="mb-2">Open the <strong>SQL Console</strong> tab and run:<br>
+          <code>SELECT AccountID, Balance FROM ACCOUNT WHERE AccountID = 1;</code><br>
+          Note the current balance.</li>
+        <li class="mb-2">Go to <a href="/transactions">Transactions → Deposit</a>, deposit any amount on AccountID 1.</li>
+        <li>Come back, run the same query again — the balance updates automatically without any explicit UPDATE, proving the trigger fired.</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     TAB 7 — Stored Procedure
+════════════════════════════════════════════ -->
+<div class="tab-pane fade" id="tab-sp">
+  <div class="card-panel mb-4">
+    <div class="panel-header">
+      <span class="panel-title"><i class="bi bi-code-slash me-2 text-primary"></i>Stored Procedure: TransferMoney()</span>
+      <span class="db-badge">Atomic Transaction</span>
+    </div>
+    <div class="panel-body">
+      <div class="alert alert-info py-2 small mb-3">
+        <i class="bi bi-info-circle me-1"></i>
+        SQLite has no native stored procedures. <code>TransferMoney()</code> is implemented
+        as a Python function using an atomic SQLite transaction. The MySQL-equivalent DDL is shown below.
+      </div>
+      <div class="row g-3">
+        <div class="col-lg-6">
+          <p class="fw-semibold small mb-2"><i class="bi bi-filetype-sql me-1 text-primary"></i>MySQL Stored Procedure</p>
+          <pre class="sql-block" style="font-size:.72rem">DELIMITER $$
+CREATE PROCEDURE TransferMoney(
+    IN  p_from INT,  IN  p_to  INT,
+    IN  p_amt  DECIMAL(15,2),
+    OUT p_msg  VARCHAR(255)
+)
+BEGIN
+  DECLARE v_bal DECIMAL(15,2);
+  DECLARE EXIT HANDLER FOR SQLEXCEPTION
+  BEGIN ROLLBACK; SET p_msg='Error — rolled back'; END;
+
+  START TRANSACTION;
+  SELECT Balance INTO v_bal FROM ACCOUNT
+  WHERE AccountID=p_from AND Status='Active' FOR UPDATE;
+
+  IF v_bal IS NULL THEN
+      ROLLBACK; SET p_msg='Not found/inactive';
+  ELSEIF v_bal &lt; p_amt THEN
+      ROLLBACK; SET p_msg='Insufficient balance';
+  ELSE
+      -- Debit (trigger updates Balance automatically)
+      INSERT INTO TRANSACTIONS(AccountID,TransactionType,
+        Amount,Description,BalanceAfter)
+      VALUES(p_from,'Transfer',p_amt,
+        CONCAT('To AccID ',p_to), v_bal - p_amt);
+
+      -- Credit (trigger updates Balance automatically)
+      INSERT INTO TRANSACTIONS(AccountID,TransactionType,
+        Amount,Description,BalanceAfter)
+      VALUES(p_to,'Deposit',p_amt,
+        CONCAT('From AccID ',p_from),
+        (SELECT Balance FROM ACCOUNT
+         WHERE AccountID=p_to) + p_amt);
+
+      COMMIT; SET p_msg='Transfer successful';
+  END IF;
+END$$
+DELIMITER ;</pre>
+        </div>
+        <div class="col-lg-6">
+          <p class="fw-semibold small mb-2"><i class="bi bi-filetype-py me-1 text-success"></i>Python Equivalent (database.py)</p>
+          <pre class="sql-block" style="font-size:.72rem">def transfer_money(from_id, to_id, amount):
+    conn = get_db()
+    cur  = conn.cursor()
+    try:
+        src = cur.execute(
+            "SELECT Balance, Status FROM ACCOUNT"
+            " WHERE AccountID=?", (from_id,)).fetchone()
+
+        # Validations
+        if not src:
+            return {"success":False,
+                    "message":"Source not found"}
+        if src["Status"] != "Active":
+            return {"success":False,
+                    "message":"Account not active"}
+        if src["Balance"] &lt; amount:
+            return {"success":False,
+                    "message":"Insufficient balance"}
+
+        # Debit — trigger fires automatically
+        cur.execute("""INSERT INTO TRANSACTIONS(AccountID,
+          TransactionType,Amount,Description,BalanceAfter)
+          VALUES(?,?,?,?,?)""",
+          (from_id,'Transfer',amount,'...',
+           src["Balance"]-amount))
+
+        # Credit — trigger fires automatically
+        cur.execute("""INSERT INTO TRANSACTIONS(AccountID,
+          TransactionType,Amount,Description,BalanceAfter)
+          VALUES(?,?,?,?,?)""",
+          (to_id,'Deposit',amount,'...',
+           dst["Balance"]+amount))
+
+        conn.commit()          # COMMIT
+        return {"success":True}
+    except Exception as e:
+        conn.rollback()        # ROLLBACK on any error
+        return {"success":False,"message":str(e)}
+    finally:
+        conn.close()</pre>
+        </div>
+      </div>
+      <div class="alert alert-success py-2 small mt-3">
+        <i class="bi bi-check-circle-fill me-1"></i>
+        <strong>Test it:</strong> Go to <a href="/transactions">Transactions → Fund Transfer</a>,
+        then check the SQL Console: <code>SELECT * FROM TRANSACTIONS ORDER BY TransactionID DESC LIMIT 4;</code>
+        — you'll see a matching debit (Transfer) + credit (Deposit) pair created atomically.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     TAB 8 — Live SQL Console
+════════════════════════════════════════════ -->
+<div class="tab-pane fade" id="tab-sql">
+  <div class="card-panel">
+    <div class="panel-header">
+      <span class="panel-title"><i class="bi bi-terminal-fill me-2 text-primary"></i>Live SQL Console</span>
+      <span class="badge bg-warning-soft text-warning">SELECT &amp; PRAGMA only</span>
+    </div>
+    <div class="panel-body">
+      <div class="mb-3">
+        <p class="text-muted small fw-semibold mb-2">Quick queries (click to load):</p>
+        <div class="d-flex gap-2 flex-wrap mb-3">
+          <button class="btn btn-xs btn-outline-primary" onclick='setSql("SELECT * FROM CUSTOMER;")'>CUSTOMER</button>
+          <button class="btn btn-xs btn-outline-primary" onclick='setSql("SELECT * FROM ACCOUNT;")'>ACCOUNT</button>
+          <button class="btn btn-xs btn-outline-primary" onclick='setSql("SELECT * FROM TRANSACTIONS ORDER BY TransactionID DESC LIMIT 20;")'>TRANSACTIONS</button>
+          <button class="btn btn-xs btn-outline-primary" onclick='setSql("SELECT * FROM LOAN;")'>LOAN</button>
+          <button class="btn btn-xs btn-outline-primary" onclick='setSql("SELECT * FROM BRANCH;")'>BRANCH</button>
+          <button class="btn btn-xs btn-outline-primary" onclick='setSql("SELECT * FROM USERS;")'>USERS</button>
+          <button class="btn btn-xs btn-outline-success" onclick='setSql("SELECT * FROM CustomerAccountSummary;")'>CustomerAccountSummary VIEW</button>
+          <button class="btn btn-xs btn-outline-success" onclick='setSql("SELECT * FROM TransactionDetails ORDER BY TransactionDate DESC LIMIT 10;")'>TransactionDetails VIEW</button>
+          <button class="btn btn-xs btn-outline-warning" onclick='setSql("SELECT AccountType, COUNT(*) cnt, SUM(Balance) total, AVG(Balance) avg FROM ACCOUNT GROUP BY AccountType;")'>Balance Agg</button>
+          <button class="btn btn-xs btn-outline-secondary" onclick='setSql("SELECT name, tbl_name, type FROM sqlite_master WHERE type IN (\"table\",\"view\",\"trigger\",\"index\") ORDER BY type, name;")'>All Objects</button>
+          <button class="btn btn-xs btn-outline-secondary" onclick='setSql("PRAGMA table_info(ACCOUNT);")'>PRAGMA ACCOUNT</button>
+          <button class="btn btn-xs btn-outline-danger" onclick='setSql("SELECT t.TransactionID, a.AccountNumber, t.BalanceAfter, a.Balance, CASE WHEN ROUND(t.BalanceAfter,2)=ROUND(a.Balance,2) THEN \"✓ Synced\" ELSE \"✗ Mismatch\" END AS Trigger_Check FROM TRANSACTIONS t JOIN ACCOUNT a ON t.AccountID=a.AccountID WHERE t.TransactionID=(SELECT MAX(TransactionID) FROM TRANSACTIONS WHERE AccountID=t.AccountID) ORDER BY t.TransactionID DESC LIMIT 8;")'>Trigger Proof</button>
+        </div>
+        <textarea id="sqlInput" class="form-control font-mono" rows="5"
+          placeholder="Type a SELECT query and press Run (or Ctrl+Enter)..."></textarea>
+      </div>
+      <div class="d-flex gap-2 align-items-center">
+        <button class="btn btn-primary" onclick="runSql()">
+          <i class="bi bi-play-fill me-1"></i>Run Query
+        </button>
+        <button class="btn btn-outline-secondary" onclick="clearSql()">
+          <i class="bi bi-x-circle me-1"></i>Clear
+        </button>
+        <span id="sqlStatus" class="text-muted small ms-2"></span>
+      </div>
+    </div>
+  </div>
+
+  <div id="sqlResults" class="card-panel mt-3" style="display:none">
+    <div class="panel-header">
+      <span class="panel-title"><i class="bi bi-table me-2 text-success"></i>Query Results</span>
+      <span id="sqlRowCount" class="badge bg-success-soft text-success ms-2"></span>
+    </div>
+    <div id="sqlResultsBody" class="panel-body p-0"></div>
+    <div id="sqlError" class="alert alert-danger m-3" style="display:none"></div>
+  </div>
+</div>
+
+</div>{# end tab-content #}
+{% endblock %}
+
+{% block scripts %}
+<style>
+.sql-block {
+  background: #0f172a; color: #93c5fd;
+  border-radius: 8px; padding: 14px 16px;
+  font-size: .78rem; font-family: 'Courier New', monospace;
+  line-height: 1.6; overflow-x: auto; margin: 0;
+  white-space: pre-wrap; border: 1px solid #1e3a5f;
+}
+.db-badge {
+  display: inline-flex; align-items: center;
+  padding: 3px 10px; border-radius: 6px;
+  font-size: .7rem; font-weight: 700;
+  background: rgba(99,102,241,.12); color: #6366f1; margin-left: auto;
+}
+.bg-info-soft { background: rgba(6,182,212,.12) !important; }
+.text-info    { color: #0891b2 !important; }
+.btn-xs { padding: 2px 8px; font-size: .72rem; border-radius: 5px; }
+.font-mono { font-family: 'Courier New', monospace; font-size: .85rem; }
+/* ERD */
+.erd-row { display: flex; align-items: stretch; flex-wrap: wrap; gap: 8px; }
+.erd-box {
+  flex: 1; min-width: 180px; border-radius: 10px;
+  border: 2px solid; padding: 12px 14px;
+}
+.erd-branch  { border-color: #6366f1; background: rgba(99,102,241,.05); }
+.erd-account { border-color: #3b82f6; background: rgba(59,130,246,.05); }
+.erd-txn     { border-color: #10b981; background: rgba(16,185,129,.05); }
+.erd-customer{ border-color: #f59e0b; background: rgba(245,158,11,.05); }
+.erd-loan    { border-color: #ef4444; background: rgba(239,68,68,.05); }
+.erd-users   { border-color: #8b5cf6; background: rgba(139,92,246,.05); }
+.erd-title   { font-weight: 700; font-size: .85rem; margin-bottom: 8px; }
+.erd-fields  { display: flex; flex-direction: column; gap: 3px; }
+.erd-fields span { font-size: .72rem; color: #475569; font-family: monospace; }
+.erd-fields .pk  { color: #d97706; font-weight: 700; }
+.erd-fields .fk  { color: #3b82f6; font-weight: 600; }
+.erd-conn {
+  display: flex; align-items: center; justify-content: center;
+  min-width: 50px; font-size: .7rem; color: #94a3b8; font-weight: 700;
+}
+.erd-rel { background: #f1f5f9; border-radius: 4px; padding: 2px 6px; }
+</style>
+
+<script>
+function setSql(q) {
+  document.getElementById('sqlInput').value = q;
+}
+function clearSql() {
+  document.getElementById('sqlInput').value = '';
+  document.getElementById('sqlResults').style.display = 'none';
+  document.getElementById('sqlStatus').textContent = '';
+}
+async function runSql() {
+  const sql = document.getElementById('sqlInput').value.trim();
+  if (!sql) return;
+  const t0 = performance.now();
+  document.getElementById('sqlStatus').textContent = 'Running…';
+  document.getElementById('sqlError').style.display  = 'none';
+  document.getElementById('sqlResults').style.display = 'none';
+
+  try {
+    const res  = await fetch('/database/run', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({sql}),
+    });
+    const data = await res.json();
+    const ms   = (performance.now() - t0).toFixed(1);
+
+    if (data.error) {
+      document.getElementById('sqlResults').style.display = 'block';
+      document.getElementById('sqlError').style.display   = 'block';
+      document.getElementById('sqlError').textContent     = '⚠ ' + data.error;
+      document.getElementById('sqlResultsBody').innerHTML = '';
+      document.getElementById('sqlRowCount').textContent  = '';
+      document.getElementById('sqlStatus').textContent    = 'Error';
+      return;
+    }
+
+    document.getElementById('sqlStatus').textContent    = `Done in ${ms}ms`;
+    document.getElementById('sqlRowCount').textContent  = `${data.count} row(s)`;
+    document.getElementById('sqlResults').style.display = 'block';
+
+    if (!data.columns.length) {
+      document.getElementById('sqlResultsBody').innerHTML =
+        '<p class="text-muted text-center py-3 small">No rows returned.</p>';
+      return;
+    }
+
+    let html = '<div class="table-responsive"><table class="table table-sm table-hover mb-0"><thead class="table-primary"><tr>';
+    data.columns.forEach(c => { html += `<th>${c}</th>`; });
+    html += '</tr></thead><tbody>';
+    data.rows.forEach(row => {
+      html += '<tr>';
+      row.forEach(cell => { html += `<td class="small mono-text">${cell ?? '—'}</td>`; });
+      html += '</tr>';
+    });
+    html += '</tbody></table></div>';
+    document.getElementById('sqlResultsBody').innerHTML = html;
+  } catch(e) {
+    document.getElementById('sqlStatus').textContent = 'Network error';
+  }
+}
+
+// Ctrl+Enter to run
+document.getElementById('sqlInput').addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); runSql(); }
+});
+</script>
+{% endblock %}

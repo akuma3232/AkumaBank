@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+{% block title %}Accounts — AkumaBank{% endblock %}
+{% block page_title %}Account Management{% endblock %}
+
+{% block content %}
+<!-- Stats row -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="mini-stat">
+      <div class="mini-stat-val">{{ stats.total }}</div>
+      <div class="mini-stat-label">Total Accounts</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="mini-stat mini-stat-green">
+      <div class="mini-stat-val">{{ stats.active }}</div>
+      <div class="mini-stat-label">Active</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="mini-stat mini-stat-red">
+      <div class="mini-stat-val">{{ stats.frozen }}</div>
+      <div class="mini-stat-label">Frozen</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="mini-stat mini-stat-blue">
+      <div class="mini-stat-val">MAD {{ "{:,.0f}".format(stats.total_balance) }}</div>
+      <div class="mini-stat-label">Total Balance</div>
+    </div>
+  </div>
+</div>
+
+<!-- Header -->
+<div class="page-header-row">
+  <div>
+    <h4 class="page-heading">Bank Accounts</h4>
+    <p class="page-sub">View and manage all customer accounts — data from <code>CustomerAccountSummary</code> view</p>
+  </div>
+  <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addAccountModal">
+    <i class="bi bi-plus-circle-fill me-2"></i>New Account
+  </button>
+</div>
+
+<!-- Search -->
+<div class="search-bar-row mb-4">
+  <form class="d-flex gap-2" method="GET">
+    <div class="input-group">
+      <span class="input-group-text bg-white"><i class="bi bi-search text-muted"></i></span>
+      <input type="text" name="q" value="{{ search }}" class="form-control" placeholder="Search by customer, account number, or type..." />
+    </div>
+    <button class="btn btn-outline-primary px-4" type="submit">Search</button>
+    {% if search %}<a href="{{ url_for('accounts.accounts') }}" class="btn btn-outline-secondary">Clear</a>{% endif %}
+  </form>
+  <div class="result-count ms-auto text-muted small">{{ accounts|length }} record(s)</div>
+</div>
+
+<!-- Table -->
+<div class="card-panel">
+  <div class="panel-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead>
+          <tr>
+            <th>Account No.</th>
+            <th>Customer</th>
+            <th>Type</th>
+            <th>Balance</th>
+            <th>Branch</th>
+            <th>Status</th>
+            <th class="text-center">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for a in accounts %}
+          <tr>
+            <td><span class="mono-text fw-semibold">{{ a.AccountNumber }}</span></td>
+            <td>
+              <div class="d-flex align-items-center gap-2">
+                <div class="table-avatar table-avatar-sm">{{ a.CustomerName[0]|upper }}</div>
+                <div>
+                  <div class="fw-semibold">{{ a.CustomerName }}</div>
+                  <div class="text-muted small">{{ a.Email }}</div>
+                </div>
+              </div>
+            </td>
+            <td>
+              <span class="badge-acct-type badge-{{ a.AccountType|replace(' ','_')|lower }}">
+                {{ a.AccountType }}
+              </span>
+            </td>
+            <td class="fw-semibold text-success">MAD {{ "{:,.2f}".format(a.Balance) }}</td>
+            <td class="text-muted small">{{ a.BranchName or '—' }}</td>
+            <td>
+              <span class="badge {{ 'bg-success-soft text-success' if a.AccountStatus=='Active' else 'bg-danger-soft text-danger' }}">
+                <i class="bi {{ 'bi-check-circle-fill' if a.AccountStatus=='Active' else 'bi-x-circle-fill' }} me-1"></i>
+                {{ a.AccountStatus }}
+              </span>
+            </td>
+            <td class="text-center">
+              <form method="POST" action="{{ url_for('accounts.toggle_status', aid=a.AccountID) }}" class="d-inline">
+                <button type="submit" class="btn btn-sm {{ 'btn-outline-warning' if a.AccountStatus=='Active' else 'btn-outline-success' }}"
+                  title="{{ 'Freeze' if a.AccountStatus=='Active' else 'Activate' }}">
+                  <i class="bi {{ 'bi-snow2' if a.AccountStatus=='Active' else 'bi-check-circle' }}"></i>
+                  {{ 'Freeze' if a.AccountStatus=='Active' else 'Activate' }}
+                </button>
+              </form>
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="7" class="text-center py-5 text-muted">No accounts found.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Add Account Modal -->
+<div class="modal fade" id="addAccountModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title"><i class="bi bi-credit-card-2-front-fill me-2"></i>Open New Account</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="POST" action="{{ url_for('accounts.add_account') }}">
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Customer *</label>
+            <select name="customer_id" class="form-select" required>
+              <option value="">— Select Customer —</option>
+              {% for c in customers %}
+              <option value="{{ c.CustomerID }}">{{ c.Name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Account Type *</label>
+            <select name="account_type" class="form-select" required>
+              <option value="">— Select Type —</option>
+              <option value="Savings">Savings</option>
+              <option value="Current">Current</option>
+              <option value="Fixed Deposit">Fixed Deposit</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Opening Balance (MAD)</label>
+            <div class="input-group">
+              <span class="input-group-text">MAD</span>
+              <input type="number" name="balance" class="form-control" min="0" step="0.01" value="0" />
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Branch</label>
+            <select name="branch_id" class="form-select">
+              <option value="">— Select Branch —</option>
+              {% for b in branches %}
+              <option value="{{ b.BranchID }}">{{ b.BranchName }}, {{ b.City }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Open Account</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

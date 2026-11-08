@@ -1,0 +1,239 @@
+{% extends "base.html" %}
+{% block title %}Reports — AkumaBank{% endblock %}
+{% block page_title %}Reports &amp; Analytics{% endblock %}
+
+{% block content %}
+<!-- Tab nav -->
+<ul class="nav nav-tabs mb-4" id="reportTabs">
+  <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#tab-txn"><i class="bi bi-arrow-left-right me-1"></i>Transactions</a></li>
+  <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-monthly"><i class="bi bi-calendar3 me-1"></i>Monthly Summary</a></li>
+  <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-customer"><i class="bi bi-people-fill me-1"></i>Customers</a></li>
+  <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-loan"><i class="bi bi-cash-coin me-1"></i>Loans</a></li>
+  <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-insights"><i class="bi bi-lightbulb-fill me-1"></i>Insights</a></li>
+</ul>
+
+<div class="tab-content">
+  <!-- ── Transaction History ─────────────────────────────────────── -->
+  <div class="tab-pane fade show active" id="tab-txn">
+    <div class="card-panel">
+      <div class="panel-header">
+        <span class="panel-title"><i class="bi bi-receipt me-2 text-primary"></i>Transaction History (via <code>TransactionDetails</code> View)</span>
+      </div>
+      <div class="panel-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead>
+              <tr><th>#</th><th>Customer</th><th>Account</th><th>Type</th><th>Amount</th><th>Balance After</th><th>Description</th><th>Date</th></tr>
+            </thead>
+            <tbody>
+              {% for t in txn_history %}
+              <tr>
+                <td class="text-muted small">{{ t.TransactionID }}</td>
+                <td class="fw-semibold">{{ t.CustomerName }}</td>
+                <td><span class="mono-text">{{ t.AccountNumber }}</span></td>
+                <td><span class="badge-txn badge-txn-{{ t.TransactionType|lower }}">{{ t.TransactionType }}</span></td>
+                <td class="fw-semibold {{ 'text-success' if t.TransactionType=='Deposit' else 'text-danger' }}">
+                  MAD {{ "{:,.2f}".format(t.Amount) }}
+                </td>
+                <td class="text-muted">MAD {{ "{:,.2f}".format(t.BalanceAfter) }}</td>
+                <td class="text-muted small">{{ t.Description or '—' }}</td>
+                <td class="text-muted small">{{ t.TransactionDate[:16] }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Monthly Summary ────────────────────────────────────────── -->
+  <div class="tab-pane fade" id="tab-monthly">
+    <div class="card-panel">
+      <div class="panel-header">
+        <span class="panel-title"><i class="bi bi-calendar-range me-2 text-indigo"></i>Monthly Aggregate Summary</span>
+      </div>
+      <div class="panel-body">
+        <canvas id="monthlyChart" height="60" class="mb-4"></canvas>
+        <div class="table-responsive">
+          <table class="table table-bordered align-middle mb-0">
+            <thead class="table-light">
+              <tr><th>Month</th><th>Transactions</th><th>Total Amount</th><th>Deposits</th><th>Withdrawals</th><th>Transfers</th></tr>
+            </thead>
+            <tbody>
+              {% for m in monthly_summary %}
+              <tr>
+                <td class="fw-semibold">{{ m.month }}</td>
+                <td>{{ m.count }}</td>
+                <td class="fw-semibold">MAD {{ "{:,.2f}".format(m.total_amount) }}</td>
+                <td class="text-success">MAD {{ "{:,.2f}".format(m.deposits) }}</td>
+                <td class="text-danger">MAD {{ "{:,.2f}".format(m.withdrawals) }}</td>
+                <td class="text-primary">MAD {{ "{:,.2f}".format(m.transfers) }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Customer Report ────────────────────────────────────────── -->
+  <div class="tab-pane fade" id="tab-customer">
+    <div class="card-panel">
+      <div class="panel-header">
+        <span class="panel-title"><i class="bi bi-people-fill me-2 text-primary"></i>Customer Financial Report (JOIN + Aggregates)</span>
+      </div>
+      <div class="panel-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead>
+              <tr><th>Customer</th><th>Email</th><th>Accounts</th><th>Total Balance</th><th>Max Balance</th><th>Loans</th><th>Loan Amount</th></tr>
+            </thead>
+            <tbody>
+              {% for c in customer_report %}
+              <tr>
+                <td class="fw-semibold">{{ c.Name }}</td>
+                <td class="text-muted small">{{ c.Email }}</td>
+                <td>{{ c.accounts }}</td>
+                <td class="fw-semibold text-success">MAD {{ "{:,.0f}".format(c.total_balance) }}</td>
+                <td class="text-muted">MAD {{ "{:,.0f}".format(c.max_balance) }}</td>
+                <td>{{ c.total_loans }}</td>
+                <td class="text-warning fw-semibold">MAD {{ "{:,.0f}".format(c.total_loan_amount) }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Loan Report ────────────────────────────────────────────── -->
+  <div class="tab-pane fade" id="tab-loan">
+    <div class="card-panel">
+      <div class="panel-header">
+        <span class="panel-title"><i class="bi bi-cash-coin me-2 text-warning"></i>Loan Type Report (Aggregate Functions)</span>
+      </div>
+      <div class="panel-body">
+        <canvas id="loanChart" height="70" class="mb-4"></canvas>
+        <div class="table-responsive">
+          <table class="table table-bordered align-middle mb-0">
+            <thead class="table-light">
+              <tr><th>Loan Type</th><th>Count</th><th>Total Amount</th><th>Avg Amount</th><th>Avg Rate</th><th>Approved</th><th>Pending</th></tr>
+            </thead>
+            <tbody>
+              {% for l in loan_report %}
+              <tr>
+                <td class="fw-semibold"><span class="badge-loan-type">{{ l.LoanType }}</span></td>
+                <td>{{ l.count }}</td>
+                <td class="fw-semibold">MAD {{ "{:,.0f}".format(l.total_amount) }}</td>
+                <td class="text-muted">MAD {{ "{:,.0f}".format(l.avg_amount) }}</td>
+                <td class="text-muted">{{ "%.1f"|format(l.avg_rate) }}%</td>
+                <td class="text-success fw-semibold">{{ l.approved }}</td>
+                <td class="text-warning fw-semibold">{{ l.pending }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Insights (Subqueries) ──────────────────────────────────── -->
+  <div class="tab-pane fade" id="tab-insights">
+    <div class="row g-4">
+      <!-- High-balance customers (subquery) -->
+      <div class="col-lg-6">
+        <div class="card-panel h-100">
+          <div class="panel-header">
+            <span class="panel-title"><i class="bi bi-trophy-fill me-2 text-warning"></i>Above-Average Balance Customers</span>
+            <span class="badge bg-warning-soft text-warning ms-2 small">Subquery</span>
+          </div>
+          <div class="panel-body p-0">
+            <table class="table table-hover align-middle mb-0">
+              <thead><tr><th>Customer</th><th>Email</th><th>Total Balance</th></tr></thead>
+              <tbody>
+                {% for c in high_balance_customers %}
+                <tr>
+                  <td class="fw-semibold">{{ c.Name }}</td>
+                  <td class="text-muted small">{{ c.Email }}</td>
+                  <td class="text-success fw-semibold">MAD {{ "{:,.0f}".format(c.total) }}</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="3" class="text-center text-muted py-3">No data.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Inactive accounts (subquery) -->
+      <div class="col-lg-6">
+        <div class="card-panel h-100">
+          <div class="panel-header">
+            <span class="panel-title"><i class="bi bi-exclamation-triangle-fill me-2 text-danger"></i>Inactive Accounts (90+ days)</span>
+            <span class="badge bg-danger-soft text-danger ms-2 small">Subquery</span>
+          </div>
+          <div class="panel-body p-0">
+            <table class="table table-hover align-middle mb-0">
+              <thead><tr><th>Account</th><th>Customer</th><th>Balance</th><th>Status</th></tr></thead>
+              <tbody>
+                {% for a in inactive_accounts %}
+                <tr>
+                  <td><span class="mono-text">{{ a.AccountNumber }}</span></td>
+                  <td class="fw-semibold">{{ a.Name }}</td>
+                  <td class="text-muted">MAD {{ "{:,.0f}".format(a.Balance) }}</td>
+                  <td>
+                    <span class="badge {{ 'bg-success-soft text-success' if a.Status=='Active' else 'bg-warning-soft text-warning' }}">
+                      {{ a.Status }}
+                    </span>
+                  </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="4" class="text-center text-muted py-3">All accounts have recent activity.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Monthly chart
+const mData = {{ monthly_summary | tojson }};
+if (mData.length) {
+  new Chart(document.getElementById('monthlyChart'), {
+    type: 'line',
+    data: {
+      labels: mData.map(r => r.month).reverse(),
+      datasets: [
+        { label: 'Deposits',    data: mData.map(r => r.deposits).reverse(),    borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,.1)', fill: true, tension: 0.4 },
+        { label: 'Withdrawals', data: mData.map(r => r.withdrawals).reverse(), borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,.1)',   fill: true, tension: 0.4 },
+      ],
+    },
+    options: { responsive: true, plugins: { legend: { position: 'top' } }, scales: { y: { beginAtZero: true, ticks: { callback: v => 'MAD ' + (v/1000).toFixed(0) + 'k' } } } },
+  });
+}
+
+// Loan chart
+const lData = {{ loan_report | tojson }};
+if (lData.length) {
+  new Chart(document.getElementById('loanChart'), {
+    type: 'bar',
+    data: {
+      labels: lData.map(r => r.LoanType),
+      datasets: [{ label: 'Total Loan Amount', data: lData.map(r => r.total_amount), backgroundColor: ['#3b82f6','#6366f1','#10b981','#f59e0b','#ef4444'], borderRadius: 6 }],
+    },
+    options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { callback: v => 'MAD ' + (v/1000).toFixed(0) + 'k' } } } },
+  });
+}
+</script>
+{% endblock %}

@@ -1,0 +1,210 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — AkumaBank{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+
+{% block content %}
+<!-- KPI Cards -->
+<div class="row g-4 mb-4">
+  <div class="col-6 col-xl-2-4">
+    <div class="kpi-card kpi-blue">
+      <div class="kpi-icon"><i class="bi bi-people-fill"></i></div>
+      <div class="kpi-value">{{ total_customers }}</div>
+      <div class="kpi-label">Total Customers</div>
+    </div>
+  </div>
+  <div class="col-6 col-xl-2-4">
+    <div class="kpi-card kpi-indigo">
+      <div class="kpi-icon"><i class="bi bi-credit-card-2-front-fill"></i></div>
+      <div class="kpi-value">{{ total_accounts }}</div>
+      <div class="kpi-label">Total Accounts</div>
+    </div>
+  </div>
+  <div class="col-6 col-xl-2-4">
+    <div class="kpi-card kpi-green">
+      <div class="kpi-icon"><i class="bi bi-cash-stack"></i></div>
+      <div class="kpi-value">MAD {{ "{:,.0f}".format(total_balance) }}</div>
+      <div class="kpi-label">Total Balance</div>
+    </div>
+  </div>
+  <div class="col-6 col-xl-2-4">
+    <div class="kpi-card kpi-orange">
+      <div class="kpi-icon"><i class="bi bi-arrow-left-right"></i></div>
+      <div class="kpi-value">{{ total_txns }}</div>
+      <div class="kpi-label">Transactions</div>
+    </div>
+  </div>
+  <div class="col-6 col-xl-2-4">
+    <div class="kpi-card kpi-red">
+      <div class="kpi-icon"><i class="bi bi-cash-coin"></i></div>
+      <div class="kpi-value">{{ pending_loans }}</div>
+      <div class="kpi-label">Pending Loans</div>
+    </div>
+  </div>
+</div>
+
+<!-- Charts Row -->
+<div class="row g-4 mb-4">
+  <!-- Monthly Transactions Chart -->
+  <div class="col-lg-8">
+    <div class="card-panel">
+      <div class="panel-header">
+        <span class="panel-title"><i class="bi bi-bar-chart-line-fill me-2 text-primary"></i>Monthly Transaction Volume</span>
+      </div>
+      <div class="panel-body">
+        <canvas id="txnChart" height="100"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Account Type Pie -->
+  <div class="col-lg-4">
+    <div class="card-panel">
+      <div class="panel-header">
+        <span class="panel-title"><i class="bi bi-pie-chart-fill me-2 text-indigo"></i>Account Distribution</span>
+      </div>
+      <div class="panel-body d-flex flex-column align-items-center">
+        <canvas id="acctPieChart" height="160"></canvas>
+        <div class="chart-legend mt-3 w-100">
+          {% for at in acct_types %}
+          <div class="legend-item">
+            <div class="legend-dot" style="background:{{ loop.cycle('#3b82f6','#6366f1','#10b981') }}"></div>
+            <span>{{ at.AccountType }}</span>
+            <span class="ms-auto fw-semibold">{{ at.cnt }}</span>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Bottom Row -->
+<div class="row g-4">
+  <!-- Recent Transactions -->
+  <div class="col-lg-8">
+    <div class="card-panel">
+      <div class="panel-header">
+        <span class="panel-title"><i class="bi bi-clock-history me-2 text-primary"></i>Recent Transactions</span>
+        <a href="{{ url_for('transactions.transactions') }}" class="btn-link-sm">View All</a>
+      </div>
+      <div class="panel-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover mb-0">
+            <thead>
+              <tr>
+                <th>Customer</th>
+                <th>Account</th>
+                <th>Type</th>
+                <th>Amount</th>
+                <th>Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for t in recent_txns %}
+              <tr>
+                <td class="fw-semibold">{{ t.CustomerName }}</td>
+                <td><span class="mono-text">{{ t.AccountNumber }}</span></td>
+                <td>
+                  <span class="badge-txn badge-txn-{{ t.TransactionType|lower }}">
+                    {{ t.TransactionType }}
+                  </span>
+                </td>
+                <td class="fw-semibold {% if t.TransactionType=='Deposit' %}text-success{% else %}text-danger{% endif %}">
+                  {% if t.TransactionType=='Deposit' %}+{% else %}-{% endif %}MAD {{ "{:,.0f}".format(t.Amount) }}
+                </td>
+                <td class="text-muted small">{{ t.TransactionDate[:16] }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Top Customers -->
+  <div class="col-lg-4">
+    <div class="card-panel">
+      <div class="panel-header">
+        <span class="panel-title"><i class="bi bi-trophy-fill me-2 text-warning"></i>Top Customers</span>
+      </div>
+      <div class="panel-body p-0">
+        {% for tc in top_customers %}
+        <div class="top-customer-row">
+          <div class="rank-badge rank-{{ loop.index }}">{{ loop.index }}</div>
+          <div class="flex-grow-1">
+            <div class="fw-semibold">{{ tc.Name }}</div>
+            <div class="text-muted small">MAD {{ "{:,.0f}".format(tc.total_balance) }}</div>
+          </div>
+          <div class="balance-bar-wrap">
+            <div class="balance-bar" style="width:{{ (tc.total_balance / top_customers[0].total_balance * 100)|int }}%"></div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// ── Monthly Transaction Bar Chart ────────────────────────────────────────────
+const rawData = {{ monthly_data | tojson }};
+const monthSet = [...new Set(rawData.map(r => r.month))].sort().slice(-6);
+
+const deposits    = monthSet.map(m => {
+  const row = rawData.find(r => r.month === m && r.TransactionType === 'Deposit');
+  return row ? row.total : 0;
+});
+const withdrawals = monthSet.map(m => {
+  const row = rawData.find(r => r.month === m && (r.TransactionType === 'Withdrawal' || r.TransactionType === 'Transfer'));
+  return row ? row.total : 0;
+});
+
+new Chart(document.getElementById('txnChart'), {
+  type: 'bar',
+  data: {
+    labels: monthSet,
+    datasets: [
+      { label: 'Deposits',    data: deposits,    backgroundColor: '#3b82f6', borderRadius: 6 },
+      { label: 'Withdrawals', data: withdrawals, backgroundColor: '#ef4444', borderRadius: 6 },
+    ],
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { position: 'top' } },
+    scales: {
+      y: { beginAtZero: true, ticks: { callback: v => 'MAD ' + (v/1000).toFixed(0) + 'k' } },
+      x: { grid: { display: false } },
+    },
+  },
+});
+
+// ── Account Type Doughnut ────────────────────────────────────────────────────
+const acctTypes = {{ acct_types | map(attribute='AccountType') | list | tojson }};
+const acctCnts  = {{ acct_types | map(attribute='cnt')         | list | tojson }};
+
+new Chart(document.getElementById('acctPieChart'), {
+  type: 'doughnut',
+  data: {
+    labels: acctTypes,
+    datasets: [{
+      data: acctCnts,
+      backgroundColor: ['#3b82f6','#6366f1','#10b981'],
+      borderWidth: 2,
+      borderColor: '#fff',
+    }],
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { display: false } },
+    cutout: '68%',
+  },
+});
+</script>
+<script>
+// Make enumerate available in template context is not directly possible.
+// The enumerate trick in Jinja2 — handled below by using loop.index
+</script>
+{% endblock %}

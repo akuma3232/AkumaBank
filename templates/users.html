@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}Staff Accounts — AkumaBank{% endblock %}
+{% block page_title %}Staff Accounts{% endblock %}
+
+{% block content %}
+<div class="page-header-row">
+  <div>
+    <h4 class="page-heading">Staff Accounts</h4>
+    <p class="page-sub">Create administrator and employee sign-ins.</p>
+  </div>
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-5">
+    <div class="card-panel">
+      <div class="panel-header"><span class="panel-title">Create Staff Account</span></div>
+      <div class="panel-body">
+        <form method="POST">
+          <div class="mb-3">
+            <label class="form-label" for="username">Username</label>
+            <input class="form-control" id="username" name="username" required maxlength="80" autocomplete="off" />
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="role">Role</label>
+            <select class="form-select" id="role" name="role" required>
+              <option value="Admin">Admin</option>
+              <option value="Employee">Employee</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="password">Password</label>
+            <input class="form-control" type="password" id="password" name="password" minlength="12" required autocomplete="new-password" />
+            <div class="form-text">Use at least 12 characters.</div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="password_confirmation">Confirm password</label>
+            <input class="form-control" type="password" id="password_confirmation" name="password_confirmation" minlength="12" required autocomplete="new-password" />
+          </div>
+          <button class="btn btn-primary" type="submit"><i class="bi bi-person-plus-fill me-2"></i>Create Account</button>
+        </form>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-7">
+    <div class="card-panel">
+      <div class="panel-header"><span class="panel-title">Current Accounts</span></div>
+      <div class="panel-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead><tr><th>Username</th><th>Role</th></tr></thead>
+            <tbody>
+              {% for account in staff %}
+              <tr><td class="fw-semibold">{{ account.Username }}</td><td>{{ account.Role }}</td></tr>
+              {% else %}
+              <tr><td colspan="2" class="text-center text-muted py-4">No staff accounts.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

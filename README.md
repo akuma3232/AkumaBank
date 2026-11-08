@@ -1,0 +1,105 @@
+# AkumaBank
+
+AkumaBank is a Flask banking management application configured for Morocco. It uses SQLite for data storage and displays balances in Moroccan dirhams (MAD).
+
+## Features
+
+- Staff dashboard, customer, account, branch, loan, transaction, and report management.
+- Public customer signup with personal details and owner/admin approval.
+- Customer portal for viewing linked accounts and recent transactions.
+- Customer withdrawals and transfers, limited to the customer's own accounts.
+- Deposits and bank-account creation restricted to owners and admins.
+- Profile picture uploads, including animated GIFs.
+- Local SQLite database that is initialized empty; application startup does not seed demo banking data.
+
+## Requirements
+
+- Python 3.8 or newer
+- pip
+
+## Setup
+
+From the project directory, create and activate a virtual environment, then install dependencies:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+On Windows PowerShell, activate the environment with:
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+```
+
+The database schema is created automatically when the app starts. The SQLite database is stored at `database/banking_system.db`.
+
+## Create the first owner
+
+Create an owner account interactively:
+
+```bash
+python tools/create_owner.py
+```
+
+Enter an owner username, email address, and password when prompted. Passwords must be at least 12 characters. The tool refuses to create another owner if one already exists.
+
+## Run the application
+
+```bash
+python app.py
+```
+
+Open [http://127.0.0.1:5000](http://127.0.0.1:5000) in a browser. Sign in through **Admin or owner login** with the staff username or email and password.
+
+For deployments, set a persistent secret before starting the app so sessions remain valid across restarts:
+
+```bash
+export SESSION_SECRET="replace-with-a-long-random-secret"
+```
+
+In PowerShell:
+
+```powershell
+$env:SESSION_SECRET = "replace-with-a-long-random-secret"
+```
+
+## Customer onboarding
+
+1. A customer submits a signup request from the login page with their name, email, date of birth, phone, address, CIN, and password.
+2. An owner or admin reviews the request on the **Customers** page.
+3. Approval creates the customer's profile and enables customer login.
+4. An owner or admin opens a bank account for the approved customer from **Accounts**.
+5. Once the account is active, the customer can withdraw or transfer funds from **My Banking**. Cash deposits are made by an owner or admin.
+
+## Staff roles
+
+- **Owner:** Full staff access; can create admin and employee accounts, approve customer signups, open bank accounts, and make deposits.
+- **Admin:** Can approve customer signups, open bank accounts, and make deposits.
+- **Employee:** Staff access to banking management; cannot create staff accounts, approve signups, open bank accounts, or make deposits.
+- **Customer:** Can view their own banking information and make withdrawals or transfers from their own active accounts.
+
+## Reset the database
+
+To clear banking data and all login accounts while keeping the SQLite file and schema:
+
+```bash
+python tools/reset_db.py
+```
+
+This removes customers, branches, accounts, loans, transactions, owner/admin/employee accounts, and customer logins. Recreate the owner afterward with `python tools/create_owner.py`.
+
+## Project layout
+
+```text
+app.py                  Flask application entry point
+database.py             SQLite initialization and database helpers
+database/               SQLite database and profile picture storage
+routes/                 Flask route blueprints
+schema.sql              Reference database schema
+static/                 CSS and JavaScript assets
+templates/              Jinja HTML templates
+tools/create_owner.py   Interactive first-owner setup
+tools/reset_db.py       Database reset utility
+```

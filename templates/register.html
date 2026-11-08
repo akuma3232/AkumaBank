@@ -22,7 +22,7 @@
     <div class="login-form-wrapper">
       <div class="login-form-logo d-lg-none mb-3"><i class="bi bi-bank2"></i> AkumaBank</div>
       <h2 class="login-form-title">Create a customer login</h2>
-      <p class="login-form-sub">Your request must be approved by an owner or admin before you can sign in. Bank accounts are set up in person at a branch.</p>
+      <p class="login-form-sub">Submit your customer details for review by an owner or admin. After approval, an owner or admin can open your bank account.</p>
 
       {% with messages = get_flashed_messages(with_categories=true) %}
         {% for cat, msg in messages %}
@@ -41,6 +41,22 @@
         <div class="mb-3">
           <label class="form-label fw-semibold" for="email">Email</label>
           <input class="form-control form-control-lg" type="email" id="email" name="email" autocomplete="email" required />
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold" for="date_of_birth">Date of birth</label>
+          <input class="form-control form-control-lg" type="date" id="date_of_birth" name="date_of_birth" max="{{ today }}" autocomplete="bday" required />
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold" for="phone">Phone</label>
+          <input class="form-control form-control-lg" type="tel" id="phone" name="phone" maxlength="30" autocomplete="tel" required />
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold" for="address">Address</label>
+          <input class="form-control form-control-lg" type="text" id="address" name="address" maxlength="250" autocomplete="street-address" required />
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold" for="national_id">National ID (CIN)</label>
+          <input class="form-control form-control-lg" type="text" id="national_id" name="national_id" maxlength="20" required />
         </div>
         <div class="mb-3">
           <label class="form-label fw-semibold" for="password">Password</label>

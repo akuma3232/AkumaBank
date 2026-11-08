@@ -95,6 +95,10 @@ CREATE TABLE IF NOT EXISTS USERS (
     ProfilePicture TEXT,
     FullName TEXT,
     Email TEXT,
+    DateOfBirth TEXT,
+    Phone TEXT,
+    Address TEXT,
+    NationalID TEXT,
     ApprovalStatus TEXT NOT NULL DEFAULT 'Approved'
                   CHECK(ApprovalStatus IN ('Pending','Approved','Rejected')),
     Role     TEXT    NOT NULL DEFAULT 'Employee'

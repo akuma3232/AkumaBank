@@ -112,6 +112,10 @@ def init_db(seed_demo_data=False):
             ProfilePicture TEXT,
             FullName TEXT,
             Email TEXT,
+            DateOfBirth TEXT,
+            Phone TEXT,
+            Address TEXT,
+            NationalID TEXT,
             ApprovalStatus TEXT NOT NULL DEFAULT 'Approved'
                           CHECK(ApprovalStatus IN ('Pending','Approved','Rejected')),
             Role     TEXT    NOT NULL DEFAULT 'Employee'
@@ -135,6 +139,10 @@ def init_db(seed_demo_data=False):
                 ProfilePicture TEXT,
                 FullName TEXT,
                 Email TEXT,
+                DateOfBirth TEXT,
+                Phone TEXT,
+                Address TEXT,
+                NationalID TEXT,
                 ApprovalStatus TEXT NOT NULL DEFAULT 'Approved'
                               CHECK(ApprovalStatus IN ('Pending','Approved','Rejected')),
                 Role     TEXT    NOT NULL DEFAULT 'Employee'
@@ -143,7 +151,10 @@ def init_db(seed_demo_data=False):
         """)
         copy_columns = [
             column for column in
-            ("UserID", "Username", "Password", "ProfilePicture", "FullName", "Email", "ApprovalStatus", "Role")
+            (
+                "UserID", "Username", "Password", "ProfilePicture", "FullName", "Email",
+                "DateOfBirth", "Phone", "Address", "NationalID", "ApprovalStatus", "Role",
+            )
             if column in legacy_columns
         ]
         column_list = ", ".join(copy_columns)
@@ -157,6 +168,10 @@ def init_db(seed_demo_data=False):
         ("ProfilePicture", "TEXT"),
         ("FullName", "TEXT"),
         ("Email", "TEXT"),
+        ("DateOfBirth", "TEXT"),
+        ("Phone", "TEXT"),
+        ("Address", "TEXT"),
+        ("NationalID", "TEXT"),
         ("ApprovalStatus", "TEXT NOT NULL DEFAULT 'Approved'"),
     ):
         if column not in user_columns:

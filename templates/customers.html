@@ -14,6 +14,46 @@
   </button>
 </div>
 
+{% if can_review_signups %}
+<div class="card-panel mb-4">
+  <div class="panel-header">
+    <span class="panel-title">Pending Customer Signups</span>
+    <span class="badge bg-warning-soft text-warning">{{ pending_signups|length }} pending</span>
+  </div>
+  <div class="panel-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead>
+          <tr><th>Name</th><th>Date of Birth</th><th>Email</th><th>Phone</th><th>Address</th><th>National ID</th><th class="text-end">Review</th></tr>
+        </thead>
+        <tbody>
+          {% for signup in pending_signups %}
+          <tr>
+            <td class="fw-semibold">{{ signup.FullName }}</td>
+            <td>{{ signup.DateOfBirth }}</td>
+            <td>{{ signup.Email }}</td>
+            <td>{{ signup.Phone }}</td>
+            <td>{{ signup.Address }}</td>
+            <td class="mono-text">{{ signup.NationalID }}</td>
+            <td class="text-end text-nowrap">
+              <form class="d-inline" method="POST" action="{{ url_for('customers.review_customer_signup', user_id=signup.UserID, decision='approve') }}">
+                <button class="btn btn-sm btn-success" type="submit">Approve</button>
+              </form>
+              <form class="d-inline" method="POST" action="{{ url_for('customers.review_customer_signup', user_id=signup.UserID, decision='reject') }}">
+                <button class="btn btn-sm btn-outline-danger" type="submit">Reject</button>
+              </form>
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="7" class="text-center text-muted py-4">No customer signups are waiting for review.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endif %}
+
 <!-- Search bar -->
 <div class="search-bar-row mb-4">
   <form class="d-flex gap-2" method="GET">

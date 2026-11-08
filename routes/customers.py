@@ -5,6 +5,7 @@ routes/customers.py - Full CRUD for Customer management
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify
 from database import get_db
 from functools import wraps
+import sqlite3
 
 customers_bp = Blueprint("customers", __name__)
 
@@ -45,8 +46,94 @@ def customers():
             GROUP BY c.CustomerID
             ORDER BY c.Name
         """).fetchall()
+    can_review_signups = session.get("user", {}).get("role") in ("Owner", "Admin")
+    pending_signups = []
+    if can_review_signups:
+        pending_signups = conn.execute(
+            """SELECT UserID, FullName, Email, DateOfBirth, Phone, Address, NationalID
+               FROM USERS WHERE Role='Customer' AND ApprovalStatus='Pending'
+               ORDER BY UserID"""
+        ).fetchall()
     conn.close()
-    return render_template("customers.html", customers=rows, search=search)
+    return render_template(
+        "customers.html",
+        customers=rows,
+        search=search,
+        pending_signups=pending_signups,
+        can_review_signups=can_review_signups,
+    )
+
+
+@customers_bp.post("/customers/signup/<int:user_id>/<decision>")
+@login_required
+def review_customer_signup(user_id, decision):
+    """Approve a signup by creating its customer profile, or reject it."""
+    if session.get("user", {}).get("role") not in ("Owner", "Admin"):
+        flash("Only an owner or admin can review customer signups.", "danger")
+        return redirect(url_for("customers.customers"))
+    if decision not in ("approve", "reject"):
+        return "Invalid decision", 400
+
+    conn = get_db()
+    try:
+        conn.execute("BEGIN IMMEDIATE")
+        signup = conn.execute(
+            """SELECT FullName, Email, DateOfBirth, Phone, Address, NationalID
+               FROM USERS
+               WHERE UserID=? AND Role='Customer' AND ApprovalStatus='Pending'""",
+            (user_id,),
+        ).fetchone()
+        if not signup:
+            conn.rollback()
+            flash("That signup request is no longer pending.", "warning")
+            return redirect(url_for("customers.customers"))
+
+        if decision == "reject":
+            conn.execute(
+                "UPDATE USERS SET ApprovalStatus='Rejected' WHERE UserID=?",
+                (user_id,),
+            )
+            conn.commit()
+            flash("Customer signup rejected.", "success")
+            return redirect(url_for("customers.customers"))
+
+        duplicate = conn.execute(
+            """SELECT 1 FROM CUSTOMER
+               WHERE lower(Email)=lower(?) OR upper(NationalID)=upper(?) LIMIT 1""",
+            (signup["Email"], signup["NationalID"]),
+        ).fetchone()
+        if duplicate:
+            conn.rollback()
+            flash(
+                "This signup's email or National ID is already linked to a customer. "
+                "Resolve the duplicate before approving it.",
+                "danger",
+            )
+            return redirect(url_for("customers.customers"))
+
+        conn.execute(
+            """INSERT INTO CUSTOMER (Name, DateOfBirth, Email, Phone, Address, NationalID)
+               VALUES (?, ?, ?, ?, ?, ?)""",
+            (
+                signup["FullName"], signup["DateOfBirth"], signup["Email"],
+                signup["Phone"], signup["Address"], signup["NationalID"],
+            ),
+        )
+        conn.execute(
+            "UPDATE USERS SET ApprovalStatus='Approved' WHERE UserID=?",
+            (user_id,),
+        )
+        conn.commit()
+        flash(
+            f"Customer '{signup['FullName']}' approved and added. An owner or admin can now open a bank account.",
+            "success",
+        )
+    except sqlite3.IntegrityError as error:
+        conn.rollback()
+        flash(f"Could not approve signup because of a customer data conflict: {error}", "danger")
+    finally:
+        conn.close()
+    return redirect(url_for("customers.customers"))
 
 
 @customers_bp.route("/customers/add", methods=["POST"])

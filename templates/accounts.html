@@ -37,9 +37,11 @@
     <h4 class="page-heading">Bank Accounts</h4>
     <p class="page-sub">View and manage all customer accounts — data from <code>CustomerAccountSummary</code> view</p>
   </div>
+  {% if can_create_account %}
   <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addAccountModal">
     <i class="bi bi-plus-circle-fill me-2"></i>New Account
   </button>
+  {% endif %}
 </div>
 
 <!-- Search -->
@@ -116,6 +118,7 @@
   </div>
 </div>
 
+{% if can_create_account %}
 <!-- Add Account Modal -->
 <div class="modal fade" id="addAccountModal" tabindex="-1">
   <div class="modal-dialog">
@@ -169,4 +172,5 @@
     </div>
   </div>
 </div>
+{% endif %}
 {% endblock %}

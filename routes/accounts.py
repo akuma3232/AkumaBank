@@ -20,6 +20,16 @@ def login_required(f):
     return decorated
 
 
+def owner_or_admin_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if session.get("user", {}).get("role") not in ("Owner", "Admin"):
+            flash("Only an owner or admin can open a bank account.", "danger")
+            return redirect(url_for("accounts.accounts"))
+        return f(*args, **kwargs)
+    return decorated
+
+
 def generate_account_number():
     """Generate a unique 10-digit account number."""
     return "ACC" + str(random.randint(1000000, 9999999))
@@ -71,11 +81,13 @@ def accounts():
         branches=branches,
         stats=stats,
         search=search,
+        can_create_account=session.get("user", {}).get("role") in ("Owner", "Admin"),
     )
 
 
 @accounts_bp.route("/accounts/add", methods=["POST"])
 @login_required
+@owner_or_admin_required
 def add_account():
     data = request.form
     cid      = data.get("customer_id")

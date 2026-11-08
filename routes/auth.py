@@ -2,6 +2,7 @@
 
 import re
 import uuid
+from datetime import date
 
 from flask import Blueprint, flash, redirect, render_template, request, session, url_for
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -9,6 +10,13 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from database import get_db
 
 auth_bp = Blueprint("auth", __name__)
+
+
+def valid_date_of_birth(value):
+    try:
+        return date.fromisoformat(value) <= date.today()
+    except ValueError:
+        return False
 
 
 @auth_bp.route("/login", methods=["GET", "POST"])
@@ -104,6 +112,10 @@ def register():
     if request.method == "POST":
         full_name = request.form.get("full_name", "").strip()
         email = request.form.get("email", "").strip().lower()
+        date_of_birth = request.form.get("date_of_birth", "").strip()
+        phone = request.form.get("phone", "").strip()
+        address = request.form.get("address", "").strip()
+        national_id = request.form.get("national_id", "").strip().upper()
         password = request.form.get("password", "")
         confirmation = request.form.get("password_confirmation", "")
 
@@ -111,6 +123,14 @@ def register():
             flash("Enter your full name (2 to 120 characters).", "danger")
         elif not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email):
             flash("Enter a valid email address.", "danger")
+        elif not valid_date_of_birth(date_of_birth):
+            flash("Enter a valid date of birth that is not in the future.", "danger")
+        elif not phone or len(phone) > 30:
+            flash("Enter a valid phone number (up to 30 characters).", "danger")
+        elif not address or len(address) > 250:
+            flash("Enter your address (up to 250 characters).", "danger")
+        elif not national_id or len(national_id) > 20:
+            flash("Enter your National ID/CIN (up to 20 characters).", "danger")
         elif len(password) < 12:
             flash("Password must be at least 12 characters.", "danger")
         elif password != confirmation:
@@ -130,16 +150,24 @@ def register():
                     hashed_password = generate_password_hash(password)
                     if existing:
                         conn.execute(
-                            """UPDATE USERS SET FullName=?, Password=?, ApprovalStatus='Pending'
+                            """UPDATE USERS SET FullName=?, Password=?, DateOfBirth=?, Phone=?,
+                                      Address=?, NationalID=?, ApprovalStatus='Pending'
                                WHERE UserID=?""",
-                            (full_name, hashed_password, existing["UserID"]),
+                            (
+                                full_name, hashed_password, date_of_birth, phone,
+                                address, national_id, existing["UserID"],
+                            ),
                         )
                     else:
                         conn.execute(
                             """INSERT INTO USERS
-                               (Username, Password, FullName, Email, ApprovalStatus, Role)
-                               VALUES (?, ?, ?, ?, 'Pending', 'Customer')""",
-                            (f"customer-{uuid.uuid4().hex}", hashed_password, full_name, email),
+                               (Username, Password, FullName, Email, DateOfBirth, Phone,
+                                Address, NationalID, ApprovalStatus, Role)
+                               VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Pending', 'Customer')""",
+                            (
+                                f"customer-{uuid.uuid4().hex}", hashed_password,
+                                full_name, email, date_of_birth, phone, address, national_id,
+                            ),
                         )
                     conn.commit()
                     flash(
@@ -153,7 +181,7 @@ def register():
                     flash(f"Could not submit signup request: {error}", "danger")
             conn.close()
 
-    return render_template("register.html")
+    return render_template("register.html", today=date.today().isoformat())
 
 
 @auth_bp.route("/logout")

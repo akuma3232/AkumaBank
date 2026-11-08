@@ -67,39 +67,9 @@ def users():
         "SELECT UserID, Username, Email, Role FROM USERS WHERE Role IN ('Owner','Admin','Employee') ORDER BY "
         "CASE Role WHEN 'Owner' THEN 0 WHEN 'Admin' THEN 1 ELSE 2 END, Username"
     ).fetchall()
-    pending_customers = conn.execute(
-        """SELECT UserID, FullName, Email
-           FROM USERS WHERE Role='Customer' AND ApprovalStatus='Pending'
-           ORDER BY UserID"""
-    ).fetchall()
     conn.close()
     return render_template(
         "users.html",
         staff=staff,
-        pending_customers=pending_customers,
         is_owner=session.get("user", {}).get("role") == "Owner",
     )
-
-
-@users_bp.post("/users/customer/<int:user_id>/<decision>")
-@owner_or_admin_required
-def review_customer_signup(user_id, decision):
-    """Approve or reject one pending customer signup."""
-    if decision not in ("approve", "reject"):
-        return "Invalid decision", 400
-
-    approval_status = "Approved" if decision == "approve" else "Rejected"
-    conn = get_db()
-    cursor = conn.execute(
-        """UPDATE USERS SET ApprovalStatus=?
-           WHERE UserID=? AND Role='Customer' AND ApprovalStatus='Pending'""",
-        (approval_status, user_id),
-    )
-    conn.commit()
-    conn.close()
-
-    if cursor.rowcount:
-        flash(f"Customer signup {approval_status.lower()}.", "success")
-    else:
-        flash("That signup request is no longer pending.", "warning")
-    return redirect(url_for("users.users"))

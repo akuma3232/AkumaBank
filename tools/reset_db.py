@@ -9,14 +9,14 @@ from database import DB_PATH, clear_business_data, init_db
 
 
 def reset_database():
-    """Initialize the schema and clear banking records while preserving users."""
+    """Initialize the schema and clear banking records and all login users."""
     init_db(seed_demo_data=False)
-    clear_business_data()
+    clear_business_data(include_users=True)
 
 
 def main():
     reset_database()
-    print(f"Banking records cleared: {DB_PATH}")
+    print(f"Banking records and login accounts cleared: {DB_PATH}")
 
 
 if __name__ == "__main__":

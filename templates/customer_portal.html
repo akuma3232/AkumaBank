@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}My Banking — AkumaBank{% endblock %}
+{% block page_title %}My Banking{% endblock %}
+
+{% block content %}
+<div class="page-header-row">
+  <div>
+    <h4 class="page-heading">Welcome, {{ session.user.username }}</h4>
+    <p class="page-sub">Your personal AkumaBank information.</p>
+  </div>
+</div>
+
+{% if not customer %}
+<div class="card-panel">
+  <div class="panel-body py-5 text-center">
+    <i class="bi bi-building-check fs-1 text-primary"></i>
+    <h5 class="mt-3">Visit an AkumaBank branch</h5>
+    <p class="text-muted mb-0">Your login is approved. Visit the owner or an admin in person to verify your details and set up your customer profile and bank account.</p>
+  </div>
+</div>
+{% else %}
+<div class="row g-4 mb-4">
+  <div class="col-lg-5">
+    <div class="card-panel h-100">
+      <div class="panel-header"><span class="panel-title">My Profile</span></div>
+      <div class="panel-body">
+        <div class="fw-semibold">{{ customer.Name }}</div>
+        <div class="text-muted">{{ customer.Email }}</div>
+        <div class="text-muted">{{ customer.Phone }}</div>
+        <div class="text-muted">{{ customer.Address }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-7">
+    <div class="card-panel h-100">
+      <div class="panel-header"><span class="panel-title">My Accounts</span></div>
+      <div class="panel-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead><tr><th>Account</th><th>Type</th><th>Balance</th><th>Status</th><th>Branch</th></tr></thead>
+            <tbody>
+              {% for account in accounts %}
+              <tr>
+                <td class="mono-text">{{ account.AccountNumber }}</td>
+                <td>{{ account.AccountType }}</td>
+                <td class="fw-semibold">MAD {{ "{:,.2f}".format(account.Balance) }}</td>
+                <td>{{ account.Status }}</td>
+                <td>{{ account.BranchName or '—' }}{% if account.City %}, {{ account.City }}{% endif %}</td>
+              </tr>
+              {% else %}
+              <tr><td colspan="5" class="text-center text-muted py-4">No bank accounts yet. Visit a branch to open one.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card-panel">
+  <div class="panel-header"><span class="panel-title">Recent Transactions</span></div>
+  <div class="panel-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead><tr><th>Date</th><th>Account</th><th>Type</th><th>Amount</th><th>Balance after</th><th>Description</th></tr></thead>
+        <tbody>
+          {% for transaction in transactions %}
+          <tr>
+            <td>{{ transaction.TransactionDate }}</td><td class="mono-text">{{ transaction.AccountNumber }}</td>
+            <td>{{ transaction.TransactionType }}</td><td>MAD {{ "{:,.2f}".format(transaction.Amount) }}</td>
+            <td>MAD {{ "{:,.2f}".format(transaction.BalanceAfter) }}</td><td>{{ transaction.Description or '—' }}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="6" class="text-center text-muted py-4">No transactions yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

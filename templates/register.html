@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en-MA">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Request a Customer Login — AkumaBank</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+</head>
+<body class="login-page">
+<div class="login-container">
+  <div class="login-left d-none d-lg-flex">
+    <div class="login-left-content">
+      <div class="login-logo mb-4"><i class="bi bi-bank2"></i></div>
+      <h1 class="login-heading">AkumaBank</h1>
+      <p class="login-subheading">Customer signup request</p>
+    </div>
+  </div>
+  <div class="login-right">
+    <div class="login-form-wrapper">
+      <div class="login-form-logo d-lg-none mb-3"><i class="bi bi-bank2"></i> AkumaBank</div>
+      <h2 class="login-form-title">Create a customer login</h2>
+      <p class="login-form-sub">Your request must be approved by an owner or admin before you can sign in. Bank accounts are set up in person at a branch.</p>
+
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for cat, msg in messages %}
+        <div class="alert alert-{{ cat }} alert-dismissible fade show" role="alert">
+          {{ msg }}
+          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        {% endfor %}
+      {% endwith %}
+
+      <form method="POST" class="login-form mt-4">
+        <div class="mb-3">
+          <label class="form-label fw-semibold" for="full_name">Full name</label>
+          <input class="form-control form-control-lg" id="full_name" name="full_name" autocomplete="name" maxlength="120" required autofocus />
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold" for="email">Email</label>
+          <input class="form-control form-control-lg" type="email" id="email" name="email" autocomplete="email" required />
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold" for="password">Password</label>
+          <input class="form-control form-control-lg" type="password" id="password" name="password" minlength="12" autocomplete="new-password" required />
+          <div class="form-text">Use at least 12 characters.</div>
+        </div>
+        <div class="mb-4">
+          <label class="form-label fw-semibold" for="password_confirmation">Confirm password</label>
+          <input class="form-control form-control-lg" type="password" id="password_confirmation" name="password_confirmation" minlength="12" autocomplete="new-password" required />
+        </div>
+        <button class="btn btn-primary btn-lg w-100 login-btn" type="submit">
+          <i class="bi bi-person-plus-fill me-2"></i>Submit Signup Request
+        </button>
+      </form>
+      <div class="text-center mt-4">
+        <a href="{{ url_for('auth.login') }}">Back to customer login</a>
+        <span class="mx-2 text-muted">·</span>
+        <a href="{{ url_for('auth.login', mode='staff') }}">Admin or owner login</a>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

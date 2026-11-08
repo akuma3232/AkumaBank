@@ -110,37 +110,64 @@ def init_db(seed_demo_data=False):
             Username TEXT    NOT NULL UNIQUE,
             Password TEXT    NOT NULL,
             ProfilePicture TEXT,
-            Role     TEXT    NOT NULL DEFAULT 'Employee' CHECK(Role IN ('Owner','Admin','Employee'))
+            FullName TEXT,
+            Email TEXT,
+            ApprovalStatus TEXT NOT NULL DEFAULT 'Approved'
+                          CHECK(ApprovalStatus IN ('Pending','Approved','Rejected')),
+            Role     TEXT    NOT NULL DEFAULT 'Employee'
+                     CHECK(Role IN ('Owner','Admin','Employee','Customer'))
         )
     """)
 
+    user_info = cur.execute("PRAGMA table_info(USERS)").fetchall()
+    user_columns = {row["name"] for row in user_info}
     user_table_sql = cur.execute(
         "SELECT sql FROM sqlite_master WHERE type='table' AND name='USERS'"
     ).fetchone()["sql"]
-    if "'Owner'" not in user_table_sql:
+    if "'Customer'" not in user_table_sql or "ApprovalStatus" not in user_columns:
+        legacy_columns = user_columns
         cur.execute("ALTER TABLE USERS RENAME TO USERS_legacy_roles")
         cur.execute("""
             CREATE TABLE USERS (
                 UserID   INTEGER PRIMARY KEY AUTOINCREMENT,
                 Username TEXT    NOT NULL UNIQUE,
                 Password TEXT    NOT NULL,
+                ProfilePicture TEXT,
+                FullName TEXT,
+                Email TEXT,
+                ApprovalStatus TEXT NOT NULL DEFAULT 'Approved'
+                              CHECK(ApprovalStatus IN ('Pending','Approved','Rejected')),
                 Role     TEXT    NOT NULL DEFAULT 'Employee'
-                         CHECK(Role IN ('Owner','Admin','Employee'))
+                         CHECK(Role IN ('Owner','Admin','Employee','Customer'))
             )
         """)
-        cur.execute("""
-            INSERT INTO USERS (UserID, Username, Password, Role)
-            SELECT UserID, Username, Password, Role FROM USERS_legacy_roles
-        """)
+        copy_columns = [
+            column for column in
+            ("UserID", "Username", "Password", "ProfilePicture", "FullName", "Email", "ApprovalStatus", "Role")
+            if column in legacy_columns
+        ]
+        column_list = ", ".join(copy_columns)
+        cur.execute(
+            f"INSERT INTO USERS ({column_list}) SELECT {column_list} FROM USERS_legacy_roles"
+        )
         cur.execute("DROP TABLE USERS_legacy_roles")
 
     user_columns = {row["name"] for row in cur.execute("PRAGMA table_info(USERS)")}
-    if "ProfilePicture" not in user_columns:
-        cur.execute("ALTER TABLE USERS ADD COLUMN ProfilePicture TEXT")
+    for column, definition in (
+        ("ProfilePicture", "TEXT"),
+        ("FullName", "TEXT"),
+        ("Email", "TEXT"),
+        ("ApprovalStatus", "TEXT NOT NULL DEFAULT 'Approved'"),
+    ):
+        if column not in user_columns:
+            cur.execute(f"ALTER TABLE USERS ADD COLUMN {column} {definition}")
 
     cur.execute(
         "DELETE FROM USERS WHERE (Username='admin' AND Password='admin123') "
         "OR (Username='employee' AND Password='employee123')"
+    )
+    cur.execute(
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON USERS(Email) WHERE Email IS NOT NULL"
     )
 
     branch_columns = {row["name"] for row in cur.execute("PRAGMA table_info(BRANCH)")}
@@ -381,16 +408,20 @@ def init_db(seed_demo_data=False):
     conn.close()
 
 
-def clear_business_data():
-    """Remove customer banking records while preserving users and the DB file."""
+def clear_business_data(include_users=False):
+    """Remove customer banking records and optionally login users."""
     conn = get_db()
     try:
         conn.execute("BEGIN IMMEDIATE")
-        for table in ("TRANSACTIONS", "LOAN", "ACCOUNT", "CUSTOMER", "BRANCH"):
+        tables = ["TRANSACTIONS", "LOAN", "ACCOUNT", "CUSTOMER", "BRANCH"]
+        if include_users:
+            tables.append("USERS")
+        for table in tables:
             conn.execute(f"DELETE FROM {table}")
+        placeholders = ", ".join("?" for _ in tables)
         conn.execute(
-            "DELETE FROM sqlite_sequence WHERE name IN "
-            "('TRANSACTIONS', 'LOAN', 'ACCOUNT', 'CUSTOMER', 'BRANCH')"
+            f"DELETE FROM sqlite_sequence WHERE name IN ({placeholders})",
+            tables,
         )
         conn.commit()
     except Exception:

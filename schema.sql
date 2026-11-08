@@ -93,8 +93,15 @@ CREATE TABLE IF NOT EXISTS USERS (
     Username TEXT    NOT NULL UNIQUE,
     Password TEXT    NOT NULL,
     ProfilePicture TEXT,
-    Role     TEXT    NOT NULL DEFAULT 'Employee' CHECK(Role IN ('Owner','Admin','Employee'))
+    FullName TEXT,
+    Email TEXT,
+    ApprovalStatus TEXT NOT NULL DEFAULT 'Approved'
+                  CHECK(ApprovalStatus IN ('Pending','Approved','Rejected')),
+    Role     TEXT    NOT NULL DEFAULT 'Employee'
+             CHECK(Role IN ('Owner','Admin','Employee','Customer'))
 );
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON USERS(Email) WHERE Email IS NOT NULL;
 
 
 -- ═══════════════════════════════════════════════════════════════════════════

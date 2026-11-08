@@ -1,7 +1,7 @@
 """AkumaBank Flask application for Moroccan banking management."""
 
 import os
-from flask import Flask, render_template, redirect, url_for, session
+from flask import Flask, render_template, redirect, request, session, url_for
 
 from database import init_db
 from routes.auth import auth_bp
@@ -15,6 +15,7 @@ from routes.reports import reports_bp
 from routes.database_panel import database_bp
 from routes.users import users_bp
 from routes.profiles import profiles_bp
+from routes.customer_portal import customer_portal_bp
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SESSION_SECRET") or os.urandom(32)
@@ -34,12 +35,27 @@ app.register_blueprint(reports_bp)
 app.register_blueprint(database_bp)
 app.register_blueprint(users_bp)
 app.register_blueprint(profiles_bp)
+app.register_blueprint(customer_portal_bp)
+
+
+@app.before_request
+def restrict_customer_routes():
+    """Keep customer logins out of staff banking operations."""
+    user = session.get("user")
+    endpoint = request.endpoint or ""
+    if user and user.get("role") == "Customer" and not endpoint.startswith(
+        ("customer_portal.", "profiles.", "auth.", "static")
+    ):
+        return redirect(url_for("customer_portal.home"))
+    return None
 
 
 @app.route("/")
 def index():
     """Redirect root to dashboard or login."""
     if "user" in session:
+        if session["user"]["role"] == "Customer":
+            return redirect(url_for("customer_portal.home"))
         return redirect(url_for("dashboard.dashboard"))
     return redirect(url_for("auth.login"))
 

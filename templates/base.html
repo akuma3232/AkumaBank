@@ -46,6 +46,12 @@
 
   <!-- Navigation -->
   <nav class="sidebar-nav">
+    {% if session.user.role == 'Customer' %}
+    <div class="nav-section-title">Banking</div>
+    <a href="{{ url_for('customer_portal.home') }}" class="nav-link {% if request.endpoint == 'customer_portal.home' %}active{% endif %}">
+      <i class="bi bi-house-door-fill"></i><span>My Banking</span>
+    </a>
+    {% else %}
     <div class="nav-section-title">Main</div>
     <a href="{{ url_for('dashboard.dashboard') }}" class="nav-link {% if request.endpoint=='dashboard.dashboard' %}active{% endif %}">
       <i class="bi bi-speedometer2"></i><span>Dashboard</span>
@@ -73,10 +79,11 @@
     <a href="{{ url_for('database_panel.database') }}" class="nav-link {% if request.endpoint and 'database' in request.endpoint %}active{% endif %}">
       <i class="bi bi-database-fill"></i><span>Database</span>
     </a>
-    {% if session.user.role == 'Owner' %}
+    {% if session.user.role in ('Owner', 'Admin') %}
     <a href="{{ url_for('users.users') }}" class="nav-link {% if request.endpoint and 'users.' in request.endpoint %}active{% endif %}">
       <i class="bi bi-person-gear"></i><span>Staff Accounts</span>
     </a>
+    {% endif %}
     {% endif %}
 
     <div class="nav-section-title">Account</div>

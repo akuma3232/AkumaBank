@@ -113,9 +113,26 @@ def update_loan(lid):
         return redirect(url_for("loans.loans"))
 
     new_status = request.form.get("status")
+    if new_status not in ("Approved", "Rejected", "Closed"):
+        flash("Choose a valid loan status.", "danger")
+        return redirect(url_for("loans.loans"))
+
     conn = get_db()
     try:
-        conn.execute("UPDATE LOAN SET Status=? WHERE LoanID=?", (new_status, lid))
+        if new_status == "Approved":
+            try:
+                final_rate = float(request.form.get("interest_rate", ""))
+            except ValueError:
+                final_rate = 0
+            if not 0.1 <= final_rate <= 30:
+                flash("Set a final interest rate between 0.1% and 30% before approval.", "danger")
+                return redirect(url_for("loans.loans"))
+            conn.execute(
+                "UPDATE LOAN SET Status=?, InterestRate=? WHERE LoanID=?",
+                (new_status, final_rate, lid),
+            )
+        else:
+            conn.execute("UPDATE LOAN SET Status=? WHERE LoanID=?", (new_status, lid))
         conn.commit()
         flash(f"Loan status updated to {new_status}.", "success")
     except Exception as e:
@@ -128,6 +145,9 @@ def update_loan(lid):
 @loans_bp.route("/loans/delete/<int:lid>", methods=["POST"])
 @login_required
 def delete_loan(lid):
+    if session.get("user", {}).get("role") not in ("Admin", "Owner"):
+        flash("Only Admin or Owner can delete a loan.", "danger")
+        return redirect(url_for("loans.loans"))
     conn = get_db()
     try:
         conn.execute("DELETE FROM LOAN WHERE LoanID=?", (lid,))

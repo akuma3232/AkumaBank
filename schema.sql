@@ -101,11 +101,27 @@ CREATE TABLE IF NOT EXISTS USERS (
     NationalID TEXT,
     ApprovalStatus TEXT NOT NULL DEFAULT 'Approved'
                   CHECK(ApprovalStatus IN ('Pending','Approved','Rejected')),
+    MustChangePassword INTEGER NOT NULL DEFAULT 0 CHECK(MustChangePassword IN (0,1)),
     Role     TEXT    NOT NULL DEFAULT 'Employee'
              CHECK(Role IN ('Owner','Admin','Employee','Customer'))
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON USERS(Email) WHERE Email IS NOT NULL;
+
+CREATE TABLE IF NOT EXISTS PASSWORD_RESET_REQUEST (
+    RequestID INTEGER PRIMARY KEY AUTOINCREMENT,
+    UserID INTEGER NOT NULL,
+    Status TEXT NOT NULL DEFAULT 'Pending'
+           CHECK(Status IN ('Pending','Approved','Rejected')),
+    RequestedAt TEXT NOT NULL DEFAULT (datetime('now')),
+    ReviewedAt TEXT,
+    ReviewedBy INTEGER,
+    FOREIGN KEY (UserID) REFERENCES USERS(UserID) ON DELETE CASCADE,
+    FOREIGN KEY (ReviewedBy) REFERENCES USERS(UserID) ON DELETE SET NULL
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_password_reset_pending
+    ON PASSWORD_RESET_REQUEST(UserID) WHERE Status='Pending';
 
 
 -- ═══════════════════════════════════════════════════════════════════════════

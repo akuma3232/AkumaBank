@@ -10,6 +10,36 @@
   </div>
 </div>
 
+<div class="card-panel mb-4">
+  <div class="panel-header"><span class="panel-title">Password Reset Requests</span></div>
+  <div class="panel-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead><tr><th>Customer</th><th>Email</th><th>Requested</th><th class="text-end">Review</th></tr></thead>
+        <tbody>
+          {% for item in reset_requests %}
+          <tr>
+            <td class="fw-semibold">{{ item.FullName or 'Customer' }}</td>
+            <td>{{ item.Email }}</td>
+            <td>{{ item.RequestedAt }}</td>
+            <td class="text-end text-nowrap">
+              <form method="POST" action="{{ url_for('users.review_password_reset', request_id=item.RequestID, action='approve') }}" class="d-inline">
+                <button class="btn btn-sm btn-success" type="submit">Approve</button>
+              </form>
+              <form method="POST" action="{{ url_for('users.review_password_reset', request_id=item.RequestID, action='reject') }}" class="d-inline">
+                <button class="btn btn-sm btn-outline-danger" type="submit">Reject</button>
+              </form>
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="4" class="text-center text-muted py-4">No pending password reset requests.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
 <div class="row g-4">
   {% if is_owner %}
   <div class="col-lg-5">

@@ -1,9 +1,9 @@
 """AkumaBank Flask application for Moroccan banking management."""
 
 import os
-from flask import Flask, render_template, redirect, request, session, url_for
+from flask import Flask, flash, render_template, redirect, request, session, url_for
 
-from database import init_db
+from database import get_db, init_db
 from routes.auth import auth_bp
 from routes.dashboard import dashboard_bp
 from routes.customers import customers_bp
@@ -43,6 +43,24 @@ def restrict_customer_routes():
     """Keep customer logins out of staff banking operations."""
     user = session.get("user")
     endpoint = request.endpoint or ""
+    if user:
+        conn = get_db()
+        account = conn.execute(
+            "SELECT MustChangePassword FROM USERS WHERE UserID=?",
+            (user.get("id"),),
+        ).fetchone()
+        conn.close()
+        if not account:
+            session.clear()
+            return redirect(url_for("auth.login"))
+        if account["MustChangePassword"] and not user.get("must_change_password"):
+            session.clear()
+            flash("Your password was reset. Sign in with the temporary password.", "warning")
+            return redirect(url_for("auth.login"))
+    if user and user.get("must_change_password") and endpoint not in (
+        "auth.change_password", "auth.logout", "static"
+    ):
+        return redirect(url_for("auth.change_password"))
     if user and user.get("role") == "Customer" and not endpoint.startswith(
         ("customer_portal.", "profiles.", "auth.", "static")
     ):

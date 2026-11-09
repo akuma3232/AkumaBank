@@ -112,6 +112,57 @@
 </div>
 {% endif %}
 
+<div class="card-panel mb-4">
+  <div class="panel-header"><span class="panel-title">Request a Loan</span></div>
+  <div class="panel-body">
+    <form method="POST" action="{{ url_for('customer_portal.request_loan') }}" class="row g-3 align-items-end">
+      <div class="col-md-5">
+        <label class="form-label" for="loan_type">Loan type</label>
+        <select class="form-select" id="loan_type" name="loan_type" required>
+          <option value="">Choose a loan type</option>
+          <option value="Home">Home</option>
+          <option value="Car">Car</option>
+          <option value="Personal">Personal</option>
+          <option value="Education">Education</option>
+          <option value="Business">Business</option>
+        </select>
+      </div>
+      <div class="col-md-5">
+        <label class="form-label" for="loan_amount">Requested amount (MAD)</label>
+        <input class="form-control" type="number" id="loan_amount" name="amount" min="1000" max="100000000" step="0.01" required />
+      </div>
+      <div class="col-md-2">
+        <button class="btn btn-primary w-100" type="submit"><i class="bi bi-send me-1"></i>Request</button>
+      </div>
+    </form>
+    <p class="form-text mt-2 mb-0">Requests are reviewed by bank staff. Any rate shown before approval is provisional.</p>
+  </div>
+</div>
+
+<div class="card-panel mb-4">
+  <div class="panel-header"><span class="panel-title">My Loan Requests</span></div>
+  <div class="panel-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead><tr><th>Type</th><th>Requested amount</th><th>Rate</th><th>Requested</th><th>Status</th></tr></thead>
+        <tbody>
+          {% for loan in loans %}
+          <tr>
+            <td>{{ loan.LoanType }}</td>
+            <td>MAD {{ "{:,.2f}".format(loan.Amount) }}</td>
+            <td>{{ loan.InterestRate }}%{% if loan.Status == 'Pending' %} <span class="text-muted small">provisional</span>{% endif %}</td>
+            <td>{{ loan.StartDate }}</td>
+            <td>{{ loan.Status }}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="5" class="text-center text-muted py-4">No loan requests yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
 <div class="card-panel">
   <div class="panel-header"><span class="panel-title">Recent Transactions</span></div>
   <div class="panel-body p-0">

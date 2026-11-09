@@ -35,7 +35,7 @@
 <div class="page-header-row">
   <div>
     <h4 class="page-heading">Loan Applications</h4>
-    <p class="page-sub">Apply and manage loans — avg amount: MAD {{ "{:,.0f}".format(stats.avg_amount) }}</p>
+    <p class="page-sub">Review customer requests and manage loans — avg amount: MAD {{ "{:,.0f}".format(stats.avg_amount) }}</p>
   </div>
   <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#applyLoanModal">
     <i class="bi bi-plus-circle-fill me-2"></i>Apply for Loan
@@ -108,8 +108,9 @@
             <td class="text-center">
               {% if session.user.role in ('Admin', 'Owner') and l.Status == 'Pending' %}
               <form method="POST" action="{{ url_for('loans.update_loan', lid=l.LoanID) }}" class="d-inline">
+                <input type="number" name="interest_rate" class="form-control form-control-sm mb-1" value="{{ l.InterestRate }}" min="0.1" max="30" step="0.1" required aria-label="Final interest rate (%)" />
                 <input type="hidden" name="status" value="Approved" />
-                <button class="btn btn-sm btn-success me-1" title="Approve"><i class="bi bi-check-lg"></i></button>
+                <button class="btn btn-sm btn-success me-1" title="Approve with this final rate"><i class="bi bi-check-lg"></i></button>
               </form>
               <form method="POST" action="{{ url_for('loans.update_loan', lid=l.LoanID) }}" class="d-inline">
                 <input type="hidden" name="status" value="Rejected" />

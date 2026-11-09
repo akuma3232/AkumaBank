@@ -45,6 +45,7 @@ def home():
 
     accounts = []
     transactions = []
+    loans = []
     if customer:
         accounts = conn.execute(
             """SELECT AccountID, AccountNumber, AccountType, Balance, Status,
@@ -61,12 +62,18 @@ def home():
                LIMIT 50""",
             (customer["CustomerID"],),
         ).fetchall()
+        loans = conn.execute(
+            """SELECT LoanType, Amount, InterestRate, StartDate, Status
+               FROM LOAN WHERE CustomerID=? ORDER BY LoanID DESC""",
+            (customer["CustomerID"],),
+        ).fetchall()
     conn.close()
     return render_template(
         "customer_portal.html",
         customer=customer,
         accounts=accounts,
         transactions=transactions,
+        loans=loans,
     )
 
 
@@ -188,6 +195,43 @@ def transfer():
     except Exception as error:
         conn.rollback()
         flash(f"Could not complete transfer: {error}", "danger")
+    finally:
+        conn.close()
+    return redirect(url_for("customer_portal.home"))
+
+
+@customer_portal_bp.post("/my-banking/loans")
+@customer_required
+def request_loan():
+    loan_type = request.form.get("loan_type", "")
+    amount = parse_amount(request.form.get("amount", ""))
+    if loan_type not in ("Home", "Car", "Personal", "Education", "Business"):
+        flash("Choose a valid loan type.", "danger")
+        return redirect(url_for("customer_portal.home"))
+    if amount is None or amount < Decimal("1000") or amount > Decimal("100000000"):
+        flash("Enter a loan amount between MAD 1,000 and MAD 100,000,000.", "danger")
+        return redirect(url_for("customer_portal.home"))
+
+    conn = get_db()
+    customer = conn.execute(
+        "SELECT CustomerID FROM CUSTOMER WHERE lower(Email)=lower(?)",
+        (session["user"]["email"],),
+    ).fetchone()
+    if not customer:
+        conn.close()
+        flash("A verified customer profile is required to request a loan.", "danger")
+        return redirect(url_for("customer_portal.home"))
+    try:
+        conn.execute(
+            """INSERT INTO LOAN (CustomerID, LoanType, Amount, InterestRate, StartDate, Status)
+               VALUES (?, ?, ?, 1.0, date('now'), 'Pending')""",
+            (customer["CustomerID"], loan_type, float(amount)),
+        )
+        conn.commit()
+        flash("Loan request submitted for staff review. The displayed rate is provisional.", "success")
+    except Exception as error:
+        conn.rollback()
+        flash(f"Could not submit loan request: {error}", "danger")
     finally:
         conn.close()
     return redirect(url_for("customer_portal.home"))

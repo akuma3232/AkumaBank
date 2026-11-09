@@ -6,8 +6,10 @@ AkumaBank is a Flask banking management application configured for Morocco. It u
 
 - Staff dashboard, customer, account, branch, loan, transaction, and report management.
 - Public customer signup with personal details and owner/admin approval.
+- Customer password reset requests reviewed by owners/admins, with a one-time temporary password and forced password change.
 - Customer portal for viewing linked accounts and recent transactions.
 - Customer withdrawals and transfers, limited to the customer's own accounts.
+- Customer loan requests reviewed by staff through the loan management page.
 - Deposits and bank-account creation restricted to owners and admins.
 - Profile picture uploads, including animated GIFs.
 - Local SQLite database that is initialized empty; application startup does not seed demo banking data.
@@ -72,13 +74,21 @@ $env:SESSION_SECRET = "replace-with-a-long-random-secret"
 3. Approval creates the customer's profile and enables customer login.
 4. An owner or admin opens a bank account for the approved customer from **Accounts**.
 5. Once the account is active, the customer can withdraw or transfer funds from **My Banking**. Cash deposits are made by an owner or admin.
+6. Customers can submit loan requests from **My Banking**; owners/admins review them on **Loans** and set the final rate when approving.
+
+## Customer password recovery
+
+1. A customer submits their email from **Forgot password?** on the customer login page.
+2. An owner or admin reviews the request under **Password Reset Requests** on **Staff Accounts**.
+3. Approval creates a temporary password shown once to the reviewing staff member. The staff member must deliver it to the customer through a verified channel; this app does not send email.
+4. The temporary password can only be used to sign in once. The customer must set a new password before accessing the banking portal.
 
 ## Staff roles
 
 - **Owner:** Full staff access; can create admin and employee accounts, approve customer signups, open bank accounts, and make deposits.
 - **Admin:** Can approve customer signups, open bank accounts, and make deposits.
 - **Employee:** Staff access to banking management; cannot create staff accounts, approve signups, open bank accounts, or make deposits.
-- **Customer:** Can view their own banking information and make withdrawals or transfers from their own active accounts.
+- **Customer:** Can view their own banking information, make withdrawals or transfers from their own active accounts, request loans, and submit password reset requests.
 
 ## Reset the database
 

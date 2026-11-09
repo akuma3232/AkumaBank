@@ -1,6 +1,7 @@
 """Login and logout routes."""
 
 import re
+import secrets
 import uuid
 from datetime import date
 
@@ -67,6 +68,7 @@ def login():
                     user = None
 
         password_matches = False
+        must_change_password = False
         if user:
             stored_password = user["Password"]
             if stored_password.startswith(("scrypt:", "pbkdf2:")):
@@ -79,6 +81,14 @@ def login():
                         (generate_password_hash(password), user["UserID"]),
                     )
                     conn.commit()
+            if password_matches and user["MustChangePassword"]:
+                unusable_password = secrets.token_urlsafe(32)
+                conn.execute(
+                    "UPDATE USERS SET Password=? WHERE UserID=?",
+                    (generate_password_hash(unusable_password), user["UserID"]),
+                )
+                conn.commit()
+                must_change_password = True
         conn.close()
 
         if user and password_matches:
@@ -92,7 +102,11 @@ def login():
                 "email": user["Email"],
                 "role": user["Role"],
                 "profile_picture": user["ProfilePicture"],
+                "must_change_password": must_change_password,
             }
+            if must_change_password:
+                flash("Your temporary password was used. Set a new password to continue.", "warning")
+                return redirect(url_for("auth.change_password"))
             flash(f"Welcome back, {display_name}!", "success")
             endpoint = "customer_portal.home" if user["Role"] == "Customer" else "dashboard.dashboard"
             return redirect(url_for(endpoint))
@@ -100,6 +114,68 @@ def login():
         flash("Invalid username or password.", "danger")
 
     return render_template("login.html", mode=mode)
+
+
+@auth_bp.route("/forgot-password", methods=["GET", "POST"])
+def forgot_password():
+    """Queue an eligible customer's password reset for staff review."""
+    if request.method == "POST":
+        email = request.form.get("email", "").strip().lower()
+        conn = get_db()
+        customer = conn.execute(
+            """SELECT UserID FROM USERS
+               WHERE lower(Email)=lower(?) AND Role='Customer' AND ApprovalStatus='Approved'""",
+            (email,),
+        ).fetchone()
+        if customer:
+            conn.execute(
+                """INSERT OR IGNORE INTO PASSWORD_RESET_REQUEST (UserID)
+                   SELECT ? WHERE NOT EXISTS (
+                       SELECT 1 FROM PASSWORD_RESET_REQUEST
+                       WHERE UserID=? AND Status='Pending'
+                   )""",
+                (customer["UserID"], customer["UserID"]),
+            )
+            conn.commit()
+        conn.close()
+        flash(
+            "If an approved customer account uses that email, its reset request is now awaiting staff review.",
+            "success",
+        )
+        return redirect(url_for("auth.login"))
+    return render_template("forgot_password.html")
+
+
+@auth_bp.route("/change-password", methods=["GET", "POST"])
+def change_password():
+    """Require customers using a one-time password to set a permanent password."""
+    user = session.get("user")
+    if not user:
+        return redirect(url_for("auth.login"))
+    if not user.get("must_change_password"):
+        endpoint = "customer_portal.home" if user["role"] == "Customer" else "dashboard.dashboard"
+        return redirect(url_for(endpoint))
+
+    if request.method == "POST":
+        password = request.form.get("password", "")
+        confirmation = request.form.get("password_confirmation", "")
+        if len(password) < 12:
+            flash("Password must be at least 12 characters.", "danger")
+        elif password != confirmation:
+            flash("The passwords do not match.", "danger")
+        else:
+            conn = get_db()
+            conn.execute(
+                "UPDATE USERS SET Password=?, MustChangePassword=0 WHERE UserID=?",
+                (generate_password_hash(password), user["id"]),
+            )
+            conn.commit()
+            conn.close()
+            session["user"]["must_change_password"] = False
+            flash("Your password has been changed.", "success")
+            endpoint = "customer_portal.home" if user["role"] == "Customer" else "dashboard.dashboard"
+            return redirect(url_for(endpoint))
+    return render_template("change_password.html")
 
 
 @auth_bp.route("/register", methods=["GET", "POST"])

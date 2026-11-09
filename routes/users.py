@@ -2,6 +2,7 @@
 
 from functools import wraps
 import re
+import secrets
 
 from flask import Blueprint, flash, redirect, render_template, request, session, url_for
 from werkzeug.security import generate_password_hash
@@ -15,7 +16,7 @@ def owner_or_admin_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
         if session.get("user", {}).get("role") not in ("Owner", "Admin"):
-            flash("Only an owner or admin can review signup requests.", "danger")
+            flash("Only an owner or admin can review account requests.", "danger")
             return redirect(url_for("dashboard.dashboard"))
         return f(*args, **kwargs)
 
@@ -67,9 +68,71 @@ def users():
         "SELECT UserID, Username, Email, Role FROM USERS WHERE Role IN ('Owner','Admin','Employee') ORDER BY "
         "CASE Role WHEN 'Owner' THEN 0 WHEN 'Admin' THEN 1 ELSE 2 END, Username"
     ).fetchall()
+    reset_requests = conn.execute(
+        """SELECT r.RequestID, r.RequestedAt, u.FullName, u.Email
+           FROM PASSWORD_RESET_REQUEST r JOIN USERS u ON u.UserID=r.UserID
+           WHERE r.Status='Pending' ORDER BY r.RequestedAt, r.RequestID"""
+    ).fetchall()
     conn.close()
     return render_template(
         "users.html",
         staff=staff,
+        reset_requests=reset_requests,
         is_owner=session.get("user", {}).get("role") == "Owner",
     )
+
+
+@users_bp.post("/users/password-reset/<int:request_id>/<action>")
+@owner_or_admin_required
+def review_password_reset(request_id, action):
+    if action not in ("approve", "reject"):
+        return redirect(url_for("users.users"))
+
+    conn = get_db()
+    try:
+        conn.execute("BEGIN IMMEDIATE")
+        reset_request = conn.execute(
+            """SELECT r.UserID, u.Email
+               FROM PASSWORD_RESET_REQUEST r JOIN USERS u ON u.UserID=r.UserID
+               WHERE r.RequestID=? AND r.Status='Pending' AND u.Role='Customer'
+                 AND u.ApprovalStatus='Approved'""",
+            (request_id,),
+        ).fetchone()
+        if not reset_request:
+            conn.rollback()
+            flash("That password reset request is no longer pending.", "warning")
+            return redirect(url_for("users.users"))
+
+        temporary_password = None
+        if action == "approve":
+            temporary_password = secrets.token_urlsafe(12)
+            conn.execute(
+                "UPDATE USERS SET Password=?, MustChangePassword=1 WHERE UserID=?",
+                (generate_password_hash(temporary_password), reset_request["UserID"]),
+            )
+            new_status = "Approved"
+        else:
+            new_status = "Rejected"
+        conn.execute(
+            """UPDATE PASSWORD_RESET_REQUEST
+               SET Status=?, ReviewedAt=datetime('now'), ReviewedBy=?
+               WHERE RequestID=? AND Status='Pending'""",
+            (new_status, session["user"]["id"], request_id),
+        )
+        conn.commit()
+    except Exception as error:
+        conn.rollback()
+        flash(f"Could not review password reset request: {error}", "danger")
+        return redirect(url_for("users.users"))
+    finally:
+        conn.close()
+
+    if temporary_password:
+        flash(
+            f"Temporary password for {reset_request['Email']} (shown once): {temporary_password}. "
+            "Deliver it to the customer through a verified channel.",
+            "warning",
+        )
+    else:
+        flash("Password reset request rejected.", "success")
+    return redirect(url_for("users.users"))

@@ -118,6 +118,7 @@ def init_db(seed_demo_data=False):
             NationalID TEXT,
             ApprovalStatus TEXT NOT NULL DEFAULT 'Approved'
                           CHECK(ApprovalStatus IN ('Pending','Approved','Rejected')),
+            MustChangePassword INTEGER NOT NULL DEFAULT 0 CHECK(MustChangePassword IN (0,1)),
             Role     TEXT    NOT NULL DEFAULT 'Employee'
                      CHECK(Role IN ('Owner','Admin','Employee','Customer'))
         )
@@ -145,6 +146,7 @@ def init_db(seed_demo_data=False):
                 NationalID TEXT,
                 ApprovalStatus TEXT NOT NULL DEFAULT 'Approved'
                               CHECK(ApprovalStatus IN ('Pending','Approved','Rejected')),
+                MustChangePassword INTEGER NOT NULL DEFAULT 0 CHECK(MustChangePassword IN (0,1)),
                 Role     TEXT    NOT NULL DEFAULT 'Employee'
                          CHECK(Role IN ('Owner','Admin','Employee','Customer'))
             )
@@ -153,7 +155,8 @@ def init_db(seed_demo_data=False):
             column for column in
             (
                 "UserID", "Username", "Password", "ProfilePicture", "FullName", "Email",
-                "DateOfBirth", "Phone", "Address", "NationalID", "ApprovalStatus", "Role",
+                "DateOfBirth", "Phone", "Address", "NationalID", "ApprovalStatus",
+                "MustChangePassword", "Role",
             )
             if column in legacy_columns
         ]
@@ -173,9 +176,28 @@ def init_db(seed_demo_data=False):
         ("Address", "TEXT"),
         ("NationalID", "TEXT"),
         ("ApprovalStatus", "TEXT NOT NULL DEFAULT 'Approved'"),
+        ("MustChangePassword", "INTEGER NOT NULL DEFAULT 0"),
     ):
         if column not in user_columns:
             cur.execute(f"ALTER TABLE USERS ADD COLUMN {column} {definition}")
+
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS PASSWORD_RESET_REQUEST (
+            RequestID INTEGER PRIMARY KEY AUTOINCREMENT,
+            UserID INTEGER NOT NULL,
+            Status TEXT NOT NULL DEFAULT 'Pending'
+                   CHECK(Status IN ('Pending','Approved','Rejected')),
+            RequestedAt TEXT NOT NULL DEFAULT (datetime('now')),
+            ReviewedAt TEXT,
+            ReviewedBy INTEGER,
+            FOREIGN KEY (UserID) REFERENCES USERS(UserID) ON DELETE CASCADE,
+            FOREIGN KEY (ReviewedBy) REFERENCES USERS(UserID) ON DELETE SET NULL
+        )
+    """)
+    cur.execute(
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_password_reset_pending "
+        "ON PASSWORD_RESET_REQUEST(UserID) WHERE Status='Pending'"
+    )
 
     cur.execute(
         "DELETE FROM USERS WHERE (Username='admin' AND Password='admin123') "

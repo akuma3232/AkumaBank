@@ -1,0 +1,66 @@
+PROPRIETARY SOFTWARE LICENSE & TERMS OF USE
+==============================================
+
+Copyright (c) 2026 AkumaBank. All Rights Reserved.
+
+NOTICE TO USER: PLEASE READ THIS DOCUMENT CAREFULLY. BY VIEWING, DOWNLOADING,
+INSTALLING, ACCESSING, RUNNING, OR USING THIS SOFTWARE CODEBASE, SOURCE FILES,
+UI ASSETS, OR ASSOCIATED DOCUMENTATION ("SOFTWARE"), YOU AGREE TO BE BOUND BY
+THE TERMS OF THIS LICENSE.
+
+1. PROPRIETARY RIGHTS AND OWNERSHIP
+-----------------------------------
+The Software and all intellectual property rights therein—including but not
+limited to code, system architecture, database schemas, styling sheets (CSS),
+visual interfaces, interactive widgets, scripts (JS), brand symbols, algorithms,
+and documentation—are the sole and exclusive proprietary property of the Author
+and Copyright Holder ("Licensor"). The Software is protected under international
+copyright treaties, trade secret laws, and intellectual property legislation.
+
+2. STRICT PROHIBITION ON MODIFICATIONS AND DERIVATIVE WORKS
+------------------------------------------------------------
+NO PERSON, ENTITY, OR ORGANIZATION MAY:
+(a) Modify, alter, adapt, translate, enhance, or create derivative works of any
+    part of this Software or its source code;
+(b) Reverse engineer, decompile, disassemble, decrypt, unbundle, or otherwise
+    attempt to discover, reconstruct, or derive the source algorithms or data
+    models of the Software;
+(c) Remove, alter, obscure, or tamper with any copyright notice, trademark,
+    watermark, legal disclaimer, or proprietary legend contained in or on
+    the Software.
+
+3. RESTRICTIONS ON COPYING, DISTRIBUTION, AND SUBLICENSING
+-----------------------------------------------------------
+Under NO circumstances is any permission granted to:
+(a) Copy, duplicate, clone, fork, reproduce, mirror, or upload this Software, in
+    whole or in part, to any public or private repository, forum, website, server,
+    peer-to-peer network, or cloud storage without prior express written consent;
+(b) Sell, resell, rent, lease, sublicense, distribute, assign, host as a service
+    (SaaS), commercialize, or convey rights to this Software to any third party;
+(c) Exploit the Software, its branding ("AkumaBank"), or its visual UI design
+    for any commercial or competitive purpose.
+
+4. PERMITTED PRIVATE EVALUATION
+--------------------------------
+The Licensor reserves all rights not expressly granted. Any authorized access is
+limited strictly to non-commercial, private evaluation by authorized personnel
+under explicit written authorization by the Licensor.
+
+5. TERMINATION
+--------------
+Any unauthorized modification, reproduction, redistribution, or breach of these
+terms automatically terminates any implied or granted privilege immediately and
+may subject violators to civil lawsuits, monetary damages, and criminal penalties
+to the maximum extent enforceable under the law.
+
+6. DISCLAIMER OF WARRANTY & LIMITATION OF LIABILITY
+---------------------------------------------------
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF MERCHANTABILITY, FITNESS FOR
+A PARTICULAR PURPOSE, AND NON-INFRINGEMENT. IN NO EVENT SHALL THE COPYRIGHT
+HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY, WHETHER IN AN
+ACTION OF CONTRACT, TORT, OR OTHERWISE, ARISING FROM OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+==============================================
+For licensing inquiries or written authorization, contact the project owner.

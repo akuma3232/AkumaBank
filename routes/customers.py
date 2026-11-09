@@ -2,10 +2,15 @@
 routes/customers.py - Full CRUD for Customer management
 """
 
-from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify
-from database import get_db
-from functools import wraps
+import secrets
 import sqlite3
+import uuid
+from functools import wraps
+
+from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify
+from werkzeug.security import generate_password_hash
+
+from database import get_db
 
 customers_bp = Blueprint("customers", __name__)
 
@@ -139,14 +144,18 @@ def review_customer_signup(user_id, decision):
 @customers_bp.route("/customers/add", methods=["POST"])
 @login_required
 def add_customer():
-    """Add a new customer."""
+    """Add a customer and create a forced-password-change login."""
+    if session.get("user", {}).get("role") not in ("Owner", "Admin"):
+        flash("Only an owner or admin can create customer accounts.", "danger")
+        return redirect(url_for("customers.customers"))
+
     data = request.form
     name    = data.get("name","").strip()
     dob     = data.get("dob","").strip()
-    email   = data.get("email","").strip()
+    email   = data.get("email","").strip().lower()
     phone   = data.get("phone","").strip()
     address = data.get("address","").strip()
-    national_id = data.get("national_id","").strip()
+    national_id = data.get("national_id","").strip().upper()
 
     if not all([name, dob, email, phone, address, national_id]):
         flash("All fields are required.", "danger")
@@ -154,13 +163,40 @@ def add_customer():
 
     conn = get_db()
     try:
+        conn.execute("BEGIN IMMEDIATE")
+        if conn.execute(
+            """SELECT 1 FROM USERS WHERE lower(Email)=lower(?)
+               UNION ALL
+               SELECT 1 FROM CUSTOMER WHERE lower(Email)=lower(?) LIMIT 1""",
+            (email, email),
+        ).fetchone():
+            conn.rollback()
+            flash("That email address is already linked to an account or customer.", "danger")
+            return redirect(url_for("customers.customers"))
+
         conn.execute(
             "INSERT INTO CUSTOMER (Name,DateOfBirth,Email,Phone,Address,NationalID) VALUES (?,?,?,?,?,?)",
             (name, dob, email, phone, address, national_id),
         )
+        temporary_password = secrets.token_urlsafe(12)
+        conn.execute(
+            """INSERT INTO USERS
+               (Username, Password, FullName, Email, DateOfBirth, Phone, Address,
+                NationalID, ApprovalStatus, MustChangePassword, Role)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Approved', 1, 'Customer')""",
+            (
+                f"customer-{uuid.uuid4().hex}", generate_password_hash(temporary_password),
+                name, email, dob, phone, address, national_id,
+            ),
+        )
         conn.commit()
-        flash(f"Customer '{name}' added successfully.", "success")
+        flash(
+            f"Customer '{name}' created. Temporary password (shown once): {temporary_password}. "
+            "Deliver it through a verified channel; the customer must change it at first sign-in.",
+            "success",
+        )
     except Exception as e:
+        conn.rollback()
         flash(f"Error: {e}", "danger")
     finally:
         conn.close()

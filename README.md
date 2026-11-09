@@ -83,6 +83,8 @@ $env:SESSION_SECRET = "replace-with-a-long-random-secret"
 3. Approval creates a temporary password shown once to the reviewing staff member. The staff member must deliver it to the customer through a verified channel; this app does not send email.
 4. The temporary password can only be used to sign in once. The customer must set a new password before accessing the banking portal.
 
+When an owner or admin creates a customer from the **Customers** page, the app also creates an approved customer login and shows its one-time temporary password once. Deliver that password through a verified channel; the customer must change it at first sign-in.
+
 ## Staff roles
 
 - **Owner:** Full staff access; can create admin and employee accounts, approve customer signups, open bank accounts, and make deposits.

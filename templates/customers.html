@@ -9,9 +9,11 @@
     <h4 class="page-heading">Customers</h4>
     <p class="page-sub">Manage all bank customers</p>
   </div>
+  {% if can_review_signups %}
   <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addCustomerModal">
     <i class="bi bi-person-plus-fill me-2"></i>Add Customer
   </button>
+  {% endif %}
 </div>
 
 {% if can_review_signups %}
@@ -124,6 +126,7 @@
 </div>
 
 <!-- ═══ ADD CUSTOMER MODAL ═══ -->
+{% if can_review_signups %}
 <div class="modal fade" id="addCustomerModal" tabindex="-1">
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
@@ -168,6 +171,7 @@
     </div>
   </div>
 </div>
+{% endif %}
 
 <!-- ═══ EDIT CUSTOMER MODAL ═══ -->
 <div class="modal fade" id="editCustomerModal" tabindex="-1">

@@ -30,6 +30,23 @@
   </div>
 </div>
 
+<div class="row g-3 mb-4">
+  {% for account in accounts %}
+  <div class="col-sm-6 col-xl-3">
+    <div class="card-panel h-100">
+      <div class="panel-header">
+        <span class="panel-title">{{ account.AccountType }}</span>
+        <span class="badge bg-primary-soft text-primary">{{ account.Status }}</span>
+      </div>
+      <div class="panel-body">
+        <div class="mono-text text-muted">{{ account.AccountNumber }}</div>
+        <div class="fs-5 fw-semibold mt-2">MAD {{ "{:,.2f}".format(account.Balance) }}</div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
 <div class="row g-4 mb-4">
   <div class="col-lg-5">
     <div class="card-panel h-100">

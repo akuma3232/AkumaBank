@@ -80,10 +80,10 @@ $env:SESSION_SECRET = "replace-with-a-long-random-secret"
 
 1. A customer submits their email from **Forgot password?** on the customer login page.
 2. An owner or admin reviews the request under **Password Reset Requests** on **Staff Accounts**.
-3. Approval creates a temporary password shown once to the reviewing staff member. The staff member must deliver it to the customer through a verified channel; this app does not send email.
+3. Approval creates a temporary password that remains in the Customers page until the reviewing staff member copies it. Deliver it through a verified channel; this app does not send email.
 4. The temporary password can only be used to sign in once. The customer must set a new password before accessing the banking portal.
 
-When an owner or admin creates a customer from the **Customers** page, the app also creates an approved customer login and shows its one-time temporary password once. Deliver that password through a verified channel; the customer must change it at first sign-in.
+When an owner or admin creates a customer from the **Customers** page, the app also creates an approved customer login and keeps its temporary password visible there until it is copied. Deliver that password through a verified channel; the customer must change it at first sign-in.
 
 ## Staff roles
 

@@ -17,6 +17,60 @@
 </div>
 
 {% if can_review_signups %}
+{% if pending_temporary_passwords %}
+<div class="card-panel mb-4" id="temporaryPasswordQueue">
+  <div class="panel-header"><span class="panel-title">Temporary Passwords to Deliver</span></div>
+  <div class="panel-body">
+    <p class="text-muted">Copy each password and deliver it to the customer through a verified channel. It stays here until copied.</p>
+    {% for delivery in pending_temporary_passwords %}
+    <div class="d-flex align-items-center gap-3 flex-wrap border-top py-3" data-password-delivery>
+      <span class="fw-semibold">{{ delivery.email }}</span>
+      <code class="fs-6" id="temporary-password-{{ delivery.id }}">{{ delivery.password }}</code>
+      <button class="btn btn-sm btn-outline-primary" type="button"
+        data-copy-password="{{ delivery.id }}"
+        data-ack-url="{{ url_for('customers.acknowledge_temporary_password', delivery_id=delivery.id) }}">
+        <i class="bi bi-clipboard me-1"></i>Copy
+      </button>
+      <span class="small text-danger" aria-live="polite" data-copy-status></span>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<div class="card-panel mb-4">
+  <div class="panel-header">
+    <span class="panel-title">Password Reset Requests</span>
+    <span class="badge bg-warning-soft text-warning">{{ reset_requests|length }} pending</span>
+  </div>
+  <div class="panel-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead><tr><th>Customer</th><th>Email</th><th>Requested</th><th class="text-end">Review</th></tr></thead>
+        <tbody>
+          {% for item in reset_requests %}
+          <tr>
+            <td class="fw-semibold">{{ item.FullName or 'Customer' }}</td>
+            <td>{{ item.Email }}</td>
+            <td>{{ item.RequestedAt }}</td>
+            <td class="text-end text-nowrap">
+              <form method="POST" action="{{ url_for('users.review_password_reset', request_id=item.RequestID, action='approve') }}" class="d-inline">
+                <button class="btn btn-sm btn-success" type="submit">Approve</button>
+              </form>
+              <form method="POST" action="{{ url_for('users.review_password_reset', request_id=item.RequestID, action='reject') }}" class="d-inline">
+                <button class="btn btn-sm btn-outline-danger" type="submit">Reject</button>
+              </form>
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="4" class="text-center text-muted py-4">No pending password reset requests.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
 <div class="card-panel mb-4">
   <div class="panel-header">
     <span class="panel-title">Pending Customer Signups</span>
@@ -244,6 +298,37 @@
 
 {% block scripts %}
 <script>
+document.querySelectorAll('[data-copy-password]').forEach((button) => {
+  button.addEventListener('click', async () => {
+    const deliveryId = button.dataset.copyPassword;
+    const password = document.getElementById(`temporary-password-${deliveryId}`).textContent;
+    const row = button.closest('[data-password-delivery]');
+    const status = row.querySelector('[data-copy-status]');
+
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(password);
+      } else {
+        const field = document.createElement('textarea');
+        field.value = password;
+        field.style.position = 'fixed';
+        field.style.opacity = '0';
+        document.body.appendChild(field);
+        field.select();
+        const copied = document.execCommand('copy');
+        field.remove();
+        if (!copied) throw new Error('Clipboard copy failed');
+      }
+
+      const response = await fetch(button.dataset.ackUrl, { method: 'POST' });
+      if (!response.ok) throw new Error('Copy acknowledgment failed');
+      row.remove();
+    } catch (error) {
+      status.textContent = 'Could not copy or dismiss this password. It remains here; try again.';
+    }
+  });
+});
+
 function openEditCustomer(id) {
   fetch(`/customers/get/${id}`)
     .then(r => r.json())

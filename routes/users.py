@@ -8,6 +8,7 @@ from flask import Blueprint, flash, redirect, render_template, request, session,
 from werkzeug.security import generate_password_hash
 
 from database import get_db
+from routes.customers import queue_temporary_password
 
 users_bp = Blueprint("users", __name__)
 
@@ -68,16 +69,10 @@ def users():
         "SELECT UserID, Username, Email, Role FROM USERS WHERE Role IN ('Owner','Admin','Employee') ORDER BY "
         "CASE Role WHEN 'Owner' THEN 0 WHEN 'Admin' THEN 1 ELSE 2 END, Username"
     ).fetchall()
-    reset_requests = conn.execute(
-        """SELECT r.RequestID, r.RequestedAt, u.FullName, u.Email
-           FROM PASSWORD_RESET_REQUEST r JOIN USERS u ON u.UserID=r.UserID
-           WHERE r.Status='Pending' ORDER BY r.RequestedAt, r.RequestID"""
-    ).fetchall()
     conn.close()
     return render_template(
         "users.html",
         staff=staff,
-        reset_requests=reset_requests,
         is_owner=session.get("user", {}).get("role") == "Owner",
     )
 
@@ -86,7 +81,7 @@ def users():
 @owner_or_admin_required
 def review_password_reset(request_id, action):
     if action not in ("approve", "reject"):
-        return redirect(url_for("users.users"))
+        return redirect(url_for("customers.customers"))
 
     conn = get_db()
     try:
@@ -101,7 +96,7 @@ def review_password_reset(request_id, action):
         if not reset_request:
             conn.rollback()
             flash("That password reset request is no longer pending.", "warning")
-            return redirect(url_for("users.users"))
+            return redirect(url_for("customers.customers"))
 
         temporary_password = None
         if action == "approve":
@@ -123,16 +118,13 @@ def review_password_reset(request_id, action):
     except Exception as error:
         conn.rollback()
         flash(f"Could not review password reset request: {error}", "danger")
-        return redirect(url_for("users.users"))
+        return redirect(url_for("customers.customers"))
     finally:
         conn.close()
 
     if temporary_password:
-        flash(
-            f"Temporary password for {reset_request['Email']} (shown once): {temporary_password}. "
-            "Deliver it to the customer through a verified channel.",
-            "warning",
-        )
+        queue_temporary_password(reset_request["Email"], temporary_password)
+        flash("Password reset approved. Copy the temporary password from the Customers page and deliver it through a verified channel.", "warning")
     else:
         flash("Password reset request rejected.", "success")
-    return redirect(url_for("users.users"))
+    return redirect(url_for("customers.customers"))

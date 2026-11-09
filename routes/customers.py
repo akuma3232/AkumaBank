@@ -15,6 +15,13 @@ from database import get_db
 customers_bp = Blueprint("customers", __name__)
 
 
+def queue_temporary_password(email, password):
+    delivery_id = secrets.token_urlsafe(12)
+    deliveries = session.get("pending_temporary_passwords", [])
+    deliveries.append({"id": delivery_id, "email": email, "password": password})
+    session["pending_temporary_passwords"] = deliveries
+
+
 def login_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
@@ -53,11 +60,17 @@ def customers():
         """).fetchall()
     can_review_signups = session.get("user", {}).get("role") in ("Owner", "Admin")
     pending_signups = []
+    reset_requests = []
     if can_review_signups:
         pending_signups = conn.execute(
             """SELECT UserID, FullName, Email, DateOfBirth, Phone, Address, NationalID
                FROM USERS WHERE Role='Customer' AND ApprovalStatus='Pending'
                ORDER BY UserID"""
+        ).fetchall()
+        reset_requests = conn.execute(
+            """SELECT r.RequestID, r.RequestedAt, u.FullName, u.Email
+               FROM PASSWORD_RESET_REQUEST r JOIN USERS u ON u.UserID=r.UserID
+               WHERE r.Status='Pending' ORDER BY r.RequestedAt, r.RequestID"""
         ).fetchall()
     conn.close()
     return render_template(
@@ -65,8 +78,25 @@ def customers():
         customers=rows,
         search=search,
         pending_signups=pending_signups,
+        reset_requests=reset_requests,
+        pending_temporary_passwords=(
+            session.get("pending_temporary_passwords", []) if can_review_signups else []
+        ),
         can_review_signups=can_review_signups,
     )
+
+
+@customers_bp.post("/customers/temporary-password/<delivery_id>/copied")
+@login_required
+def acknowledge_temporary_password(delivery_id):
+    if session.get("user", {}).get("role") not in ("Owner", "Admin"):
+        return jsonify({"error": "forbidden"}), 403
+    deliveries = session.get("pending_temporary_passwords", [])
+    remaining = [item for item in deliveries if item.get("id") != delivery_id]
+    if len(remaining) == len(deliveries):
+        return jsonify({"error": "not found"}), 404
+    session["pending_temporary_passwords"] = remaining
+    return jsonify({"ok": True})
 
 
 @customers_bp.post("/customers/signup/<int:user_id>/<decision>")
@@ -190,11 +220,8 @@ def add_customer():
             ),
         )
         conn.commit()
-        flash(
-            f"Customer '{name}' created. Temporary password (shown once): {temporary_password}. "
-            "Deliver it through a verified channel; the customer must change it at first sign-in.",
-            "success",
-        )
+        queue_temporary_password(email, temporary_password)
+        flash(f"Customer '{name}' created. Copy the temporary password from this page and deliver it through a verified channel.", "success")
     except Exception as e:
         conn.rollback()
         flash(f"Error: {e}", "danger")

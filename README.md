@@ -74,12 +74,12 @@ $env:SESSION_SECRET = "replace-with-a-long-random-secret"
 3. Approval creates the customer's profile and enables customer login.
 4. An owner or admin opens a bank account for the approved customer from **Accounts**.
 5. Once the account is active, the customer can withdraw or transfer funds from **My Banking**. Cash deposits are made by an owner or admin.
-6. Customers can submit loan requests from **My Banking**; owners/admins review them on **Loans** and set the final rate when approving.
+6. Customers can submit loan requests from **My Banking** and choose an active account. Owners/admins review them on **Loans**, set the final rate, and approval deposits the loan into that account as a transaction.
 
 ## Customer password recovery
 
 1. A customer submits their email from **Forgot password?** on the customer login page.
-2. An owner or admin reviews the request under **Password Reset Requests** on **Staff Accounts**.
+2. An owner or admin reviews the request under **Password Reset Requests** on **Customers**.
 3. Approval creates a temporary password that remains in the Customers page until the reviewing staff member copies it. Deliver it through a verified channel; this app does not send email.
 4. The temporary password can only be used to sign in once. The customer must set a new password before accessing the banking portal.
 

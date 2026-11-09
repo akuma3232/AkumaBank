@@ -97,9 +97,19 @@ def init_db(seed_demo_data=False):
             InterestRate REAL    NOT NULL,
             StartDate    TEXT    NOT NULL DEFAULT (date('now')),
             Status       TEXT    NOT NULL DEFAULT 'Pending' CHECK(Status IN ('Pending','Approved','Rejected','Closed')),
+            DisbursementAccountID INTEGER,
+            DisbursedAt TEXT,
+            FOREIGN KEY (DisbursementAccountID) REFERENCES ACCOUNT(AccountID),
             FOREIGN KEY (CustomerID) REFERENCES CUSTOMER(CustomerID) ON DELETE CASCADE
         )
     """)
+    loan_columns = {row["name"] for row in cur.execute("PRAGMA table_info(LOAN)")}
+    if "DisbursementAccountID" not in loan_columns:
+        cur.execute(
+            "ALTER TABLE LOAN ADD COLUMN DisbursementAccountID INTEGER REFERENCES ACCOUNT(AccountID)"
+        )
+    if "DisbursedAt" not in loan_columns:
+        cur.execute("ALTER TABLE LOAN ADD COLUMN DisbursedAt TEXT")
 
     # ─────────────────────────────────────────────
     # TABLE: USERS (owner, admin, and employee login)

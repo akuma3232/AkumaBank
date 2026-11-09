@@ -75,6 +75,7 @@
             <th>Rate</th>
             <th>Annual Interest</th>
             <th>Start Date</th>
+            <th>Deposit Account</th>
             <th>Status</th>
             <th class="text-center">Actions</th>
           </tr>
@@ -94,6 +95,7 @@
             <td class="text-muted">{{ l.InterestRate }}%</td>
             <td class="text-warning fw-semibold">MAD {{ "{:,.0f}".format(l.annual_interest) }}</td>
             <td class="text-muted small">{{ l.StartDate }}</td>
+            <td>{{ l.DisbursementAccountNumber or 'Choose on approval' }}{% if l.DisbursedAt %}<div class="small text-success">Credited</div>{% endif %}</td>
             <td>
               {% if l.Status == 'Approved' %}
                 <span class="badge bg-success-soft text-success"><i class="bi bi-check-circle-fill me-1"></i>Approved</span>
@@ -109,6 +111,12 @@
               {% if session.user.role in ('Admin', 'Owner') and l.Status == 'Pending' %}
               <form method="POST" action="{{ url_for('loans.update_loan', lid=l.LoanID) }}" class="d-inline">
                 <input type="number" name="interest_rate" class="form-control form-control-sm mb-1" value="{{ l.InterestRate }}" min="0.1" max="30" step="0.1" required aria-label="Final interest rate (%)" />
+                <select name="disbursement_account_id" class="form-select form-select-sm mb-1" required aria-label="Account to receive loan funds">
+                  <option value="">Select deposit account</option>
+                  {% for account in disbursement_accounts_by_customer.get(l.CustomerID, []) %}
+                  <option value="{{ account.AccountID }}" {% if l.DisbursementAccountID == account.AccountID %}selected{% endif %}>{{ account.AccountNumber }}</option>
+                  {% endfor %}
+                </select>
                 <input type="hidden" name="status" value="Approved" />
                 <button class="btn btn-sm btn-success me-1" title="Approve with this final rate"><i class="bi bi-check-lg"></i></button>
               </form>
@@ -124,7 +132,7 @@
             </td>
           </tr>
           {% else %}
-          <tr><td colspan="9" class="text-center py-5 text-muted">No loans found.</td></tr>
+          <tr><td colspan="10" class="text-center py-5 text-muted">No loans found.</td></tr>
           {% endfor %}
         </tbody>
       </table>
@@ -148,6 +156,15 @@
               <option value="">— Select Customer —</option>
               {% for c in customers %}
               <option value="{{ c.CustomerID }}">{{ c.Name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Deposit account *</label>
+            <select name="disbursement_account_id" class="form-select" required>
+              <option value="">— Select active account —</option>
+              {% for account in disbursement_accounts %}
+              <option value="{{ account.AccountID }}">{{ account.CustomerName }} — {{ account.AccountNumber }}</option>
               {% endfor %}
             </select>
           </div>

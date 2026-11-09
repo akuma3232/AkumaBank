@@ -81,6 +81,9 @@ CREATE TABLE IF NOT EXISTS LOAN (
     InterestRate REAL    NOT NULL CHECK(InterestRate > 0),
     StartDate    TEXT    NOT NULL DEFAULT (date('now')),
     Status       TEXT    NOT NULL DEFAULT 'Pending' CHECK(Status IN ('Pending','Approved','Rejected','Closed')),
+    DisbursementAccountID INTEGER,
+    DisbursedAt TEXT,
+    FOREIGN KEY (DisbursementAccountID) REFERENCES ACCOUNT(AccountID),
     FOREIGN KEY (CustomerID) REFERENCES CUSTOMER(CustomerID) ON DELETE CASCADE
 );
 

@@ -46,6 +46,7 @@ def home():
     accounts = []
     transactions = []
     loans = []
+    loan_summary = {"total_disbursed": 0}
     if customer:
         accounts = conn.execute(
             """SELECT AccountID, AccountNumber, AccountType, Balance, Status,
@@ -63,17 +64,27 @@ def home():
             (customer["CustomerID"],),
         ).fetchall()
         loans = conn.execute(
-            """SELECT LoanType, Amount, InterestRate, StartDate, Status
-               FROM LOAN WHERE CustomerID=? ORDER BY LoanID DESC""",
+            """SELECT l.LoanType, l.Amount, l.InterestRate, l.StartDate, l.Status,
+                      l.DisbursedAt, a.AccountNumber AS DisbursementAccount
+               FROM LOAN l LEFT JOIN ACCOUNT a ON a.AccountID=l.DisbursementAccountID
+               WHERE l.CustomerID=? ORDER BY l.LoanID DESC""",
             (customer["CustomerID"],),
         ).fetchall()
+        loan_summary = conn.execute(
+            """SELECT COALESCE(SUM(CASE WHEN DisbursedAt IS NOT NULL THEN Amount ELSE 0 END), 0)
+                      AS total_disbursed
+               FROM LOAN WHERE CustomerID=?""",
+            (customer["CustomerID"],),
+        ).fetchone()
     conn.close()
     return render_template(
         "customer_portal.html",
         customer=customer,
         accounts=accounts,
+        active_accounts=[account for account in accounts if account["Status"] == "Active"],
         transactions=transactions,
         loans=loans,
+        loan_summary=loan_summary,
     )
 
 
@@ -205,27 +216,42 @@ def transfer():
 def request_loan():
     loan_type = request.form.get("loan_type", "")
     amount = parse_amount(request.form.get("amount", ""))
+    account_id = request.form.get("account_id", "")
     if loan_type not in ("Home", "Car", "Personal", "Education", "Business"):
         flash("Choose a valid loan type.", "danger")
         return redirect(url_for("customer_portal.home"))
     if amount is None or amount < Decimal("1000") or amount > Decimal("100000000"):
         flash("Enter a loan amount between MAD 1,000 and MAD 100,000,000.", "danger")
         return redirect(url_for("customer_portal.home"))
+    if not account_id.isdecimal():
+        flash("Choose an active account to receive the loan funds.", "danger")
+        return redirect(url_for("customer_portal.home"))
 
     conn = get_db()
-    customer = conn.execute(
-        "SELECT CustomerID FROM CUSTOMER WHERE lower(Email)=lower(?)",
-        (session["user"]["email"],),
-    ).fetchone()
-    if not customer:
-        conn.close()
-        flash("A verified customer profile is required to request a loan.", "danger")
-        return redirect(url_for("customer_portal.home"))
     try:
+        conn.execute("BEGIN IMMEDIATE")
+        customer = conn.execute(
+            "SELECT CustomerID FROM CUSTOMER WHERE lower(Email)=lower(?)",
+            (session["user"]["email"],),
+        ).fetchone()
+        if not customer:
+            conn.rollback()
+            flash("A verified customer profile is required to request a loan.", "danger")
+            return redirect(url_for("customer_portal.home"))
+        account = conn.execute(
+            """SELECT AccountID FROM ACCOUNT
+               WHERE AccountID=? AND CustomerID=? AND Status='Active'""",
+            (int(account_id), customer["CustomerID"]),
+        ).fetchone()
+        if not account:
+            conn.rollback()
+            flash("Choose an active account linked to your customer profile.", "danger")
+            return redirect(url_for("customer_portal.home"))
         conn.execute(
-            """INSERT INTO LOAN (CustomerID, LoanType, Amount, InterestRate, StartDate, Status)
-               VALUES (?, ?, ?, 1.0, date('now'), 'Pending')""",
-            (customer["CustomerID"], loan_type, float(amount)),
+            """INSERT INTO LOAN
+               (CustomerID, LoanType, Amount, InterestRate, StartDate, Status, DisbursementAccountID)
+               VALUES (?, ?, ?, 1.0, date('now'), 'Pending', ?)""",
+            (customer["CustomerID"], loan_type, float(amount), account["AccountID"]),
         )
         conn.commit()
         flash("Loan request submitted for staff review. The displayed rate is provisional.", "success")

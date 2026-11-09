@@ -5,7 +5,7 @@ from functools import wraps
 
 from flask import Blueprint, flash, redirect, render_template, request, session, url_for
 
-from database import get_db
+from database import TRANSFER_FEE, get_db
 
 customer_portal_bp = Blueprint("customer_portal", __name__)
 CENT = Decimal("0.01")
@@ -91,6 +91,7 @@ def home():
         loans=loans,
         loan_summary=loan_summary,
         total_account_balance=total_account_balance,
+        transfer_fee=TRANSFER_FEE,
     )
 
 
@@ -182,11 +183,13 @@ def transfer():
             flash("Both accounts must be active to transfer funds.", "danger")
             return redirect(url_for("customer_portal.home"))
         source_balance = Decimal(str(source["Balance"]))
-        if amount > source_balance:
+        if amount + TRANSFER_FEE > source_balance:
             conn.rollback()
-            flash("Insufficient balance.", "danger")
+            flash(f"Insufficient balance for this transfer plus the MAD {TRANSFER_FEE:.2f} fee.", "danger")
             return redirect(url_for("customer_portal.home"))
 
+        source_after_transfer = source_balance - amount
+        source_after_fee = source_after_transfer - TRANSFER_FEE
         conn.execute(
             """INSERT INTO TRANSACTIONS
                (AccountID, TransactionType, Amount, Description, BalanceAfter)
@@ -194,7 +197,17 @@ def transfer():
             (
                 source["AccountID"], float(amount),
                 f"Transfer to {destination['AccountNumber']}",
-                float(source_balance - amount),
+                float(source_after_transfer),
+            ),
+        )
+        conn.execute(
+            """INSERT INTO TRANSACTIONS
+               (AccountID, TransactionType, Amount, Description, BalanceAfter)
+               VALUES (?, 'Withdrawal', ?, ?, ?)""",
+            (
+                source["AccountID"], float(TRANSFER_FEE),
+                f"Bank transfer fee for {destination['AccountNumber']}",
+                float(source_after_fee),
             ),
         )
         conn.execute(
@@ -208,7 +221,10 @@ def transfer():
             ),
         )
         conn.commit()
-        flash(f"MAD {amount:,.2f} transferred successfully.", "success")
+        flash(
+            f"MAD {amount:,.2f} transferred. MAD {TRANSFER_FEE:,.2f} bank fee charged.",
+            "success",
+        )
     except Exception as error:
         conn.rollback()
         flash(f"Could not complete transfer: {error}", "danger")

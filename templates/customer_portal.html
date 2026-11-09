@@ -97,6 +97,7 @@
       <div class="col-lg-6">
         <form method="POST" action="{{ url_for('customer_portal.transfer') }}">
           <h6 class="fw-semibold">Transfer to an AkumaBank account</h6>
+          <p class="form-text">A MAD {{ "{:,.2f}".format(transfer_fee) }} fee is deducted from the source account for each transfer.</p>
           <div class="mb-3">
             <label class="form-label" for="transfer_source">From my account</label>
             <select class="form-select" id="transfer_source" name="from_account_id" required>

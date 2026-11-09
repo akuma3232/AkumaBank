@@ -8,7 +8,7 @@ AkumaBank is a Flask banking management application configured for Morocco. It u
 - Public customer signup with personal details and owner/admin approval.
 - Customer password reset requests reviewed by owners/admins, with a one-time temporary password and forced password change.
 - Customer portal for viewing linked accounts and recent transactions.
-- Customer withdrawals and transfers, limited to the customer's own accounts.
+- Customer withdrawals and transfers, limited to the customer's own accounts, with a MAD 10 transfer fee.
 - Customer loan requests reviewed by staff through the loan management page.
 - Deposits and bank-account creation restricted to owners and admins.
 - Profile picture uploads, including animated GIFs.

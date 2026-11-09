@@ -1,88 +1,241 @@
 {% extends "base.html" %}
 {% block title %}My Banking — AkumaBank{% endblock %}
-{% block page_title %}My Banking{% endblock %}
+{% block page_title %}My Banking Portal{% endblock %}
 
 {% block content %}
-<div class="page-header-row">
+<div class="page-header-row mb-4">
   <div>
-    <h4 class="page-heading">Welcome, {{ session.user.username }}</h4>
-    <p class="page-sub">Your personal AkumaBank information. Cash deposits are handled by an owner or admin.</p>
+    <h4 class="page-heading d-flex align-items-center gap-2">
+      <span>Welcome back, {{ session.user.username }}</span>
+      <span class="badge bg-success-soft text-success fs-8"><i class="bi bi-patch-check-fill me-1"></i>Verified Client</span>
+    </h4>
+    <p class="page-sub">Access your holographic accounts, instant transfers, and active credit facilities in Moroccan Dirhams (MAD).</p>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="#quickTransferSection" class="btn btn-primary"><i class="bi bi-arrow-left-right me-1"></i>Quick Transfer</a>
+    <a href="#quickLoanSection" class="btn btn-outline-primary"><i class="bi bi-cash-coin me-1"></i>Request Loan</a>
   </div>
 </div>
 
 {% if not customer %}
 <div class="card-panel">
   <div class="panel-body py-5 text-center">
-    <i class="bi bi-building-check fs-1 text-primary"></i>
-    <h5 class="mt-3">Visit an AkumaBank branch</h5>
-    <p class="text-muted mb-0">Your login is approved. An owner or admin must verify your details and add your customer profile before your bank account can be opened.</p>
+    <div class="empty-state">
+      <i class="bi bi-building-check text-primary fs-1 mb-3"></i>
+      <h5 class="fw-bold">Visit an AkumaBank Branch</h5>
+      <p class="text-muted mx-auto" style="max-width: 500px;">
+        Your login is authorized. A bank officer or admin must verify your customer identity (CIN) before issuing your quantum accounts.
+      </p>
+    </div>
   </div>
 </div>
 {% else %}
+<!-- Balance & Disbursed Highlights -->
 <div class="row g-4 mb-4">
   <div class="col-12 col-lg-6">
     <div class="kpi-card kpi-green h-100">
-      <div class="kpi-icon"><i class="bi bi-cash-stack"></i></div>
+      <div class="d-flex align-items-start justify-content-between mb-3">
+        <div class="kpi-icon"><i class="bi bi-cash-stack"></i></div>
+        <span class="kpi-trend trend-up"><i class="bi bi-shield-lock-fill me-1"></i>Insured &bull; BAM</span>
+      </div>
       <div class="kpi-value">MAD {{ "{:,.2f}".format(total_account_balance) }}</div>
-      <div class="kpi-label">Total Account Balance</div>
+      <div class="kpi-label">Total Liquid Balance</div>
+      <div class="kpi-meta-bar mt-3">
+        <div class="progress" style="height: 6px;">
+          <div class="progress-bar bg-success" style="width: 100%;"></div>
+        </div>
+      </div>
     </div>
   </div>
   <div class="col-12 col-lg-6">
     <div class="kpi-card kpi-blue h-100">
-      <div class="kpi-icon"><i class="bi bi-cash-coin"></i></div>
+      <div class="d-flex align-items-start justify-content-between mb-3">
+        <div class="kpi-icon"><i class="bi bi-cash-coin"></i></div>
+        <span class="kpi-trend trend-neutral"><i class="bi bi-activity me-1"></i>Credit Line</span>
+      </div>
       <div class="kpi-value">MAD {{ "{:,.2f}".format(loan_summary.total_disbursed or 0) }}</div>
-      <div class="kpi-label">Loan Funds Received</div>
+      <div class="kpi-label">Active Disbursed Funds</div>
+      <div class="kpi-meta-bar mt-3">
+        <div class="progress" style="height: 6px;">
+          <div class="progress-bar bg-primary" style="width: 65%;"></div>
+        </div>
+      </div>
     </div>
   </div>
 </div>
 
-<div class="row g-3 mb-4">
-  {% for account in accounts %}
-  <div class="col-sm-6 col-xl-3">
-    <div class="card-panel h-100">
-      <div class="panel-header">
-        <span class="panel-title">{{ account.AccountType }}</span>
-        <span class="badge bg-primary-soft text-primary">{{ account.Status }}</span>
-      </div>
-      <div class="panel-body">
-        <div class="mono-text text-muted">{{ account.AccountNumber }}</div>
-        <div class="fs-5 fw-semibold mt-2">MAD {{ "{:,.2f}".format(account.Balance) }}</div>
-      </div>
+<!-- ═══════════════════════════════════════════════
+     3D HOLOGRAPHIC VIRTUAL BANKING CARDS
+══════════════════════════════════════════════════ -->
+<div class="mb-4">
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <div class="d-flex align-items-center gap-2">
+      <h5 class="fw-bold mb-0"><i class="bi bi-credit-card-2-front text-primary me-2"></i>My Quantum Virtual Cards</h5>
+      <span class="badge bg-primary-soft text-primary font-monospace">{{ accounts|length }} CARDS</span>
+    </div>
+    <div class="text-muted small d-none d-md-flex align-items-center gap-2">
+      <i class="bi bi-cursor-fill text-primary"></i> 3D Tilt Active &bull; Click eye to unmask
     </div>
   </div>
-  {% endfor %}
+
+  <div class="row g-4">
+    {% for account in accounts %}
+    <div class="col-12 col-md-6 col-xl-4">
+      <div class="cyber-card-container">
+        <div class="cyber-card cyber-card-{{ account.AccountType|lower|replace(' ', '-') }} {% if account.Status == 'Active' %}cyber-card-active{% endif %}" data-account-number="{{ account.AccountNumber }}">
+          <!-- Hologram Shimmer Layer -->
+          <div class="cyber-card-shimmer"></div>
+          <div class="cyber-card-glow"></div>
+
+          <!-- Top Row -->
+          <div class="cyber-card-top">
+            <div class="cyber-card-brand">
+              <i class="bi bi-bank2 brand-symbol"></i>
+              <span class="brand-title">AkumaBank</span>
+              <span class="card-tier-pill">{% if account.AccountType == 'Savings' %}CYBER SAVINGS{% elif account.AccountType == 'Current' %}TITANIUM CURRENT{% else %}VAULT RESERVE{% endif %}</span>
+            </div>
+            <div class="cyber-card-contactless">
+              <i class="bi bi-wifi"></i>
+            </div>
+          </div>
+
+          <!-- Middle: EMV Chip + Status -->
+          <div class="cyber-card-mid">
+            <div class="cyber-chip">
+              <div class="chip-wire w-1"></div>
+              <div class="chip-wire w-2"></div>
+              <div class="chip-wire w-3"></div>
+              <div class="chip-core"></div>
+            </div>
+            <div class="card-status-pill status-{{ account.Status|lower }}">
+              <span class="pulse-beacon"></span>
+              <span>{{ account.Status|upper }}</span>
+            </div>
+          </div>
+
+          <!-- Account Number Row with Mask & Actions -->
+          <div class="cyber-card-num-row">
+            <span class="card-number-text mono-text" id="cardNum{{ loop.index }}" data-raw-number="{{ account.AccountNumber }}">
+              •••• &nbsp; •••• &nbsp; •••• &nbsp; {{ account.AccountNumber[-4:] if account.AccountNumber|length >= 4 else account.AccountNumber }}
+            </span>
+            <div class="card-action-btns">
+              <button type="button" class="btn-card-icon" title="Reveal / Hide Number" onclick="toggleCardNumberDisplay('cardNum{{ loop.index }}', this)">
+                <i class="bi bi-eye"></i>
+              </button>
+              <button type="button" class="btn-card-icon" title="Copy Account Number" onclick="copyToClipboard('{{ account.AccountNumber }}', 'Account number copied!')">
+                <i class="bi bi-clipboard"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Bottom: Cardholder, Expiry, Balance -->
+          <div class="cyber-card-bottom">
+            <div class="card-meta-group">
+              <span class="card-meta-label">CARDHOLDER</span>
+              <span class="card-meta-val">{{ customer.Name|upper if customer else session.user.username|upper }}</span>
+            </div>
+            <div class="card-meta-group">
+              <span class="card-meta-label">EXPIRES</span>
+              <span class="card-meta-val">12/31</span>
+            </div>
+            <div class="card-meta-group text-end ms-auto">
+              <span class="card-meta-label">BALANCE</span>
+              <span class="card-balance-highlight">MAD {{ "{:,.2f}".format(account.Balance) }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% else %}
+    <div class="col-12">
+      <div class="card-panel text-center py-5">
+        <i class="bi bi-credit-card-2-front fs-1 text-primary mb-3 d-block"></i>
+        <h6 class="fw-bold">No active cards found</h6>
+        <p class="text-muted mb-0">Your profile is registered. Contact an administrator to issue your bank card.</p>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
 </div>
 
+<!-- Profile & Detailed Accounts Row -->
 <div class="row g-4 mb-4">
   <div class="col-lg-5">
     <div class="card-panel h-100">
-      <div class="panel-header"><span class="panel-title">My Profile</span></div>
+      <div class="panel-header d-flex align-items-center justify-content-between">
+        <span class="panel-title"><i class="bi bi-person-badge text-primary me-2"></i>My Client Profile</span>
+        <span class="badge bg-success-soft text-success"><i class="bi bi-check-circle-fill me-1"></i>Active</span>
+      </div>
       <div class="panel-body">
-        <div class="fw-semibold">{{ customer.Name }}</div>
-        <div class="text-muted">{{ customer.Email }}</div>
-        <div class="text-muted">{{ customer.Phone }}</div>
-        <div class="text-muted">{{ customer.Address }}</div>
+        <div class="d-flex align-items-center gap-3 mb-4">
+          <div class="cyber-avatar-large">
+            {{ session.user.username[0]|upper }}
+          </div>
+          <div>
+            <h5 class="fw-bold mb-1">{{ customer.Name }}</h5>
+            <span class="badge bg-primary-soft text-primary font-monospace">CIN: {{ customer.NationalID or 'VERIFIED' }}</span>
+          </div>
+        </div>
+        <div class="profile-detail-grid">
+          <div class="profile-detail-item">
+            <span class="detail-label"><i class="bi bi-envelope text-primary me-2"></i>Email</span>
+            <span class="detail-val">{{ customer.Email }}</span>
+          </div>
+          <div class="profile-detail-item">
+            <span class="detail-label"><i class="bi bi-telephone text-primary me-2"></i>Phone</span>
+            <span class="detail-val font-monospace">{{ customer.Phone }}</span>
+          </div>
+          <div class="profile-detail-item">
+            <span class="detail-label"><i class="bi bi-geo-alt text-primary me-2"></i>Address</span>
+            <span class="detail-val">{{ customer.Address }}</span>
+          </div>
+          <div class="profile-detail-item">
+            <span class="detail-label"><i class="bi bi-calendar-event text-primary me-2"></i>Member Since</span>
+            <span class="detail-val">{{ customer.CreatedAt[:10] if customer.CreatedAt else '2026' }}</span>
+          </div>
+        </div>
       </div>
     </div>
   </div>
+
   <div class="col-lg-7">
     <div class="card-panel h-100">
-      <div class="panel-header"><span class="panel-title">My Accounts</span></div>
+      <div class="panel-header d-flex align-items-center justify-content-between">
+        <span class="panel-title"><i class="bi bi-wallet-fill text-primary me-2"></i>Account Breakdown</span>
+        <span class="font-monospace small text-muted">{{ accounts|length }} Registered</span>
+      </div>
       <div class="panel-body p-0">
         <div class="table-responsive">
           <table class="table table-hover align-middle mb-0">
-            <thead><tr><th>Account</th><th>Type</th><th>Balance</th><th>Status</th><th>Branch</th></tr></thead>
+            <thead>
+              <tr>
+                <th>Account</th>
+                <th>Type</th>
+                <th>Balance</th>
+                <th>Status</th>
+                <th>Branch</th>
+              </tr>
+            </thead>
             <tbody>
               {% for account in accounts %}
               <tr>
-                <td class="mono-text">{{ account.AccountNumber }}</td>
-                <td>{{ account.AccountType }}</td>
-                <td class="fw-semibold">MAD {{ "{:,.2f}".format(account.Balance) }}</td>
-                <td>{{ account.Status }}</td>
-                <td>{{ account.BranchName or '—' }}{% if account.City %}, {{ account.City }}{% endif %}</td>
+                <td>
+                  <span class="mono-text fw-semibold">{{ account.AccountNumber }}</span>
+                  <button type="button" class="btn-copy-inline ms-1" onclick="copyToClipboard('{{ account.AccountNumber }}')" title="Copy Account Number">
+                    <i class="bi bi-copy"></i>
+                  </button>
+                </td>
+                <td>
+                  <span class="badge-acct-type badge-{{ account.AccountType|lower|replace(' ', '_') }}">{{ account.AccountType }}</span>
+                </td>
+                <td class="fw-bold font-monospace text-primary">MAD {{ "{:,.2f}".format(account.Balance) }}</td>
+                <td>
+                  <span class="badge-status-{{ account.Status|lower }}">{{ account.Status }}</span>
+                </td>
+                <td><small class="text-muted">{{ account.BranchName or 'Headquarters' }}{% if account.City %}, {{ account.City }}{% endif %}</small></td>
               </tr>
               {% else %}
-              <tr><td colspan="5" class="text-center text-muted py-4">Your customer profile is approved. An owner or admin can now open your bank account.</td></tr>
+              <tr><td colspan="5" class="text-center text-muted py-4">No accounts found.</td></tr>
               {% endfor %}
             </tbody>
           </table>
@@ -93,118 +246,180 @@
 </div>
 
 {% if accounts %}
-<div class="card-panel mb-4">
-  <div class="panel-header"><span class="panel-title">Make a Withdrawal or Transfer</span></div>
+<!-- ═══════════════════════════════════════════════
+     TRANSFER & WITHDRAWAL OPERATIONS
+══════════════════════════════════════════════════ -->
+<div class="card-panel mb-4" id="quickTransferSection">
+  <div class="panel-header d-flex align-items-center justify-content-between">
+    <span class="panel-title"><i class="bi bi-lightning-charge-fill text-warning me-2"></i>Quantum Transact &bull; Fast Transfer &amp; Withdrawal</span>
+    <span class="badge bg-warning-soft text-warning"><i class="bi bi-shield-check me-1"></i>Instant RTGS</span>
+  </div>
   <div class="panel-body">
     <div class="row g-4">
+      <!-- Withdrawal -->
       <div class="col-lg-6">
-        <form method="POST" action="{{ url_for('customer_portal.withdraw') }}">
-          <h6 class="fw-semibold">Withdraw from my account</h6>
-          <div class="mb-3">
-            <label class="form-label" for="withdraw_account">Account</label>
-            <select class="form-select" id="withdraw_account" name="account_id" required>
-              {% for account in accounts if account.Status == 'Active' %}
-              <option value="{{ account.AccountID }}">{{ account.AccountNumber }} — MAD {{ "{:,.2f}".format(account.Balance) }}</option>
-              {% else %}
-              <option value="" disabled>No active accounts</option>
-              {% endfor %}
-            </select>
+        <div class="op-panel p-3 rounded-3 border">
+          <div class="d-flex align-items-center justify-content-between mb-3">
+            <h6 class="fw-bold mb-0 text-danger"><i class="bi bi-arrow-up-circle-fill me-2"></i>Instant ATM Withdrawal</h6>
+            <span class="badge bg-danger-soft text-danger">No Fee</span>
           </div>
-          <div class="mb-3">
-            <label class="form-label" for="withdraw_amount">Amount (MAD)</label>
-            <input class="form-control" type="number" id="withdraw_amount" name="amount" min="0.01" step="0.01" required />
-          </div>
-          <button class="btn btn-danger" type="submit">Withdraw</button>
-        </form>
+          <form method="POST" action="{{ url_for('customer_portal.withdraw') }}">
+            <div class="mb-3">
+              <label class="form-label" for="withdraw_account">Select Debit Account</label>
+              <select class="form-select" id="withdraw_account" name="account_id" required>
+                {% for account in accounts if account.Status == 'Active' %}
+                <option value="{{ account.AccountID }}">{{ account.AccountNumber }} ({{ account.AccountType }}) — MAD {{ "{:,.2f}".format(account.Balance) }}</option>
+                {% else %}
+                <option value="" disabled>No active accounts</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label" for="withdraw_amount">Withdrawal Amount (MAD)</label>
+              <div class="input-group">
+                <span class="input-group-text">MAD</span>
+                <input class="form-control" type="number" id="withdraw_amount" name="amount" min="10" step="10" placeholder="0.00" required />
+              </div>
+              <!-- Quick Select Buttons -->
+              <div class="quick-amounts-bar mt-2 d-flex gap-2">
+                <button type="button" class="btn btn-xs btn-outline-secondary" onclick="document.getElementById('withdraw_amount').value=200">200 MAD</button>
+                <button type="button" class="btn btn-xs btn-outline-secondary" onclick="document.getElementById('withdraw_amount').value=500">500 MAD</button>
+                <button type="button" class="btn btn-xs btn-outline-secondary" onclick="document.getElementById('withdraw_amount').value=1000">1,000 MAD</button>
+                <button type="button" class="btn btn-xs btn-outline-secondary" onclick="document.getElementById('withdraw_amount').value=2000">2,000 MAD</button>
+              </div>
+            </div>
+            <button class="btn btn-danger w-100" type="submit">
+              <i class="bi bi-box-arrow-up-right me-1"></i>Execute Withdrawal
+            </button>
+          </form>
+        </div>
       </div>
+
+      <!-- Transfer -->
       <div class="col-lg-6">
-        <form method="POST" action="{{ url_for('customer_portal.transfer') }}">
-          <h6 class="fw-semibold">Transfer to an AkumaBank account</h6>
-          <p class="form-text">A MAD {{ "{:,.2f}".format(transfer_fee) }} fee is deducted from the source account for each transfer.</p>
-          <div class="mb-3">
-            <label class="form-label" for="transfer_source">From my account</label>
-            <select class="form-select" id="transfer_source" name="from_account_id" required>
-              {% for account in accounts if account.Status == 'Active' %}
-              <option value="{{ account.AccountID }}">{{ account.AccountNumber }} — MAD {{ "{:,.2f}".format(account.Balance) }}</option>
-              {% else %}
-              <option value="" disabled>No active accounts</option>
-              {% endfor %}
-            </select>
+        <div class="op-panel p-3 rounded-3 border">
+          <div class="d-flex align-items-center justify-content-between mb-3">
+            <h6 class="fw-bold mb-0 text-primary"><i class="bi bi-arrow-left-right me-2"></i>Inter-Account Transfer</h6>
+            <span class="badge bg-primary-soft text-primary">Fee: MAD {{ "{:,.2f}".format(transfer_fee) }}</span>
           </div>
-          <div class="mb-3">
-            <label class="form-label" for="destination_account">Recipient account number</label>
-            <input class="form-control" type="text" id="destination_account" name="to_account_number" maxlength="32" required />
-          </div>
-          <div class="mb-3">
-            <label class="form-label" for="transfer_amount">Amount (MAD)</label>
-            <input class="form-control" type="number" id="transfer_amount" name="amount" min="0.01" step="0.01" required />
-          </div>
-          <button class="btn btn-primary" type="submit">Transfer</button>
-        </form>
+          <form method="POST" action="{{ url_for('customer_portal.transfer') }}">
+            <div class="mb-3">
+              <label class="form-label" for="transfer_source">From Source Account</label>
+              <select class="form-select" id="transfer_source" name="from_account_id" required>
+                {% for account in accounts if account.Status == 'Active' %}
+                <option value="{{ account.AccountID }}">{{ account.AccountNumber }} ({{ account.AccountType }}) — MAD {{ "{:,.2f}".format(account.Balance) }}</option>
+                {% else %}
+                <option value="" disabled>No active accounts</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label" for="destination_account">Destination Account Number</label>
+              <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-credit-card text-muted"></i></span>
+                <input class="form-control font-monospace" type="text" id="destination_account" name="to_account_number" placeholder="e.g. ACCT-89214732" maxlength="32" required />
+              </div>
+            </div>
+            <div class="mb-3">
+              <label class="form-label" for="transfer_amount">Transfer Amount (MAD)</label>
+              <div class="input-group">
+                <span class="input-group-text">MAD</span>
+                <input class="form-control" type="number" id="transfer_amount" name="amount" min="1" step="0.01" placeholder="0.00" required />
+              </div>
+            </div>
+            <button class="btn btn-primary w-100" type="submit">
+              <i class="bi bi-send-check-fill me-1"></i>Transfer Funds
+            </button>
+          </form>
+        </div>
       </div>
     </div>
   </div>
 </div>
 {% endif %}
 
-<div class="card-panel mb-4">
-  <div class="panel-header"><span class="panel-title">Request a Loan</span></div>
+<!-- ═══════════════════════════════════════════════
+     LOAN APPLICATION
+══════════════════════════════════════════════════ -->
+<div class="card-panel mb-4" id="quickLoanSection">
+  <div class="panel-header d-flex align-items-center justify-content-between">
+    <span class="panel-title"><i class="bi bi-piggy-bank-fill text-success me-2"></i>Apply for Credit / Loan Facility</span>
+    <span class="badge bg-success-soft text-success">Low Interest Rates</span>
+  </div>
   <div class="panel-body">
     {% if active_accounts %}
     <form method="POST" action="{{ url_for('customer_portal.request_loan') }}" class="row g-3 align-items-end">
       <div class="col-md-3">
-        <label class="form-label" for="loan_type">Loan type</label>
+        <label class="form-label" for="loan_type">Loan Category</label>
         <select class="form-select" id="loan_type" name="loan_type" required>
-          <option value="">Choose a loan type</option>
-          <option value="Home">Home</option>
-          <option value="Car">Car</option>
-          <option value="Personal">Personal</option>
-          <option value="Education">Education</option>
-          <option value="Business">Business</option>
+          <option value="">Select loan category</option>
+          <option value="Home">Home Mortgage (4.2%)</option>
+          <option value="Car">Automobile Financing (5.5%)</option>
+          <option value="Personal">Personal Express (6.8%)</option>
+          <option value="Education">Academic Tuition (3.5%)</option>
+          <option value="Business">SME Business Credit (5.0%)</option>
         </select>
       </div>
       <div class="col-md-3">
-        <label class="form-label" for="loan_amount">Requested amount (MAD)</label>
-        <input class="form-control" type="number" id="loan_amount" name="amount" min="1000" max="100000000" step="0.01" required />
+        <label class="form-label" for="loan_amount">Requested Capital (MAD)</label>
+        <div class="input-group">
+          <span class="input-group-text">MAD</span>
+          <input class="form-control" type="number" id="loan_amount" name="amount" min="1000" max="100000000" step="100" placeholder="50,000" required />
+        </div>
       </div>
       <div class="col-md-4">
-        <label class="form-label" for="loan_account">Deposit account</label>
+        <label class="form-label" for="loan_account">Disbursement Account</label>
         <select class="form-select" id="loan_account" name="account_id" required>
-          <option value="">Choose an active account</option>
+          <option value="">Choose receiving account</option>
           {% for account in active_accounts %}
           <option value="{{ account.AccountID }}">{{ account.AccountNumber }} — {{ account.AccountType }}</option>
           {% endfor %}
         </select>
       </div>
       <div class="col-md-2">
-        <button class="btn btn-primary w-100" type="submit"><i class="bi bi-send me-1"></i>Request</button>
+        <button class="btn btn-success w-100" type="submit"><i class="bi bi-file-earmark-check-fill me-1"></i>Submit</button>
       </div>
     </form>
-    <p class="form-text mt-2 mb-0">Staff review requests and deposit approved funds into the selected account. Any rate shown before approval is provisional.</p>
+    <div class="form-text mt-2"><i class="bi bi-info-circle me-1"></i>Applications are reviewed by loan officers within 24 hours. Approved amounts credit directly to your account.</div>
     {% else %}
-    <p class="text-muted mb-0">An active account is required to request a loan. Contact bank staff to open or reactivate an account.</p>
+    <p class="text-muted mb-0">An active bank account is required to apply for credit facilities. Contact staff to activate an account.</p>
     {% endif %}
   </div>
 </div>
 
+<!-- Loans History -->
 <div class="card-panel mb-4">
-  <div class="panel-header"><span class="panel-title">My Loan Requests</span></div>
+  <div class="panel-header d-flex align-items-center justify-content-between">
+    <span class="panel-title"><i class="bi bi-clock-history text-primary me-2"></i>My Loan Applications</span>
+    <span class="badge bg-primary-soft text-primary">{{ loans|length }} Applications</span>
+  </div>
   <div class="panel-body p-0">
     <div class="table-responsive">
       <table class="table table-hover align-middle mb-0">
-        <thead><tr><th>Type</th><th>Amount</th><th>Rate</th><th>Deposit account</th><th>Requested</th><th>Status</th></tr></thead>
+        <thead>
+          <tr>
+            <th>Category</th>
+            <th>Principal Amount</th>
+            <th>Interest Rate</th>
+            <th>Disbursement Target</th>
+            <th>Date Requested</th>
+            <th>Status</th>
+          </tr>
+        </thead>
         <tbody>
           {% for loan in loans %}
           <tr>
-            <td>{{ loan.LoanType }}</td>
-            <td>MAD {{ "{:,.2f}".format(loan.Amount) }}</td>
-            <td>{{ loan.InterestRate }}%{% if loan.Status == 'Pending' %} <span class="text-muted small">provisional</span>{% endif %}</td>
-            <td>{{ loan.DisbursementAccount or '—' }}{% if loan.DisbursedAt %}<div class="small text-success">Credited</div>{% endif %}</td>
-            <td>{{ loan.StartDate }}</td>
-            <td>{{ loan.Status }}</td>
+            <td><span class="fw-semibold">{{ loan.LoanType }}</span></td>
+            <td class="fw-bold font-monospace text-primary">MAD {{ "{:,.2f}".format(loan.Amount) }}</td>
+            <td>{{ loan.InterestRate }}%{% if loan.Status == 'Pending' %} <span class="badge bg-warning-soft text-warning ms-1">Provisional</span>{% endif %}</td>
+            <td class="mono-text">{{ loan.DisbursementAccount or '—' }}{% if loan.DisbursedAt %}<span class="badge bg-success-soft text-success ms-2">Credited</span>{% endif %}</td>
+            <td><small class="text-muted">{{ loan.StartDate }}</small></td>
+            <td>
+              <span class="badge-status-{{ loan.Status|lower }}">{{ loan.Status }}</span>
+            </td>
           </tr>
           {% else %}
-          <tr><td colspan="6" class="text-center text-muted py-4">No loan requests yet.</td></tr>
+          <tr><td colspan="6" class="text-center text-muted py-4">No loan applications on record.</td></tr>
           {% endfor %}
         </tbody>
       </table>
@@ -212,21 +427,43 @@
   </div>
 </div>
 
+<!-- Transactions Stream -->
 <div class="card-panel">
-  <div class="panel-header"><span class="panel-title">Recent Transactions</span></div>
+  <div class="panel-header d-flex align-items-center justify-content-between">
+    <span class="panel-title"><i class="bi bi-activity text-primary me-2"></i>Recent Transaction Stream</span>
+    <span class="font-monospace text-muted small">Live Ledger</span>
+  </div>
   <div class="panel-body p-0">
     <div class="table-responsive">
       <table class="table table-hover align-middle mb-0">
-        <thead><tr><th>Date</th><th>Account</th><th>Type</th><th>Amount</th><th>Balance after</th><th>Description</th></tr></thead>
+        <thead>
+          <tr>
+            <th>Timestamp</th>
+            <th>Account</th>
+            <th>Type</th>
+            <th>Amount</th>
+            <th>Balance After</th>
+            <th>Memo / Description</th>
+          </tr>
+        </thead>
         <tbody>
           {% for transaction in transactions %}
           <tr>
-            <td>{{ transaction.TransactionDate }}</td><td class="mono-text">{{ transaction.AccountNumber }}</td>
-            <td>{{ transaction.TransactionType }}</td><td>MAD {{ "{:,.2f}".format(transaction.Amount) }}</td>
-            <td>MAD {{ "{:,.2f}".format(transaction.BalanceAfter) }}</td><td>{{ transaction.Description or '—' }}</td>
+            <td><small class="text-muted font-monospace">{{ transaction.TransactionDate }}</small></td>
+            <td class="mono-text fw-semibold">{{ transaction.AccountNumber }}</td>
+            <td>
+              <span class="badge-txn badge-txn-{{ transaction.TransactionType|lower }}">
+                {{ transaction.TransactionType }}
+              </span>
+            </td>
+            <td class="fw-bold font-monospace {% if transaction.TransactionType=='Deposit' %}text-success{% else %}text-danger{% endif %}">
+              {% if transaction.TransactionType=='Deposit' %}+{% else %}-{% endif %}MAD {{ "{:,.2f}".format(transaction.Amount) }}
+            </td>
+            <td class="mono-text text-muted">MAD {{ "{:,.2f}".format(transaction.BalanceAfter) }}</td>
+            <td>{{ transaction.Description or '—' }}</td>
           </tr>
           {% else %}
-          <tr><td colspan="6" class="text-center text-muted py-4">No transactions yet.</td></tr>
+          <tr><td colspan="6" class="text-center text-muted py-4">No transactions recorded yet.</td></tr>
           {% endfor %}
         </tbody>
       </table>

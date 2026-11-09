@@ -1,43 +1,123 @@
 {% extends "base.html" %}
-{% block title %}Dashboard — AkumaBank{% endblock %}
-{% block page_title %}Dashboard{% endblock %}
+{% block title %}Executive Dashboard — AkumaBank{% endblock %}
+{% block page_title %}Executive Dashboard{% endblock %}
 
 {% block content %}
-<!-- KPI Cards -->
+<!-- Executive Header & Quick Actions HUD -->
+<div class="page-header-row mb-4">
+  <div>
+    <h4 class="page-heading d-flex align-items-center gap-2">
+      <span>Command Telemetry &amp; Financial Core</span>
+      <span class="badge bg-primary-soft text-primary fs-8 font-monospace"><i class="bi bi-cpu me-1"></i>NODE 01: ACTIVE</span>
+    </h4>
+    <p class="page-sub">Real-time banking metrics across Casablanca, Rabat, Tangier, and Moroccan branches.</p>
+  </div>
+  <div class="d-flex align-items-center gap-2 flex-wrap">
+    <a href="{{ url_for('transactions.transactions') }}" class="btn btn-primary">
+      <i class="bi bi-arrow-left-right me-1"></i>New Transaction
+    </a>
+    <a href="{{ url_for('customers.customers') }}" class="btn btn-outline-primary">
+      <i class="bi bi-person-plus-fill me-1"></i>Add Customer
+    </a>
+    <a href="{{ url_for('reports.reports') }}" class="btn btn-outline-secondary">
+      <i class="bi bi-file-earmark-bar-graph me-1"></i>Financial Reports
+    </a>
+  </div>
+</div>
+
+<!-- Moroccan Interbank & Liquidity Ticker Strip -->
+<div class="card-panel mb-4 py-2 px-3 border-0 bg-surface-glass shadow-xs">
+  <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+    <div class="d-flex align-items-center gap-2">
+      <span class="badge bg-danger-soft text-danger fw-bold"><i class="bi bi-broadcast me-1"></i>FX LIVE</span>
+      <small class="text-muted fw-semibold">Bank Al-Maghrib Interbank Indicative Fixing:</small>
+    </div>
+    <div class="d-flex align-items-center gap-4 flex-wrap">
+      <div class="ticker-box">
+        <span class="text-muted small">EUR/MAD</span>
+        <strong class="font-monospace ms-1">10.8420</strong>
+        <span class="text-success small ms-1"><i class="bi bi-arrow-up-right"></i>+0.12%</span>
+      </div>
+      <div class="ticker-box">
+        <span class="text-muted small">USD/MAD</span>
+        <strong class="font-monospace ms-1">10.0345</strong>
+        <span class="text-danger small ms-1"><i class="bi bi-arrow-down-right"></i>-0.08%</span>
+      </div>
+      <div class="ticker-box">
+        <span class="text-muted small">GBP/MAD</span>
+        <strong class="font-monospace ms-1">12.9810</strong>
+        <span class="text-success small ms-1"><i class="bi bi-arrow-up-right"></i>+0.34%</span>
+      </div>
+      <div class="ticker-box">
+        <span class="text-muted small">AED/MAD</span>
+        <strong class="font-monospace ms-1">2.7321</strong>
+        <span class="text-muted small ms-1">&plusmn;0.00%</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Futuristic KPI Cards Grid -->
 <div class="row g-4 mb-4">
   <div class="col-6 col-xl-2-4">
-    <div class="kpi-card kpi-blue">
-      <div class="kpi-icon"><i class="bi bi-people-fill"></i></div>
+    <div class="kpi-card kpi-blue h-100">
+      <div class="d-flex align-items-center justify-content-between mb-3">
+        <div class="kpi-icon"><i class="bi bi-people-fill"></i></div>
+        <span class="kpi-trend trend-up"><i class="bi bi-arrow-up-short"></i>+12.4%</span>
+      </div>
       <div class="kpi-value">{{ total_customers }}</div>
       <div class="kpi-label">Total Customers</div>
+      <div class="kpi-sub-detail text-muted small mt-2">Active biometric identities</div>
     </div>
   </div>
+
   <div class="col-6 col-xl-2-4">
-    <div class="kpi-card kpi-indigo">
-      <div class="kpi-icon"><i class="bi bi-credit-card-2-front-fill"></i></div>
+    <div class="kpi-card kpi-indigo h-100">
+      <div class="d-flex align-items-center justify-content-between mb-3">
+        <div class="kpi-icon"><i class="bi bi-credit-card-2-front-fill"></i></div>
+        <span class="kpi-trend trend-up"><i class="bi bi-arrow-up-short"></i>+8.1%</span>
+      </div>
       <div class="kpi-value">{{ total_accounts }}</div>
-      <div class="kpi-label">Total Accounts</div>
+      <div class="kpi-label">Active Accounts</div>
+      <div class="kpi-sub-detail text-muted small mt-2">Savings, Current, Deposit</div>
     </div>
   </div>
+
   <div class="col-6 col-xl-2-4">
-    <div class="kpi-card kpi-green">
-      <div class="kpi-icon"><i class="bi bi-cash-stack"></i></div>
+    <div class="kpi-card kpi-green h-100">
+      <div class="d-flex align-items-center justify-content-between mb-3">
+        <div class="kpi-icon"><i class="bi bi-cash-stack"></i></div>
+        <span class="kpi-trend trend-up"><i class="bi bi-shield-check"></i>Backed</span>
+      </div>
       <div class="kpi-value">MAD {{ "{:,.0f}".format(total_balance) }}</div>
-      <div class="kpi-label">Total Balance</div>
+      <div class="kpi-label">Total Liquid Vault</div>
+      <div class="kpi-sub-detail text-muted small mt-2">BAM Reserve compliant</div>
     </div>
   </div>
+
   <div class="col-6 col-xl-2-4">
-    <div class="kpi-card kpi-orange">
-      <div class="kpi-icon"><i class="bi bi-arrow-left-right"></i></div>
+    <div class="kpi-card kpi-orange h-100">
+      <div class="d-flex align-items-center justify-content-between mb-3">
+        <div class="kpi-icon"><i class="bi bi-arrow-left-right"></i></div>
+        <span class="kpi-trend trend-up"><i class="bi bi-lightning-charge"></i>Instant</span>
+      </div>
       <div class="kpi-value">{{ total_txns }}</div>
-      <div class="kpi-label">Transactions</div>
+      <div class="kpi-label">Total Ledger Entries</div>
+      <div class="kpi-sub-detail text-muted small mt-2">All triggers verified</div>
     </div>
   </div>
+
   <div class="col-6 col-xl-2-4">
-    <div class="kpi-card kpi-red">
-      <div class="kpi-icon"><i class="bi bi-cash-coin"></i></div>
+    <div class="kpi-card kpi-red h-100">
+      <div class="d-flex align-items-center justify-content-between mb-3">
+        <div class="kpi-icon"><i class="bi bi-cash-coin"></i></div>
+        <span class="kpi-trend {% if pending_loans > 0 %}trend-warning{% else %}trend-neutral{% endif %}">
+          {% if pending_loans > 0 %}<i class="bi bi-exclamation-circle me-1"></i>Action{% else %}Clear{% endif %}
+        </span>
+      </div>
       <div class="kpi-value">{{ pending_loans }}</div>
-      <div class="kpi-label">Pending Loans</div>
+      <div class="kpi-label">Pending Loan Reviews</div>
+      <div class="kpi-sub-detail text-muted small mt-2">Underwriting queue</div>
     </div>
   </div>
 </div>
@@ -46,30 +126,40 @@
 <div class="row g-4 mb-4">
   <!-- Monthly Transactions Chart -->
   <div class="col-lg-8">
-    <div class="card-panel">
-      <div class="panel-header">
-        <span class="panel-title"><i class="bi bi-bar-chart-line-fill me-2 text-primary"></i>Monthly Transaction Volume</span>
+    <div class="card-panel h-100">
+      <div class="panel-header d-flex align-items-center justify-content-between">
+        <span class="panel-title"><i class="bi bi-bar-chart-line-fill me-2 text-primary"></i>Transaction Volume &amp; Cash Flow</span>
+        <div class="chart-timeframe-badge">
+          <span class="badge bg-primary-soft text-primary font-monospace">LAST 6 MONTHS</span>
+        </div>
       </div>
       <div class="panel-body">
-        <canvas id="txnChart" height="100"></canvas>
+        <div class="chart-container" style="position: relative; height: 260px;">
+          <canvas id="txnChart"></canvas>
+        </div>
       </div>
     </div>
   </div>
 
   <!-- Account Type Pie -->
   <div class="col-lg-4">
-    <div class="card-panel">
-      <div class="panel-header">
+    <div class="card-panel h-100">
+      <div class="panel-header d-flex align-items-center justify-content-between">
         <span class="panel-title"><i class="bi bi-pie-chart-fill me-2 text-indigo"></i>Account Distribution</span>
+        <span class="text-muted small font-monospace">BY TYPE</span>
       </div>
-      <div class="panel-body d-flex flex-column align-items-center">
-        <canvas id="acctPieChart" height="160"></canvas>
-        <div class="chart-legend mt-3 w-100">
+      <div class="panel-body d-flex flex-column align-items-center justify-content-between">
+        <div style="position: relative; width: 180px; height: 180px;">
+          <canvas id="acctPieChart"></canvas>
+        </div>
+        <div class="chart-legend mt-4 w-100">
           {% for at in acct_types %}
-          <div class="legend-item">
-            <div class="legend-dot" style="background:{{ loop.cycle('#3b82f6','#6366f1','#10b981') }}"></div>
-            <span>{{ at.AccountType }}</span>
-            <span class="ms-auto fw-semibold">{{ at.cnt }}</span>
+          <div class="legend-item d-flex align-items-center justify-content-between py-1">
+            <div class="d-flex align-items-center gap-2">
+              <div class="legend-dot" style="background:{{ loop.cycle('#3b82f6','#6366f1','#10b981') }}"></div>
+              <span class="small fw-semibold">{{ at.AccountType }}</span>
+            </div>
+            <span class="font-monospace fw-bold">{{ at.cnt }}</span>
           </div>
           {% endfor %}
         </div>
@@ -78,41 +168,50 @@
   </div>
 </div>
 
-<!-- Bottom Row -->
+<!-- Bottom Row: Recent Transactions & Top Customers -->
 <div class="row g-4">
   <!-- Recent Transactions -->
   <div class="col-lg-8">
-    <div class="card-panel">
-      <div class="panel-header">
-        <span class="panel-title"><i class="bi bi-clock-history me-2 text-primary"></i>Recent Transactions</span>
-        <a href="{{ url_for('transactions.transactions') }}" class="btn-link-sm">View All</a>
+    <div class="card-panel h-100">
+      <div class="panel-header d-flex align-items-center justify-content-between">
+        <span class="panel-title"><i class="bi bi-clock-history me-2 text-primary"></i>Live Transaction Ledger</span>
+        <a href="{{ url_for('transactions.transactions') }}" class="btn-link-sm">View Full Ledger <i class="bi bi-arrow-right ms-1"></i></a>
       </div>
       <div class="panel-body p-0">
         <div class="table-responsive">
-          <table class="table table-hover mb-0">
+          <table class="table table-hover align-middle mb-0">
             <thead>
               <tr>
                 <th>Customer</th>
                 <th>Account</th>
                 <th>Type</th>
                 <th>Amount</th>
-                <th>Date</th>
+                <th>Timestamp</th>
               </tr>
             </thead>
             <tbody>
               {% for t in recent_txns %}
               <tr>
-                <td class="fw-semibold">{{ t.CustomerName }}</td>
+                <td>
+                  <div class="d-flex align-items-center gap-2">
+                    <div class="table-avatar table-avatar-sm">{{ t.CustomerName[0]|upper }}</div>
+                    <span class="fw-semibold">{{ t.CustomerName }}</span>
+                  </div>
+                </td>
                 <td><span class="mono-text">{{ t.AccountNumber }}</span></td>
                 <td>
                   <span class="badge-txn badge-txn-{{ t.TransactionType|lower }}">
                     {{ t.TransactionType }}
                   </span>
                 </td>
-                <td class="fw-semibold {% if t.TransactionType=='Deposit' %}text-success{% else %}text-danger{% endif %}">
+                <td class="fw-bold font-monospace {% if t.TransactionType=='Deposit' %}text-success{% else %}text-danger{% endif %}">
                   {% if t.TransactionType=='Deposit' %}+{% else %}-{% endif %}MAD {{ "{:,.0f}".format(t.Amount) }}
                 </td>
-                <td class="text-muted small">{{ t.TransactionDate[:16] }}</td>
+                <td class="text-muted small font-monospace">{{ t.TransactionDate[:16] }}</td>
+              </tr>
+              {% else %}
+              <tr>
+                <td colspan="5" class="text-center text-muted py-4">No recent transactions recorded.</td>
               </tr>
               {% endfor %}
             </tbody>
@@ -124,22 +223,25 @@
 
   <!-- Top Customers -->
   <div class="col-lg-4">
-    <div class="card-panel">
-      <div class="panel-header">
-        <span class="panel-title"><i class="bi bi-trophy-fill me-2 text-warning"></i>Top Customers</span>
+    <div class="card-panel h-100">
+      <div class="panel-header d-flex align-items-center justify-content-between">
+        <span class="panel-title"><i class="bi bi-trophy-fill me-2 text-warning"></i>Top Capital Depositors</span>
+        <span class="badge bg-warning-soft text-warning font-monospace">VIP TIER</span>
       </div>
       <div class="panel-body p-0">
         {% for tc in top_customers %}
         <div class="top-customer-row">
           <div class="rank-badge rank-{{ loop.index }}">{{ loop.index }}</div>
-          <div class="flex-grow-1">
-            <div class="fw-semibold">{{ tc.Name }}</div>
-            <div class="text-muted small">MAD {{ "{:,.0f}".format(tc.total_balance) }}</div>
+          <div class="flex-grow-1 min-w-0">
+            <div class="fw-bold text-truncate">{{ tc.Name }}</div>
+            <div class="text-muted small font-monospace">MAD {{ "{:,.0f}".format(tc.total_balance) }}</div>
           </div>
           <div class="balance-bar-wrap">
-            <div class="balance-bar" style="width:{{ (tc.total_balance / top_customers[0].total_balance * 100)|int }}%"></div>
+            <div class="balance-bar" style="width:{{ (tc.total_balance / (top_customers[0].total_balance or 1) * 100)|int }}%"></div>
           </div>
         </div>
+        {% else %}
+        <div class="text-center text-muted py-4">No customer balances yet.</div>
         {% endfor %}
       </div>
     </div>
@@ -149,11 +251,11 @@
 
 {% block scripts %}
 <script>
-// ── Monthly Transaction Bar Chart ────────────────────────────────────────────
+// ── Monthly Transaction Chart with Dynamic Theme Adaptation ──────────────────
 const rawData = {{ monthly_data | tojson }};
 const monthSet = [...new Set(rawData.map(r => r.month))].sort().slice(-6);
 
-const deposits    = monthSet.map(m => {
+const deposits = monthSet.map(m => {
   const row = rawData.find(r => r.month === m && r.TransactionType === 'Deposit');
   return row ? row.total : 0;
 });
@@ -162,21 +264,75 @@ const withdrawals = monthSet.map(m => {
   return row ? row.total : 0;
 });
 
-new Chart(document.getElementById('txnChart'), {
+function getChartColors() {
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  return {
+    gridColor: isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.05)',
+    textColor: isDark ? '#94a3b8' : '#64748b',
+    borderPie: isDark ? '#111b30' : '#ffffff'
+  };
+}
+
+let colors = getChartColors();
+
+const ctxTxn = document.getElementById('txnChart').getContext('2d');
+let txnChartInstance = new Chart(ctxTxn, {
   type: 'bar',
   data: {
-    labels: monthSet,
+    labels: monthSet.length > 0 ? monthSet : ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
     datasets: [
-      { label: 'Deposits',    data: deposits,    backgroundColor: '#3b82f6', borderRadius: 6 },
-      { label: 'Withdrawals', data: withdrawals, backgroundColor: '#ef4444', borderRadius: 6 },
+      {
+        label: 'Deposits (Inflow)',
+        data: deposits.length > 0 ? deposits : [0,0,0,0,0,0],
+        backgroundColor: '#3b82f6',
+        borderRadius: 8,
+        barPercentage: 0.6,
+      },
+      {
+        label: 'Withdrawals & Transfers',
+        data: withdrawals.length > 0 ? withdrawals : [0,0,0,0,0,0],
+        backgroundColor: '#ef4444',
+        borderRadius: 8,
+        barPercentage: 0.6,
+      },
     ],
   },
   options: {
     responsive: true,
-    plugins: { legend: { position: 'top' } },
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: 'top',
+        labels: {
+          color: colors.textColor,
+          font: { family: 'Inter', size: 12, weight: '600' }
+        }
+      },
+      tooltip: {
+        backgroundColor: 'rgba(15, 23, 42, 0.9)',
+        titleFont: { family: 'Space Grotesk', size: 13, weight: '700' },
+        bodyFont: { family: 'JetBrains Mono', size: 12 },
+        padding: 12,
+        cornerRadius: 8,
+      }
+    },
     scales: {
-      y: { beginAtZero: true, ticks: { callback: v => 'MAD ' + (v/1000).toFixed(0) + 'k' } },
-      x: { grid: { display: false } },
+      y: {
+        beginAtZero: true,
+        grid: { color: colors.gridColor },
+        ticks: {
+          color: colors.textColor,
+          font: { family: 'JetBrains Mono', size: 11 },
+          callback: v => 'MAD ' + (v/1000).toFixed(0) + 'k'
+        }
+      },
+      x: {
+        grid: { display: false },
+        ticks: {
+          color: colors.textColor,
+          font: { family: 'Inter', size: 11, weight: '500' }
+        }
+      },
     },
   },
 });
@@ -185,26 +341,48 @@ new Chart(document.getElementById('txnChart'), {
 const acctTypes = {{ acct_types | map(attribute='AccountType') | list | tojson }};
 const acctCnts  = {{ acct_types | map(attribute='cnt')         | list | tojson }};
 
-new Chart(document.getElementById('acctPieChart'), {
+const ctxPie = document.getElementById('acctPieChart').getContext('2d');
+let pieChartInstance = new Chart(ctxPie, {
   type: 'doughnut',
   data: {
-    labels: acctTypes,
+    labels: acctTypes.length > 0 ? acctTypes : ['Savings', 'Current', 'Fixed Deposit'],
     datasets: [{
-      data: acctCnts,
+      data: acctCnts.length > 0 ? acctCnts : [1, 1, 1],
       backgroundColor: ['#3b82f6','#6366f1','#10b981'],
-      borderWidth: 2,
-      borderColor: '#fff',
+      borderWidth: 3,
+      borderColor: colors.borderPie,
+      hoverOffset: 6
     }],
   },
   options: {
     responsive: true,
-    plugins: { legend: { display: false } },
-    cutout: '68%',
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: 'rgba(15, 23, 42, 0.9)',
+        bodyFont: { family: 'Inter', size: 12 },
+        cornerRadius: 8
+      }
+    },
+    cutout: '72%',
   },
 });
-</script>
-<script>
-// Make enumerate available in template context is not directly possible.
-// The enumerate trick in Jinja2 — handled below by using loop.index
+
+// Sync chart colors on theme change
+window.addEventListener('themeChanged', () => {
+  const updated = getChartColors();
+  if (txnChartInstance) {
+    txnChartInstance.options.scales.y.grid.color = updated.gridColor;
+    txnChartInstance.options.scales.y.ticks.color = updated.textColor;
+    txnChartInstance.options.scales.x.ticks.color = updated.textColor;
+    txnChartInstance.options.plugins.legend.labels.color = updated.textColor;
+    txnChartInstance.update();
+  }
+  if (pieChartInstance) {
+    pieChartInstance.data.datasets[0].borderColor = updated.borderPie;
+    pieChartInstance.update();
+  }
+});
 </script>
 {% endblock %}

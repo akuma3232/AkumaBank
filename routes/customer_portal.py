@@ -47,6 +47,7 @@ def home():
     transactions = []
     loans = []
     loan_summary = {"total_disbursed": 0}
+    total_account_balance = Decimal("0.00")
     if customer:
         accounts = conn.execute(
             """SELECT AccountID, AccountNumber, AccountType, Balance, Status,
@@ -55,6 +56,10 @@ def home():
                WHERE CustomerID=? ORDER BY AccountID""",
             (customer["CustomerID"],),
         ).fetchall()
+        total_account_balance = sum(
+            (Decimal(str(account["Balance"])) for account in accounts),
+            Decimal("0.00"),
+        )
         transactions = conn.execute(
             """SELECT t.TransactionDate, t.TransactionType, t.Amount, t.Description,
                       t.BalanceAfter, a.AccountNumber
@@ -85,6 +90,7 @@ def home():
         transactions=transactions,
         loans=loans,
         loan_summary=loan_summary,
+        total_account_balance=total_account_balance,
     )
 
 

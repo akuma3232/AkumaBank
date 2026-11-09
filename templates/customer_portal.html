@@ -19,6 +19,17 @@
   </div>
 </div>
 {% else %}
+<div class="card-panel mb-4">
+  <div class="panel-header">
+    <span class="panel-title">Total Account Balance</span>
+    <span class="text-muted small">{{ accounts|length }} account(s)</span>
+  </div>
+  <div class="panel-body">
+    <div class="text-muted small">Combined balance across your bank accounts</div>
+    <div class="fs-4 fw-semibold text-success">MAD {{ "{:,.2f}".format(total_account_balance) }}</div>
+  </div>
+</div>
+
 <div class="row g-4 mb-4">
   <div class="col-lg-5">
     <div class="card-panel h-100">

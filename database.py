@@ -65,6 +65,7 @@ def init_db(seed_demo_data=False):
             CustomerID    INTEGER NOT NULL,
             AccountNumber TEXT    NOT NULL UNIQUE,
             CardNumber    TEXT,
+            CardTier      TEXT    DEFAULT 'standard',
             AccountType   TEXT    NOT NULL CHECK(AccountType IN ('Savings','Current','Fixed Deposit')),
             Balance       REAL    NOT NULL DEFAULT 0.00,
             OpeningDate   TEXT    NOT NULL DEFAULT (date('now')),
@@ -234,6 +235,8 @@ def init_db(seed_demo_data=False):
     account_columns = {row["name"] for row in cur.execute("PRAGMA table_info(ACCOUNT)")}
     if "CardNumber" not in account_columns:
         cur.execute("ALTER TABLE ACCOUNT ADD COLUMN CardNumber TEXT")
+    if "CardTier" not in account_columns:
+        cur.execute("ALTER TABLE ACCOUNT ADD COLUMN CardTier TEXT DEFAULT 'standard'")
 
     # Upgrade any legacy accounts without CardNumber or using non-RIB ACC format
     legacy_accs = cur.execute(
@@ -338,6 +341,7 @@ def init_db(seed_demo_data=False):
             a.AccountID,
             a.AccountNumber,
             a.CardNumber,
+            a.CardTier,
             a.AccountType,
             a.Balance,
             a.Status        AS AccountStatus,
@@ -426,25 +430,25 @@ def init_db(seed_demo_data=False):
 
     if seed_demo_data and cur.execute("SELECT COUNT(*) FROM ACCOUNT").fetchone()[0] == 0:
         base_accounts = [
-            (1,  "Savings",       15000.00, "2020-01-10", "Active",  1),
-            (2,  "Current",        8000.00, "2019-05-20", "Active",  2),
-            (3,  "Savings",       22000.00, "2021-03-15", "Active",  3),
-            (4,  "Fixed Deposit", 50000.00, "2018-11-01", "Active",  4),
-            (5,  "Savings",        4500.00, "2022-07-25", "Active",  5),
-            (6,  "Current",       31000.00, "2020-09-10", "Active",  6),
-            (7,  "Savings",        7200.00, "2021-12-05", "Frozen",  7),
-            (8,  "Savings",       19000.00, "2019-08-14", "Active",  8),
-            (9,  "Current",       43000.00, "2017-06-30", "Active",  9),
-            (10, "Savings",        9500.00, "2023-02-18", "Active", 10),
+            (1,  "Savings",       15000.00, "2020-01-10", "Active",  1, "infinite"),
+            (2,  "Current",        8000.00, "2019-05-20", "Active",  2, "women"),
+            (3,  "Savings",       22000.00, "2021-03-15", "Active",  3, "student"),
+            (4,  "Fixed Deposit", 50000.00, "2018-11-01", "Active",  4, "gold"),
+            (5,  "Savings",        4500.00, "2022-07-25", "Active",  5, "business"),
+            (6,  "Current",       31000.00, "2020-09-10", "Active",  6, "travel"),
+            (7,  "Savings",        7200.00, "2021-12-05", "Frozen",  7, "eco"),
+            (8,  "Savings",       19000.00, "2019-08-14", "Active",  8, "platinum"),
+            (9,  "Current",       43000.00, "2017-06-30", "Active",  9, "freelance"),
+            (10, "Savings",        9500.00, "2023-02-18", "Active", 10, "family"),
         ]
         accounts = []
-        for i, (cid, atype, bal, odate, status, bid) in enumerate(base_accounts, start=1):
+        for i, (cid, atype, bal, odate, status, bid, tier) in enumerate(base_accounts, start=1):
             rib = generate_moroccan_rib(branch_id=bid, seq=1000000 + i)
             card = generate_card_number(rib)
-            accounts.append((cid, rib, card, atype, bal, odate, status, bid))
+            accounts.append((cid, rib, card, tier, atype, bal, odate, status, bid))
 
         cur.executemany(
-            "INSERT INTO ACCOUNT (CustomerID,AccountNumber,CardNumber,AccountType,Balance,OpeningDate,Status,BranchID) VALUES (?,?,?,?,?,?,?,?)",
+            "INSERT INTO ACCOUNT (CustomerID,AccountNumber,CardNumber,CardTier,AccountType,Balance,OpeningDate,Status,BranchID) VALUES (?,?,?,?,?,?,?,?,?)",
             accounts,
         )
 

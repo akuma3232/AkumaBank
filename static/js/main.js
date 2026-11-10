@@ -473,6 +473,63 @@ function animateCounters() {
   });
 }
 
+// ── Card Subscription Selector & Live Preview ──────────────────────────────
+window.selectCardTier = function(tierId, tierName, tierBadge, tierCategory, monthlyFee, atmLimit, accentColor, perks) {
+  if (window.SoundFX) SoundFX.click();
+  const input = document.getElementById('selectedCardTierInput');
+  if (input) input.value = tierId;
+
+  document.querySelectorAll('.card-template-item').forEach(item => {
+    item.classList.toggle('is-selected', item.getAttribute('data-tier-id') === tierId);
+  });
+
+  const previewCard = document.getElementById('modalPreviewCard');
+  if (previewCard) {
+    previewCard.className = previewCard.className.replace(/cyber-card-tier-[^\s]+/g, '');
+    previewCard.classList.add(`cyber-card-tier-${tierId}`);
+  }
+
+  const badgeEl = document.getElementById('modalPreviewBadge');
+  if (badgeEl) badgeEl.textContent = tierBadge;
+
+  const titleEl = document.getElementById('modalPreviewTitle');
+  if (titleEl) titleEl.textContent = tierName;
+
+  const feeEl = document.getElementById('modalPreviewFee');
+  if (feeEl) feeEl.textContent = monthlyFee;
+
+  const limitEl = document.getElementById('modalPreviewLimit');
+  if (limitEl) limitEl.textContent = atmLimit;
+
+  const perksListEl = document.getElementById('modalPreviewPerks');
+  if (perksListEl && Array.isArray(perks)) {
+    perksListEl.innerHTML = perks.map(p => `<li><i class="bi bi-check2-circle text-success me-2"></i><span>${p}</span></li>`).join('');
+  }
+};
+
+window.filterCardTemplates = function(category, btn) {
+  if (window.SoundFX) SoundFX.click();
+  document.querySelectorAll('.card-filter-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+
+  document.querySelectorAll('.card-template-item').forEach(item => {
+    const itemCat = item.getAttribute('data-category');
+    if (category === 'all' || itemCat === category) {
+      item.style.display = 'flex';
+    } else {
+      item.style.display = 'none';
+    }
+  });
+};
+
+window.updatePreviewCardholder = function(selectEl) {
+  const cardholderEl = document.getElementById('modalPreviewCardholder');
+  if (cardholderEl && selectEl) {
+    const text = selectEl.options[selectEl.selectedIndex]?.text || '';
+    cardholderEl.textContent = (text && !text.includes('Select')) ? text.toUpperCase() : 'NOUVEAU CLIENT';
+  }
+};
+
 // ── DOM Ready Initializer ───────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
   ThemeManager.init();

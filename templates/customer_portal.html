@@ -24,7 +24,7 @@
       <i class="bi bi-building-check text-primary fs-1 mb-3"></i>
       <h5 class="fw-bold">Visit an AkumaBank Branch</h5>
       <p class="text-muted mx-auto" style="max-width: 500px;">
-        Your login is authorized. A bank officer or admin must verify your customer identity (CIN) before issuing your quantum accounts.
+        Your login is authorized. A bank officer or admin must verify your customer identity (CIN) before issuing your bank accounts.
       </p>
     </div>
   </div>
@@ -65,12 +65,12 @@
 </div>
 
 <!-- ═══════════════════════════════════════════════
-     3D HOLOGRAPHIC VIRTUAL BANKING CARDS
+     VIRTUAL BANKING CARDS
 ══════════════════════════════════════════════════ -->
 <div class="mb-4">
   <div class="d-flex align-items-center justify-content-between mb-3">
     <div class="d-flex align-items-center gap-2">
-      <h5 class="fw-bold mb-0"><i class="bi bi-credit-card-2-front text-primary me-2"></i>My Quantum Virtual Cards</h5>
+      <h5 class="fw-bold mb-0"><i class="bi bi-credit-card-2-front text-primary me-2"></i>Mes Cartes Bancaires / My Bank Cards</h5>
       <span class="badge bg-primary-soft text-primary font-monospace">{{ accounts|length }} CARDS</span>
     </div>
     <div class="text-muted small d-none d-md-flex align-items-center gap-2">
@@ -82,9 +82,10 @@
     {% for account in accounts %}
     {% set card_num = account.CardNumber or (account | card_number) %}
     {% set cvv_code = card_num | card_cvv %}
+    {% set tier_data = (account.CardTier or 'standard') | card_tier_info %}
     <div class="col-12 col-md-6 col-xl-4">
       <div class="cyber-card-container">
-        <div class="cyber-card cyber-card-{{ account.AccountType|lower|replace(' ', '-') }} {% if account.Status == 'Active' %}cyber-card-active{% endif %}" data-account-number="{{ account.AccountNumber }}" data-card-number="{{ card_num }}">
+        <div class="cyber-card cyber-card-tier-{{ account.CardTier or 'standard' }} {% if account.Status == 'Active' %}cyber-card-active{% endif %}" data-account-number="{{ account.AccountNumber }}" data-card-number="{{ card_num }}">
           <!-- Hologram Shimmer Layer -->
           <div class="cyber-card-shimmer"></div>
           <div class="cyber-card-glow"></div>
@@ -94,7 +95,7 @@
             <div class="cyber-card-brand">
               <i class="bi bi-bank2 brand-symbol"></i>
               <span class="brand-title">AkumaBank</span>
-              <span class="card-tier-pill">{% if account.AccountType == 'Savings' %}CYBER SAVINGS{% elif account.AccountType == 'Current' %}TITANIUM CURRENT{% else %}VAULT RESERVE{% endif %}</span>
+              <span class="card-tier-pill">{{ tier_data.badge }}</span>
             </div>
             <div class="cyber-card-contactless d-flex align-items-center gap-2">
               <i class="bi bi-wifi" title="Contactless Enabled"></i>
@@ -154,6 +155,12 @@
 
         <!-- Official Moroccan RIB & IBAN Slip Box -->
         <div class="moroccan-rib-box mt-3 p-3 rounded-3">
+          <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom">
+            <span class="badge-tier badge-tier-{{ account.CardTier or 'standard' }}">
+              <i class="bi {{ tier_data.icon }}"></i> {{ tier_data.name }}
+            </span>
+            <span class="small text-muted font-monospace"><i class="bi bi-tag me-1"></i>{{ tier_data.monthly_fee }}</span>
+          </div>
           <div class="d-flex justify-content-between align-items-center mb-1">
             <span class="small fw-bold text-uppercase text-body-secondary"><i class="bi bi-bank text-primary me-1"></i>Moroccan RIB (24 Digits)</span>
             <span class="badge bg-primary-soft text-primary font-monospace">Bank Al-Maghrib</span>
@@ -250,6 +257,7 @@
               <tr>
                 <th>Account</th>
                 <th>Type</th>
+                <th>Card Subscription</th>
                 <th>Balance</th>
                 <th>Status</th>
                 <th>Branch</th>
@@ -272,6 +280,12 @@
                 <td>
                   <span class="badge-acct-type badge-{{ account.AccountType|lower|replace(' ', '_') }}">{{ account.AccountType }}</span>
                 </td>
+                <td>
+                  {% set t_info = (account.CardTier or 'classic-blue') | card_tier_info %}
+                  <span class="badge-tier badge-tier-{{ account.CardTier or 'classic-blue' }}" title="{{ t_info.tagline }}">
+                    <i class="bi {{ t_info.icon }}"></i> {{ t_info.name }}
+                  </span>
+                </td>
                 <td class="fw-bold font-monospace text-primary">MAD {{ "{:,.2f}".format(account.Balance) }}</td>
                 <td>
                   <span class="badge-status-{{ account.Status|lower }}">{{ account.Status }}</span>
@@ -279,7 +293,7 @@
                 <td><small class="text-muted">{{ account.BranchName or 'Headquarters' }}{% if account.City %}, {{ account.City }}{% endif %}</small></td>
               </tr>
               {% else %}
-              <tr><td colspan="5" class="text-center text-muted py-4">No accounts found.</td></tr>
+              <tr><td colspan="6" class="text-center text-muted py-4">No accounts found.</td></tr>
               {% endfor %}
             </tbody>
           </table>

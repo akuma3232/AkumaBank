@@ -67,6 +67,7 @@
             <th>Account No.</th>
             <th>Customer</th>
             <th>Type</th>
+            <th>Card Subscription</th>
             <th>Balance</th>
             <th>Branch</th>
             <th>Status</th>
@@ -104,6 +105,12 @@
                 {{ a.AccountType }}
               </span>
             </td>
+            <td>
+              {% set tier_data = a.CardTier | card_tier_info %}
+              <span class="badge-tier badge-tier-{{ a.CardTier or 'classic-blue' }}" title="{{ tier_data.tagline }}">
+                <i class="bi {{ tier_data.icon }}"></i> {{ tier_data.name }}
+              </span>
+            </td>
             <td class="fw-semibold text-success">MAD {{ "{:,.2f}".format(a.Balance) }}</td>
             <td class="text-muted small">{{ a.BranchName or '—' }}</td>
             <td>
@@ -123,7 +130,7 @@
             </td>
           </tr>
           {% else %}
-          <tr><td colspan="7" class="text-center py-5 text-muted">No accounts found.</td></tr>
+          <tr><td colspan="8" class="text-center py-5 text-muted">No accounts found.</td></tr>
           {% endfor %}
         </tbody>
       </table>
@@ -132,57 +139,230 @@
 </div>
 
 {% if can_create_account %}
-<!-- Add Account Modal -->
-<div class="modal fade" id="addAccountModal" tabindex="-1">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header bg-primary text-white">
-        <h5 class="modal-title"><i class="bi bi-credit-card-2-front-fill me-2"></i>Open New Account</h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-      </div>
-      <form method="POST" action="{{ url_for('accounts.add_account') }}">
-        <div class="modal-body">
-          <div class="alert alert-info py-2 small mb-3">
-            <i class="bi bi-shield-check me-1"></i>A unique 24-digit Moroccan RIB (Bank Al-Maghrib standard) and 16-digit Luhn virtual card will be generated automatically.
+<!-- Add Account Modal with Card Subscription Templates & Live 3D Preview -->
+<div class="modal fade" id="addAccountModal" tabindex="-1" aria-labelledby="addAccountModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content border-0 shadow-lg">
+      <div class="modal-header bg-gradient-primary text-white py-3 px-4">
+        <div class="d-flex align-items-center gap-2">
+          <div class="rounded-circle bg-white text-primary d-flex align-items-center justify-content-center" style="width: 38px; height: 38px;">
+            <i class="bi bi-credit-card-2-front-fill fs-5"></i>
           </div>
-          <div class="mb-3">
-            <label class="form-label">Customer *</label>
-            <select name="customer_id" class="form-select" required>
-              <option value="">— Select Customer —</option>
-              {% for c in customers %}
-              <option value="{{ c.CustomerID }}">{{ c.Name }}</option>
-              {% endfor %}
-            </select>
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Account Type *</label>
-            <select name="account_type" class="form-select" required>
-              <option value="">— Select Type —</option>
-              <option value="Savings">Savings</option>
-              <option value="Current">Current</option>
-              <option value="Fixed Deposit">Fixed Deposit</option>
-            </select>
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Opening Balance (MAD)</label>
-            <div class="input-group">
-              <span class="input-group-text">MAD</span>
-              <input type="number" name="balance" class="form-control" min="0" step="0.01" value="0" />
-            </div>
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Branch</label>
-            <select name="branch_id" class="form-select">
-              <option value="">— Select Branch —</option>
-              {% for b in branches %}
-              <option value="{{ b.BranchID }}">{{ b.BranchName }}, {{ b.City }}</option>
-              {% endfor %}
-            </select>
+          <div>
+            <h5 class="modal-title fw-bold mb-0" id="addAccountModalLabel">Open Account &amp; Assign Card Subscription</h5>
+            <small class="text-white-50">Issue a Moroccan BAM 24-digit RIB and assign 1 of 11 bespoke card designs</small>
           </div>
         </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
-          <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Open Account</button>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+
+      <form method="POST" action="{{ url_for('accounts.add_account') }}" id="createAccountForm">
+        <input type="hidden" name="card_tier" id="selectedCardTierInput" value="standard">
+
+        <div class="modal-body p-4">
+          <div class="alert alert-info py-2 px-3 small mb-4 d-flex align-items-center gap-2 rounded-3 border-0 bg-info-subtle text-info-emphasis">
+            <i class="bi bi-shield-check fs-5"></i>
+            <div>
+              <strong>Bank Al-Maghrib Compliant:</strong> A valid 24-digit Moroccan RIB and a 16-digit Luhn algorithm card number will be automatically generated upon opening.
+            </div>
+          </div>
+
+          <div class="row g-4">
+            <!-- ── Left Column: Account Details & Live Card Preview ── -->
+            <div class="col-lg-5">
+              <h6 class="fw-bold mb-3 d-flex align-items-center gap-2">
+                <i class="bi bi-person-gear text-primary"></i>1. Account Configuration
+              </h6>
+
+              <div class="mb-3">
+                <label class="form-label fw-semibold small">Customer Profile *</label>
+                <select name="customer_id" class="form-select" id="customerSelectModal" required onchange="updatePreviewCardholder(this)">
+                  <option value="">— Select Customer —</option>
+                  {% for c in customers %}
+                  <option value="{{ c.CustomerID }}" {% if loop.first %}selected{% endif %}>{{ c.Name }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+
+              <div class="row g-2 mb-3">
+                <div class="col-6">
+                  <label class="form-label fw-semibold small">Account Type *</label>
+                  <select name="account_type" class="form-select" required>
+                    <option value="Savings" selected>Savings</option>
+                    <option value="Current">Current</option>
+                    <option value="Fixed Deposit">Fixed Deposit</option>
+                  </select>
+                </div>
+                <div class="col-6">
+                  <label class="form-label fw-semibold small">Branch</label>
+                  <select name="branch_id" class="form-select">
+                    <option value="">Headquarters</option>
+                    {% for b in branches %}
+                    <option value="{{ b.BranchID }}">{{ b.BranchName }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+              </div>
+
+              <div class="mb-4">
+                <label class="form-label fw-semibold small">Opening Deposit (MAD)</label>
+                <div class="input-group">
+                  <span class="input-group-text">MAD</span>
+                  <input type="number" name="balance" class="form-control" min="0" step="0.01" value="0" placeholder="0.00" />
+                </div>
+                <div class="form-text small">Initial credit transferred into account immediately.</div>
+              </div>
+
+              <!-- ── Live Card Preview Canvas ── -->
+              <h6 class="fw-bold mb-2 d-flex align-items-center gap-2">
+                <i class="bi bi-eye-fill text-primary"></i>Live Card Preview
+              </h6>
+
+              <div class="cyber-card-container mb-3" style="max-width: 380px; margin: 0 auto;">
+                <div class="cyber-card cyber-card-tier-standard" id="modalPreviewCard">
+                  <div class="cyber-card-shimmer"></div>
+                  <div class="cyber-card-glow"></div>
+
+                  <!-- Card Top -->
+                  <div class="cyber-card-top">
+                    <div class="cyber-card-brand">
+                      <i class="bi bi-bank2 brand-symbol"></i>
+                      <span class="brand-title">AkumaBank</span>
+                      <span class="card-tier-pill" id="modalPreviewBadge">VISA CLASSIC</span>
+                    </div>
+                    <div class="cyber-card-contactless d-flex align-items-center gap-2">
+                      <i class="bi bi-wifi" title="Contactless Enabled"></i>
+                      <span class="card-network-badge">VISA</span>
+                    </div>
+                  </div>
+
+                  <!-- Middle -->
+                  <div class="cyber-card-mid">
+                    <div class="cyber-chip">
+                      <div class="chip-wire w-1"></div>
+                      <div class="chip-wire w-2"></div>
+                      <div class="chip-wire w-3"></div>
+                      <div class="chip-core"></div>
+                    </div>
+                    <div class="card-status-pill status-active">
+                      <span class="pulse-beacon"></span>
+                      <span>ACTIVE</span>
+                    </div>
+                  </div>
+
+                  <!-- Number -->
+                  <div class="cyber-card-num-row">
+                    <span class="card-number-text mono-text">
+                      4240 &nbsp; •••• &nbsp; •••• &nbsp; 8821
+                    </span>
+                  </div>
+
+                  <!-- Bottom -->
+                  <div class="cyber-card-bottom">
+                    <div class="card-meta-group">
+                      <span class="card-meta-label">CARDHOLDER</span>
+                      <span class="card-meta-val" id="modalPreviewCardholder">
+                        {{ customers[0].Name|upper if customers else 'NOUVEAU CLIENT' }}
+                      </span>
+                    </div>
+                    <div class="card-meta-group">
+                      <span class="card-meta-label">EXPIRES</span>
+                      <span class="card-meta-val">12/31</span>
+                    </div>
+                    <div class="card-meta-group">
+                      <span class="card-meta-label">CVV</span>
+                      <span class="card-meta-val font-monospace">•••</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Selected Tier Perks Summary Box -->
+              <div class="p-3 rounded-3 border bg-body-tertiary">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                  <span class="fw-bold text-primary" id="modalPreviewTitle">Pack Essentiel (Visa Classic)</span>
+                  <span class="badge bg-primary-soft text-primary" id="modalPreviewFee">0 MAD / mois</span>
+                </div>
+                <div class="small text-muted mb-2">
+                  <i class="bi bi-cash-stack me-1"></i>ATM Limit: <strong class="text-body" id="modalPreviewLimit">10 000 MAD / jour</strong>
+                </div>
+                <ul class="list-unstyled mb-0 small text-body-secondary" id="modalPreviewPerks" style="font-size: 0.8rem; line-height: 1.6;">
+                  <li><i class="bi bi-check2-circle text-success me-2"></i><span>Carte bancaire sans frais de tenue de compte</span></li>
+                  <li><i class="bi bi-check2-circle text-success me-2"></i><span>Paiements sans contact NFC sécurisés jusqu'à 600 MAD</span></li>
+                  <li><i class="bi bi-check2-circle text-success me-2"></i><span>Gestion et suivi en temps réel sur l'application mobile</span></li>
+                  <li><i class="bi bi-check2-circle text-success me-2"></i><span>Retraits gratuits sur tous les GAB du réseau</span></li>
+                </ul>
+              </div>
+            </div>
+
+            <!-- ── Right Column: Card Subscription Templates (11 Tiers) ── -->
+            <div class="col-lg-7 border-start-lg">
+              <div class="d-flex align-items-center justify-content-between mb-2">
+                <div>
+                  <h6 class="fw-bold mb-0 d-flex align-items-center gap-2">
+                    <i class="bi bi-palette2 text-primary"></i>2. Choose Subscription Template
+                  </h6>
+                  <p class="small text-muted mb-0">Select from 11 tailored cards with custom aesthetic &amp; privileges</p>
+                </div>
+                <span class="badge bg-secondary-soft text-secondary">11 Templates Available</span>
+              </div>
+
+              <!-- Category Filter Buttons -->
+              <div class="d-flex flex-wrap gap-2 mb-3 pt-2">
+                <button type="button" class="card-filter-btn active" onclick="filterCardTemplates('all', this)">Toutes (11)</button>
+                <button type="button" class="card-filter-btn" onclick="filterCardTemplates('Particuliers', this)">Particuliers (5)</button>
+                <button type="button" class="card-filter-btn" onclick="filterCardTemplates('Premium & VIP', this)">Premium &amp; VIP (3)</button>
+                <button type="button" class="card-filter-btn" onclick="filterCardTemplates('Professionnels', this)">Professionnels (2)</button>
+                <button type="button" class="card-filter-btn" onclick="filterCardTemplates('International', this)">International (1)</button>
+              </div>
+
+              <!-- Grid of Templates -->
+              <div class="card-template-grid">
+                {% for tier in list_card_tiers() %}
+                <div class="card-template-item {% if tier.id == 'standard' %}is-selected{% endif %}"
+                     data-tier-id="{{ tier.id }}"
+                     data-category="{{ tier.category }}"
+                     onclick="selectCardTier('{{ tier.id }}', '{{ tier.name|e }}', '{{ tier.badge|e }}', '{{ tier.category|e }}', '{{ tier.monthly_fee|e }}', '{{ tier.atm_limit|e }}', '{{ tier.accent_color|e }}', {{ tier.perks | tojson }})">
+
+                  <!-- Mini Card Graphic -->
+                  <div class="card-template-mini cyber-card-tier-{{ tier.id }}">
+                    <div class="d-flex justify-content-between align-items-center">
+                      <span class="mini-card-badge">{{ tier.badge }}</span>
+                      <i class="bi {{ tier.icon }} text-white" style="font-size: 0.85rem;"></i>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-end">
+                      <div class="mini-card-chip"></div>
+                      <span class="mini-card-number">4240 •••• 8821</span>
+                    </div>
+                  </div>
+
+                  <!-- Template Metadata -->
+                  <div class="card-template-info">
+                    <div class="d-flex align-items-center justify-content-between">
+                      <span class="card-template-category">{{ tier.category }}</span>
+                      {% if tier.is_popular %}
+                      <span class="badge bg-warning-soft text-warning" style="font-size: 0.6rem;">POPULAR</span>
+                      {% endif %}
+                    </div>
+                    <h6 class="text-truncate" title="{{ tier.name }}">{{ tier.name }}</h6>
+                    <div class="d-flex align-items-center justify-content-between mt-1">
+                      <span class="card-template-fee">{{ tier.monthly_fee }}</span>
+                      <small class="text-muted font-monospace" style="font-size: 0.7rem;">{{ tier.atm_limit }}</small>
+                    </div>
+                    <p class="small text-muted mb-0 mt-1 text-truncate" style="font-size: 0.72rem;">{{ tier.tagline }}</p>
+                  </div>
+                </div>
+                {% endfor %}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer bg-body-tertiary px-4 py-3">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary px-4 fw-semibold">
+            <i class="bi bi-credit-card-2-front me-2"></i>Open Account &amp; Issue Card
+          </button>
         </div>
       </form>
     </div>

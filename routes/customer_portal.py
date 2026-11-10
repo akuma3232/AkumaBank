@@ -50,7 +50,7 @@ def home():
     total_account_balance = Decimal("0.00")
     if customer:
         accounts = conn.execute(
-            """SELECT a.AccountID, a.AccountNumber, a.CardNumber, a.AccountType, a.Balance, a.Status,
+            """SELECT a.AccountID, a.AccountNumber, a.CardNumber, a.CardTier, a.AccountType, a.Balance, a.Status,
                       a.OpeningDate, b.BranchName, b.City
                FROM ACCOUNT a LEFT JOIN BRANCH b ON a.BranchID = b.BranchID
                WHERE a.CustomerID=? ORDER BY a.AccountID""",

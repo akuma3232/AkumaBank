@@ -4,6 +4,7 @@ import os
 from flask import Flask, flash, render_template, redirect, request, session, url_for
 
 from database import get_db, init_db
+from card_tiers import CARD_TIERS, get_card_tier, list_card_tiers
 from morocco_banking import (
     format_moroccan_rib,
     rib_to_iban,
@@ -93,6 +94,18 @@ def filter_card_number(account):
     except Exception:
         pass
     return generate_card_number(str(account))
+
+@app.template_filter("card_tier_info")
+def filter_card_tier_info(tier_id):
+    return get_card_tier(tier_id)
+
+@app.context_processor
+def inject_card_tiers():
+    return {
+        "CARD_TIERS": CARD_TIERS,
+        "list_card_tiers": list_card_tiers,
+        "get_card_tier": get_card_tier,
+    }
 
 
 @app.before_request

@@ -94,6 +94,7 @@ def add_account():
     data = request.form
     cid      = data.get("customer_id")
     atype    = data.get("account_type")
+    card_tier = data.get("card_tier", "standard").strip() or "standard"
     balance  = float(data.get("balance", 0))
     branch   = data.get("branch_id") or None
 
@@ -111,9 +112,9 @@ def add_account():
         card_no = generate_card_number(acc_no)
 
         conn.execute("""
-            INSERT INTO ACCOUNT (CustomerID, AccountNumber, CardNumber, AccountType, Balance, BranchID)
-            VALUES (?,?,?,?,?,?)
-        """, (cid, acc_no, card_no, atype, balance, branch))
+            INSERT INTO ACCOUNT (CustomerID, AccountNumber, CardNumber, CardTier, AccountType, Balance, BranchID)
+            VALUES (?,?,?,?,?,?,?)
+        """, (cid, acc_no, card_no, card_tier, atype, balance, branch))
         conn.commit()
 
         # Record opening deposit if balance > 0

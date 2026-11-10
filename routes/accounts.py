@@ -9,6 +9,7 @@ from functools import wraps
 import random
 
 from morocco_banking import generate_moroccan_rib, generate_card_number, format_moroccan_rib
+from card_tiers import get_card_tier
 
 accounts_bp = Blueprint("accounts", __name__)
 
@@ -100,6 +101,12 @@ def add_account():
 
     if not all([cid, atype]):
         flash("Customer and account type are required.", "danger")
+        return redirect(url_for("accounts.accounts"))
+
+    tier_info = get_card_tier(card_tier)
+    max_balance = tier_info.get("max_balance")
+    if max_balance is not None and balance > max_balance:
+        flash(f"Opening deposit of MAD {balance:,.2f} exceeds the subscription ceiling (Plafond: {tier_info['plafond']}).", "danger")
         return redirect(url_for("accounts.accounts"))
 
     conn = get_db()

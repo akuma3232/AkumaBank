@@ -106,10 +106,13 @@
               </span>
             </td>
             <td>
-              {% set tier_data = a.CardTier | card_tier_info %}
-              <span class="badge-tier badge-tier-{{ a.CardTier or 'classic-blue' }}" title="{{ tier_data.tagline }}">
+              {% set tier_data = (a.CardTier or 'standard') | card_tier_info %}
+              <span class="badge-tier badge-tier-{{ a.CardTier or 'standard' }}" title="{{ tier_data.tagline }} (Plafond: {{ tier_data.plafond }})">
                 <i class="bi {{ tier_data.icon }}"></i> {{ tier_data.name }}
               </span>
+              <div class="small text-muted font-monospace mt-1" style="font-size: 0.7rem;">
+                <i class="bi bi-shield me-1"></i>Plafond: {{ tier_data.plafond }}
+              </div>
             </td>
             <td class="fw-semibold text-success">MAD {{ "{:,.2f}".format(a.Balance) }}</td>
             <td class="text-muted small">{{ a.BranchName or '—' }}</td>
@@ -142,8 +145,10 @@
 <!-- Add Account Modal with Card Subscription Templates & Live 3D Preview -->
 <div class="modal fade" id="addAccountModal" tabindex="-1" aria-labelledby="addAccountModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
-    <div class="modal-content border-0 shadow-lg">
-      <div class="modal-header bg-gradient-primary text-white py-3 px-4">
+    <form method="POST" action="{{ url_for('accounts.add_account') }}" id="createAccountForm" class="modal-content border-0 shadow-lg">
+      <input type="hidden" name="card_tier" id="selectedCardTierInput" value="standard">
+
+      <div class="modal-header bg-gradient-primary text-white py-3 px-4 flex-shrink-0">
         <div class="d-flex align-items-center gap-2">
           <div class="rounded-circle bg-white text-primary d-flex align-items-center justify-content-center" style="width: 38px; height: 38px;">
             <i class="bi bi-credit-card-2-front-fill fs-5"></i>
@@ -156,10 +161,7 @@
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
 
-      <form method="POST" action="{{ url_for('accounts.add_account') }}" id="createAccountForm">
-        <input type="hidden" name="card_tier" id="selectedCardTierInput" value="standard">
-
-        <div class="modal-body p-4">
+      <div class="modal-body p-4" style="overflow-y: auto; max-height: calc(85vh - 140px);">
           <div class="alert alert-info py-2 px-3 small mb-4 d-flex align-items-center gap-2 rounded-3 border-0 bg-info-subtle text-info-emphasis">
             <i class="bi bi-shield-check fs-5"></i>
             <div>
@@ -284,7 +286,7 @@
                   <span class="badge bg-primary-soft text-primary" id="modalPreviewFee">0 MAD / mois</span>
                 </div>
                 <div class="small text-muted mb-2">
-                  <i class="bi bi-cash-stack me-1"></i>ATM Limit: <strong class="text-body" id="modalPreviewLimit">10 000 MAD / jour</strong>
+                  <i class="bi bi-shield-check me-1 text-primary"></i>Plafond du compte (Solde max) : <strong class="text-body fw-bold" id="modalPreviewLimit">100 000 MAD</strong>
                 </div>
                 <ul class="list-unstyled mb-0 small text-body-secondary" id="modalPreviewPerks" style="font-size: 0.8rem; line-height: 1.6;">
                   <li><i class="bi bi-check2-circle text-success me-2"></i><span>Carte bancaire sans frais de tenue de compte</span></li>
@@ -322,7 +324,9 @@
                 <div class="card-template-item {% if tier.id == 'standard' %}is-selected{% endif %}"
                      data-tier-id="{{ tier.id }}"
                      data-category="{{ tier.category }}"
-                     onclick="selectCardTier('{{ tier.id }}', '{{ tier.name|e }}', '{{ tier.badge|e }}', '{{ tier.category|e }}', '{{ tier.monthly_fee|e }}', '{{ tier.atm_limit|e }}', '{{ tier.accent_color|e }}', {{ tier.perks | tojson }})">
+                     role="button"
+                     tabindex="0"
+                     onclick="selectCardTier('{{ tier.id }}')">
 
                   <!-- Mini Card Graphic -->
                   <div class="card-template-mini cyber-card-tier-{{ tier.id }}">
@@ -344,10 +348,12 @@
                       <span class="badge bg-warning-soft text-warning" style="font-size: 0.6rem;">POPULAR</span>
                       {% endif %}
                     </div>
-                    <h6 class="text-truncate" title="{{ tier.name }}">{{ tier.name }}</h6>
+                    <h6 class="text-truncate fw-bold mb-1" title="{{ tier.name }}">{{ tier.name }}</h6>
                     <div class="d-flex align-items-center justify-content-between mt-1">
-                      <span class="card-template-fee">{{ tier.monthly_fee }}</span>
-                      <small class="text-muted font-monospace" style="font-size: 0.7rem;">{{ tier.atm_limit }}</small>
+                      <span class="card-template-fee text-primary fw-semibold">{{ tier.monthly_fee }}</span>
+                      <span class="badge bg-body-secondary text-body border font-monospace" style="font-size: 0.68rem;" title="Plafond du compte (Solde maximum)">
+                        <i class="bi bi-shield-check text-primary me-1"></i>Plafond: {{ tier.plafond }}
+                      </span>
                     </div>
                     <p class="small text-muted mb-0 mt-1 text-truncate" style="font-size: 0.72rem;">{{ tier.tagline }}</p>
                   </div>
@@ -358,15 +364,23 @@
           </div>
         </div>
 
-        <div class="modal-footer bg-body-tertiary px-4 py-3">
-          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button type="submit" class="btn btn-primary px-4 fw-semibold">
-            <i class="bi bi-credit-card-2-front me-2"></i>Open Account &amp; Issue Card
-          </button>
+        <div class="modal-footer bg-body-tertiary px-4 py-3 border-top sticky-bottom flex-shrink-0 d-flex align-items-center justify-content-between">
+          <div class="text-muted small">
+            <i class="bi bi-shield-check text-success me-1"></i>RIB marocain 24 chiffres &amp; Carte 16 chiffres calculés
+          </div>
+          <div class="d-flex gap-2">
+            <button type="button" class="btn btn-outline-secondary px-3" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-primary px-4 fw-bold shadow-sm" id="btnSubmitAddAccount">
+              <i class="bi bi-plus-circle me-2"></i>Create Account &amp; Issue Card
+            </button>
+          </div>
         </div>
       </form>
     </div>
   </div>
-</div>
+
+<script>
+  window.CARD_TIERS_DATA = {{ CARD_TIERS | tojson | safe }};
+</script>
 {% endif %}
 {% endblock %}

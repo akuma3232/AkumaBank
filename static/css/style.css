@@ -1797,11 +1797,15 @@ body.login-page {
   padding: 12px;
   background: var(--surface);
   cursor: pointer;
+  user-select: none;
   transition: all var(--t-fast) var(--ease);
   position: relative;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+}
+.card-template-item * {
+  pointer-events: none;
 }
 .card-template-item:hover {
   transform: translateY(-2px);
@@ -1815,6 +1819,17 @@ body.login-page {
 }
 [data-theme="dark"] .card-template-item.is-selected {
   background: rgba(59, 130, 246, 0.12);
+}
+
+#addAccountModal .modal-content {
+  max-height: 90vh;
+}
+#addAccountModal .modal-footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 1055;
+  background: var(--surface) !important;
+  border-top: 1px solid var(--border);
 }
 
 .card-template-mini {

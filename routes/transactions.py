@@ -5,6 +5,7 @@ Uses the TransferMoney stored-procedure equivalent and the trigger UpdateBalance
 
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash
 from database import get_db, transfer_money, DEPOSIT_FEE
+from card_tiers import get_card_tier
 from functools import wraps
 
 transactions_bp = Blueprint("transactions", __name__)
@@ -103,7 +104,7 @@ def deposit():
 
     conn = get_db()
     try:
-        acct = conn.execute("SELECT Balance, Status FROM ACCOUNT WHERE AccountID=?", (account_id,)).fetchone()
+        acct = conn.execute("SELECT Balance, Status, CardTier FROM ACCOUNT WHERE AccountID=?", (account_id,)).fetchone()
         if not acct:
             flash("Account not found.", "danger")
             return redirect(url_for("transactions.transactions"))
@@ -112,6 +113,14 @@ def deposit():
             return redirect(url_for("transactions.transactions"))
 
         new_balance = Decimal(str(acct["Balance"])) + credited_amount
+        tier_info = get_card_tier(acct["CardTier"] if "CardTier" in acct.keys() else "standard")
+        max_balance = tier_info.get("max_balance")
+        if max_balance is not None and new_balance > Decimal(str(max_balance)):
+            flash(
+                f"Deposit rejected: The new balance (MAD {new_balance:,.2f}) would exceed the card ceiling (Plafond: {tier_info['plafond']}).",
+                "danger",
+            )
+            return redirect(url_for("transactions.transactions"))
         # INSERT fires the UpdateBalanceAfterTransaction trigger automatically
         conn.execute("""
             INSERT INTO TRANSACTIONS (AccountID, TransactionType, Amount, Description, BalanceAfter)

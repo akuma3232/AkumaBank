@@ -159,7 +159,10 @@
             <span class="badge-tier badge-tier-{{ account.CardTier or 'standard' }}">
               <i class="bi {{ tier_data.icon }}"></i> {{ tier_data.name }}
             </span>
-            <span class="small text-muted font-monospace"><i class="bi bi-tag me-1"></i>{{ tier_data.monthly_fee }}</span>
+            <div class="d-flex align-items-center gap-2 small font-monospace">
+              <span class="text-muted"><i class="bi bi-tag me-1"></i>{{ tier_data.monthly_fee }}</span>
+              <span class="badge bg-secondary-soft text-secondary" title="Plafond maximal du compte"><i class="bi bi-shield-check me-1"></i>Plafond: {{ tier_data.plafond }}</span>
+            </div>
           </div>
           <div class="d-flex justify-content-between align-items-center mb-1">
             <span class="small fw-bold text-uppercase text-body-secondary"><i class="bi bi-bank text-primary me-1"></i>Moroccan RIB (24 Digits)</span>

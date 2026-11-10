@@ -566,7 +566,7 @@ def transfer_money(from_account_id: int, to_account_id: int, amount: float) -> d
 
         # Validate destination account
         dst = cur.execute(
-            "SELECT AccountID, AccountNumber, Balance, Status FROM ACCOUNT WHERE AccountID=?",
+            "SELECT AccountID, AccountNumber, Balance, Status, CardTier FROM ACCOUNT WHERE AccountID=?",
             (to_account_id,),
         ).fetchone()
         if not dst:
@@ -578,6 +578,16 @@ def transfer_money(from_account_id: int, to_account_id: int, amount: float) -> d
         received_amount = transfer_amount - TRANSFER_FEE
         new_src_balance = source_balance - transfer_amount
         new_dst_balance = Decimal(str(dst["Balance"])) + received_amount
+
+        # Check destination account ceiling (Plafond du compte)
+        from card_tiers import get_card_tier
+        dst_tier = get_card_tier(dst["CardTier"] if "CardTier" in dst.keys() else "standard")
+        dst_max = dst_tier.get("max_balance")
+        if dst_max is not None and new_dst_balance > Decimal(str(dst_max)):
+            return {
+                "success": False,
+                "message": f"Transfer rejected: Recipient balance would exceed subscription ceiling (Plafond: {dst_tier['plafond']}).",
+            }
 
         # Debit sender (full amount)
         cur.execute(

@@ -474,8 +474,17 @@ function animateCounters() {
 }
 
 // ── Card Subscription Selector & Live Preview ──────────────────────────────
-window.selectCardTier = function(tierId, tierName, tierBadge, tierCategory, monthlyFee, atmLimit, accentColor, perks) {
+window.selectCardTier = function(tierId, tierName, tierBadge, tierCategory, monthlyFee, plafond, accentColor, perks) {
   if (window.SoundFX) SoundFX.click();
+  
+  // Resolve tier metadata from window.CARD_TIERS_DATA if not provided
+  const tierData = (window.CARD_TIERS_DATA && window.CARD_TIERS_DATA[tierId]) || {};
+  tierName   = tierName || tierData.name || '';
+  tierBadge  = tierBadge || tierData.badge || '';
+  monthlyFee = monthlyFee || tierData.monthly_fee || '';
+  plafond    = plafond || tierData.plafond || tierData.atm_limit || '';
+  perks      = perks || tierData.perks || [];
+
   const input = document.getElementById('selectedCardTierInput');
   if (input) input.value = tierId;
 
@@ -490,19 +499,19 @@ window.selectCardTier = function(tierId, tierName, tierBadge, tierCategory, mont
   }
 
   const badgeEl = document.getElementById('modalPreviewBadge');
-  if (badgeEl) badgeEl.textContent = tierBadge;
+  if (badgeEl && tierBadge) badgeEl.textContent = tierBadge;
 
   const titleEl = document.getElementById('modalPreviewTitle');
-  if (titleEl) titleEl.textContent = tierName;
+  if (titleEl && tierName) titleEl.textContent = tierName;
 
   const feeEl = document.getElementById('modalPreviewFee');
-  if (feeEl) feeEl.textContent = monthlyFee;
+  if (feeEl && monthlyFee) feeEl.textContent = monthlyFee;
 
   const limitEl = document.getElementById('modalPreviewLimit');
-  if (limitEl) limitEl.textContent = atmLimit;
+  if (limitEl && plafond) limitEl.textContent = plafond;
 
   const perksListEl = document.getElementById('modalPreviewPerks');
-  if (perksListEl && Array.isArray(perks)) {
+  if (perksListEl && Array.isArray(perks) && perks.length > 0) {
     perksListEl.innerHTML = perks.map(p => `<li><i class="bi bi-check2-circle text-success me-2"></i><span>${p}</span></li>`).join('');
   }
 };
@@ -530,12 +539,24 @@ window.updatePreviewCardholder = function(selectEl) {
   }
 };
 
+function initCardTemplateClicks() {
+  document.querySelectorAll('.card-template-item').forEach(item => {
+    item.addEventListener('click', (e) => {
+      const tierId = item.getAttribute('data-tier-id');
+      if (tierId) {
+        window.selectCardTier(tierId);
+      }
+    });
+  });
+}
+
 // ── DOM Ready Initializer ───────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
   ThemeManager.init();
   initSidebar();
   initCasablancaClock();
   initHolographicCards();
+  initCardTemplateClicks();
   CommandHUD.init();
   animateCounters();
 

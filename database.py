@@ -4,6 +4,8 @@ import sqlite3
 import os
 from decimal import Decimal, InvalidOperation
 
+from morocco_banking import generate_moroccan_rib, generate_card_number
+
 DATABASE_DIR = os.path.join(os.path.dirname(__file__), "database")
 DB_PATH = os.path.join(DATABASE_DIR, "banking_system.db")
 TRANSFER_FEE = Decimal("10.00")
@@ -61,6 +63,7 @@ def init_db(seed_demo_data=False):
             AccountID     INTEGER PRIMARY KEY AUTOINCREMENT,
             CustomerID    INTEGER NOT NULL,
             AccountNumber TEXT    NOT NULL UNIQUE,
+            CardNumber    TEXT,
             AccountType   TEXT    NOT NULL CHECK(AccountType IN ('Savings','Current','Fixed Deposit')),
             Balance       REAL    NOT NULL DEFAULT 0.00,
             OpeningDate   TEXT    NOT NULL DEFAULT (date('now')),
@@ -227,6 +230,29 @@ def init_db(seed_demo_data=False):
     if "AadhaarNo" in customer_columns and "NationalID" not in customer_columns:
         cur.execute("ALTER TABLE CUSTOMER RENAME COLUMN AadhaarNo TO NationalID")
 
+    account_columns = {row["name"] for row in cur.execute("PRAGMA table_info(ACCOUNT)")}
+    if "CardNumber" not in account_columns:
+        cur.execute("ALTER TABLE ACCOUNT ADD COLUMN CardNumber TEXT")
+
+    # Upgrade any legacy accounts without CardNumber or using non-RIB ACC format
+    legacy_accs = cur.execute(
+        "SELECT AccountID, BranchID, AccountNumber, CardNumber FROM ACCOUNT WHERE AccountNumber LIKE 'ACC%' OR CardNumber IS NULL"
+    ).fetchall()
+    for acc in legacy_accs:
+        acc_id = acc["AccountID"]
+        old_acc_num = acc["AccountNumber"]
+        branch_id = acc["BranchID"] or 1
+        new_acc_num = old_acc_num
+        if old_acc_num.startswith("ACC"):
+            new_acc_num = generate_moroccan_rib(branch_id=branch_id, seq=1000000 + acc_id)
+            cur.execute("UPDATE ACCOUNT SET AccountNumber=? WHERE AccountID=?", (new_acc_num, acc_id))
+            cur.execute(
+                "UPDATE TRANSACTIONS SET Description=REPLACE(Description, ?, ?) WHERE Description LIKE ?",
+                (old_acc_num, new_acc_num, f"%{old_acc_num}%"),
+            )
+        new_card = acc["CardNumber"] or generate_card_number(new_acc_num)
+        cur.execute("UPDATE ACCOUNT SET CardNumber=? WHERE AccountID=?", (new_card, acc_id))
+
     legacy_branches = cur.execute(
         "SELECT COUNT(*) FROM BRANCH WHERE BranchCode LIKE 'BANK00%'"
     ).fetchone()[0]
@@ -310,6 +336,7 @@ def init_db(seed_demo_data=False):
             c.Phone,
             a.AccountID,
             a.AccountNumber,
+            a.CardNumber,
             a.AccountType,
             a.Balance,
             a.Status        AS AccountStatus,
@@ -397,24 +424,34 @@ def init_db(seed_demo_data=False):
         )
 
     if seed_demo_data and cur.execute("SELECT COUNT(*) FROM ACCOUNT").fetchone()[0] == 0:
-        accounts = [
-            (1,  "ACC1000001", "Savings",       15000.00, "2020-01-10", "Active",  1),
-            (2,  "ACC1000002", "Current",        8000.00, "2019-05-20", "Active",  2),
-            (3,  "ACC1000003", "Savings",       22000.00, "2021-03-15", "Active",  3),
-            (4,  "ACC1000004", "Fixed Deposit", 50000.00, "2018-11-01", "Active",  4),
-            (5,  "ACC1000005", "Savings",        4500.00, "2022-07-25", "Active",  5),
-            (6,  "ACC1000006", "Current",       31000.00, "2020-09-10", "Active",  6),
-            (7,  "ACC1000007", "Savings",        7200.00, "2021-12-05", "Frozen",  7),
-            (8,  "ACC1000008", "Savings",       19000.00, "2019-08-14", "Active",  8),
-            (9,  "ACC1000009", "Current",       43000.00, "2017-06-30", "Active",  9),
-            (10, "ACC1000010", "Savings",        9500.00, "2023-02-18", "Active", 10),
+        base_accounts = [
+            (1,  "Savings",       15000.00, "2020-01-10", "Active",  1),
+            (2,  "Current",        8000.00, "2019-05-20", "Active",  2),
+            (3,  "Savings",       22000.00, "2021-03-15", "Active",  3),
+            (4,  "Fixed Deposit", 50000.00, "2018-11-01", "Active",  4),
+            (5,  "Savings",        4500.00, "2022-07-25", "Active",  5),
+            (6,  "Current",       31000.00, "2020-09-10", "Active",  6),
+            (7,  "Savings",        7200.00, "2021-12-05", "Frozen",  7),
+            (8,  "Savings",       19000.00, "2019-08-14", "Active",  8),
+            (9,  "Current",       43000.00, "2017-06-30", "Active",  9),
+            (10, "Savings",        9500.00, "2023-02-18", "Active", 10),
         ]
+        accounts = []
+        for i, (cid, atype, bal, odate, status, bid) in enumerate(base_accounts, start=1):
+            rib = generate_moroccan_rib(branch_id=bid, seq=1000000 + i)
+            card = generate_card_number(rib)
+            accounts.append((cid, rib, card, atype, bal, odate, status, bid))
+
         cur.executemany(
-            "INSERT INTO ACCOUNT (CustomerID,AccountNumber,AccountType,Balance,OpeningDate,Status,BranchID) VALUES (?,?,?,?,?,?,?)",
+            "INSERT INTO ACCOUNT (CustomerID,AccountNumber,CardNumber,AccountType,Balance,OpeningDate,Status,BranchID) VALUES (?,?,?,?,?,?,?,?)",
             accounts,
         )
 
     if seed_demo_data and cur.execute("SELECT COUNT(*) FROM TRANSACTIONS").fetchone()[0] == 0:
+        # Get account 3's RIB for the transfer description
+        dest_acc = cur.execute("SELECT AccountNumber FROM ACCOUNT WHERE AccountID=3").fetchone()
+        dest_rib = dest_acc["AccountNumber"] if dest_acc else "240003000000000100000313"
+
         # Insert transactions and let the trigger update balances
         txns = [
             (1, "Deposit",    5000.00, "2024-01-05 10:00:00", "Initial deposit",        20000.00),
@@ -428,7 +465,7 @@ def init_db(seed_demo_data=False):
             (8, "Deposit",    4000.00, "2024-01-28 15:00:00", "Dividend credit",        23000.00),
             (9, "Withdrawal", 8000.00, "2024-01-30 09:45:00", "Vendor payment",         35000.00),
             (10,"Deposit",    2500.00, "2024-02-01 11:00:00", "Birthday gift deposit",  12000.00),
-            (1, "Transfer",   3000.00, "2024-02-05 13:15:00", "Transfer to ACC1000003", 16000.00),
+            (1, "Transfer",   3000.00, "2024-02-05 13:15:00", f"Transfer to {dest_rib}", 16000.00),
         ]
         cur.executemany(
             "INSERT INTO TRANSACTIONS (AccountID,TransactionType,Amount,TransactionDate,Description,BalanceAfter) VALUES (?,?,?,?,?,?)",
@@ -503,7 +540,7 @@ def transfer_money(from_account_id: int, to_account_id: int, amount: float) -> d
         cur.execute("BEGIN IMMEDIATE")
         # Validate source account
         src = cur.execute(
-            "SELECT AccountID, Balance, Status FROM ACCOUNT WHERE AccountID=?",
+            "SELECT AccountID, AccountNumber, Balance, Status FROM ACCOUNT WHERE AccountID=?",
             (from_account_id,),
         ).fetchone()
         if not src:
@@ -519,7 +556,7 @@ def transfer_money(from_account_id: int, to_account_id: int, amount: float) -> d
 
         # Validate destination account
         dst = cur.execute(
-            "SELECT AccountID, Balance, Status FROM ACCOUNT WHERE AccountID=?",
+            "SELECT AccountID, AccountNumber, Balance, Status FROM ACCOUNT WHERE AccountID=?",
             (to_account_id,),
         ).fetchone()
         if not dst:
@@ -537,7 +574,7 @@ def transfer_money(from_account_id: int, to_account_id: int, amount: float) -> d
                VALUES (?,?,?,?,?)""",
             (
                 from_account_id, "Transfer", float(transfer_amount),
-                f"Transfer to AccountID {to_account_id}", float(new_src_balance),
+                f"Transfer to {dst['AccountNumber']}", float(new_src_balance),
             ),
         )
         # Record the bank fee separately so the sender's ledger explains the full debit.
@@ -545,7 +582,7 @@ def transfer_money(from_account_id: int, to_account_id: int, amount: float) -> d
             """INSERT INTO TRANSACTIONS (AccountID,TransactionType,Amount,Description,BalanceAfter)
                VALUES (?,?,?,?,?)""",
             (
-                from_account_id, "Withdrawal", float(TRANSFER_FEE), "Bank transfer fee",
+                from_account_id, "Withdrawal", float(TRANSFER_FEE), f"Bank transfer fee for {dst['AccountNumber']}",
                 float(new_src_balance_after_fee),
             ),
         )
@@ -555,7 +592,7 @@ def transfer_money(from_account_id: int, to_account_id: int, amount: float) -> d
                VALUES (?,?,?,?,?)""",
             (
                 to_account_id, "Deposit", float(transfer_amount),
-                f"Transfer from AccountID {from_account_id}", float(new_dst_balance),
+                f"Transfer from {src['AccountNumber']}", float(new_dst_balance),
             ),
         )
 

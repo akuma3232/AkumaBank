@@ -93,7 +93,14 @@
           <tr>
             <td class="text-muted small">{{ t.TransactionID }}</td>
             <td class="fw-semibold">{{ t.CustomerName }}</td>
-            <td><span class="mono-text">{{ t.AccountNumber }}</span></td>
+            <td>
+              <div class="d-flex align-items-center gap-1">
+                <span class="mono-text" title="Moroccan RIB">{{ t.AccountNumber | format_rib }}</span>
+                <button type="button" class="btn btn-xs btn-link text-decoration-none p-0 text-muted" onclick="copyToClipboard('{{ t.AccountNumber }}', 'Moroccan RIB copied!')" title="Copy RIB">
+                  <i class="bi bi-copy"></i>
+                </button>
+              </div>
+            </td>
             <td>
               <span class="badge-txn badge-txn-{{ t.TransactionType|lower }}">
                 <i class="bi {{ 'bi-arrow-down-circle' if t.TransactionType=='Deposit' else ('bi-arrow-up-circle' if t.TransactionType=='Withdrawal' else 'bi-arrow-left-right') }} me-1"></i>
@@ -132,7 +139,7 @@
             <select name="account_id" class="form-select" required>
               <option value="">— Select Account —</option>
               {% for a in accounts %}
-              <option value="{{ a.AccountID }}">{{ a.AccountNumber }} — {{ a.Name }}</option>
+              <option value="{{ a.AccountID }}">{{ a.AccountNumber | format_rib }} — {{ a.Name }}</option>
               {% endfor %}
             </select>
           </div>
@@ -173,7 +180,7 @@
             <select name="account_id" class="form-select" required>
               <option value="">— Select Account —</option>
               {% for a in accounts %}
-              <option value="{{ a.AccountID }}">{{ a.AccountNumber }} — {{ a.Name }}</option>
+              <option value="{{ a.AccountID }}">{{ a.AccountNumber | format_rib }} — {{ a.Name }}</option>
               {% endfor %}
             </select>
           </div>
@@ -214,7 +221,7 @@
             <select name="from_account_id" class="form-select" required>
               <option value="">— Select Source —</option>
               {% for a in accounts %}
-              <option value="{{ a.AccountID }}">{{ a.AccountNumber }} — {{ a.Name }}</option>
+              <option value="{{ a.AccountID }}">{{ a.AccountNumber | format_rib }} — {{ a.Name }}</option>
               {% endfor %}
             </select>
           </div>
@@ -223,7 +230,7 @@
             <select name="to_account_id" class="form-select" required>
               <option value="">— Select Destination —</option>
               {% for a in accounts %}
-              <option value="{{ a.AccountID }}">{{ a.AccountNumber }} — {{ a.Name }}</option>
+              <option value="{{ a.AccountID }}">{{ a.AccountNumber | format_rib }} — {{ a.Name }}</option>
               {% endfor %}
             </select>
           </div>

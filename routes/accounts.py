@@ -8,6 +8,8 @@ from database import get_db
 from functools import wraps
 import random
 
+from morocco_banking import generate_moroccan_rib, generate_card_number, format_moroccan_rib
+
 accounts_bp = Blueprint("accounts", __name__)
 
 
@@ -30,9 +32,9 @@ def owner_or_admin_required(f):
     return decorated
 
 
-def generate_account_number():
-    """Generate a unique 10-digit account number."""
-    return "ACC" + str(random.randint(1000000, 9999999))
+def generate_account_number(branch_id=None):
+    """Generate a valid 24-digit Moroccan RIB (Bank Al-Maghrib standard)."""
+    return generate_moroccan_rib(branch_id=branch_id)
 
 
 @accounts_bp.route("/accounts")
@@ -101,15 +103,17 @@ def add_account():
 
     conn = get_db()
     try:
-        # Generate unique account number
-        acc_no = generate_account_number()
+        # Generate unique 24-digit Moroccan RIB and 16-digit Luhn card number
+        acc_no = generate_moroccan_rib(branch_id=branch)
         while conn.execute("SELECT 1 FROM ACCOUNT WHERE AccountNumber=?", (acc_no,)).fetchone():
-            acc_no = generate_account_number()
+            acc_no = generate_moroccan_rib(branch_id=branch)
+
+        card_no = generate_card_number(acc_no)
 
         conn.execute("""
-            INSERT INTO ACCOUNT (CustomerID, AccountNumber, AccountType, Balance, BranchID)
-            VALUES (?,?,?,?,?)
-        """, (cid, acc_no, atype, balance, branch))
+            INSERT INTO ACCOUNT (CustomerID, AccountNumber, CardNumber, AccountType, Balance, BranchID)
+            VALUES (?,?,?,?,?,?)
+        """, (cid, acc_no, card_no, atype, balance, branch))
         conn.commit()
 
         # Record opening deposit if balance > 0
@@ -123,7 +127,7 @@ def add_account():
             """, (acc_no, balance, balance))
             conn.commit()
 
-        flash(f"Account {acc_no} created successfully.", "success")
+        flash(f"Account opened successfully. Moroccan RIB: {format_moroccan_rib(acc_no)}", "success")
     except Exception as e:
         flash(f"Error: {e}", "danger")
     finally:

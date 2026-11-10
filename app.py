@@ -4,6 +4,14 @@ import os
 from flask import Flask, flash, render_template, redirect, request, session, url_for
 
 from database import get_db, init_db
+from morocco_banking import (
+    format_moroccan_rib,
+    rib_to_iban,
+    format_iban,
+    format_card_number,
+    generate_cvv,
+    generate_card_number,
+)
 from routes.auth import auth_bp
 from routes.dashboard import dashboard_bp
 from routes.customers import customers_bp
@@ -36,6 +44,55 @@ app.register_blueprint(database_bp)
 app.register_blueprint(users_bp)
 app.register_blueprint(profiles_bp)
 app.register_blueprint(customer_portal_bp)
+
+# ── Jinja Template Filters for Moroccan Banking & Cards ──────────────────────
+@app.template_filter("format_rib")
+def filter_format_rib(rib):
+    if not rib:
+        return ""
+    return format_moroccan_rib(rib)
+
+@app.template_filter("rib_to_iban")
+def filter_rib_to_iban(rib):
+    if not rib:
+        return ""
+    return rib_to_iban(rib)
+
+@app.template_filter("format_iban")
+def filter_format_iban(iban):
+    if not iban:
+        return ""
+    return format_iban(iban)
+
+@app.template_filter("format_card")
+def filter_format_card(card, masked=False):
+    if not card:
+        return ""
+    return format_card_number(card, masked=masked)
+
+@app.template_filter("card_cvv")
+def filter_card_cvv(card_or_account):
+    if not card_or_account:
+        return "000"
+    return generate_cvv(card_or_account)
+
+@app.template_filter("card_number")
+def filter_card_number(account):
+    if not account:
+        return ""
+    try:
+        cn = account.get("CardNumber") if hasattr(account, "get") else account["CardNumber"]
+        if cn:
+            return cn
+    except Exception:
+        pass
+    try:
+        acc_no = account.get("AccountNumber") if hasattr(account, "get") else account["AccountNumber"]
+        if acc_no:
+            return generate_card_number(acc_no)
+    except Exception:
+        pass
+    return generate_card_number(str(account))
 
 
 @app.before_request

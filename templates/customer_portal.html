@@ -80,9 +80,11 @@
 
   <div class="row g-4">
     {% for account in accounts %}
+    {% set card_num = account.CardNumber or (account | card_number) %}
+    {% set cvv_code = card_num | card_cvv %}
     <div class="col-12 col-md-6 col-xl-4">
       <div class="cyber-card-container">
-        <div class="cyber-card cyber-card-{{ account.AccountType|lower|replace(' ', '-') }} {% if account.Status == 'Active' %}cyber-card-active{% endif %}" data-account-number="{{ account.AccountNumber }}">
+        <div class="cyber-card cyber-card-{{ account.AccountType|lower|replace(' ', '-') }} {% if account.Status == 'Active' %}cyber-card-active{% endif %}" data-account-number="{{ account.AccountNumber }}" data-card-number="{{ card_num }}">
           <!-- Hologram Shimmer Layer -->
           <div class="cyber-card-shimmer"></div>
           <div class="cyber-card-glow"></div>
@@ -94,8 +96,9 @@
               <span class="brand-title">AkumaBank</span>
               <span class="card-tier-pill">{% if account.AccountType == 'Savings' %}CYBER SAVINGS{% elif account.AccountType == 'Current' %}TITANIUM CURRENT{% else %}VAULT RESERVE{% endif %}</span>
             </div>
-            <div class="cyber-card-contactless">
-              <i class="bi bi-wifi"></i>
+            <div class="cyber-card-contactless d-flex align-items-center gap-2">
+              <i class="bi bi-wifi" title="Contactless Enabled"></i>
+              <span class="card-network-badge">VISA</span>
             </div>
           </div>
 
@@ -113,22 +116,22 @@
             </div>
           </div>
 
-          <!-- Account Number Row with Mask & Actions -->
+          <!-- 16-Digit Computer-Calculated Card Number Row with Mask & Actions -->
           <div class="cyber-card-num-row">
-            <span class="card-number-text mono-text" id="cardNum{{ loop.index }}" data-raw-number="{{ account.AccountNumber }}">
-              •••• &nbsp; •••• &nbsp; •••• &nbsp; {{ account.AccountNumber[-4:] if account.AccountNumber|length >= 4 else account.AccountNumber }}
+            <span class="card-number-text mono-text" id="cardNum{{ loop.index }}" data-raw-number="{{ card_num }}">
+              {{ card_num[:4] }} &nbsp; •••• &nbsp; •••• &nbsp; {{ card_num[-4:] }}
             </span>
             <div class="card-action-btns">
-              <button type="button" class="btn-card-icon" title="Reveal / Hide Number" onclick="toggleCardNumberDisplay('cardNum{{ loop.index }}', this)">
+              <button type="button" class="btn-card-icon" title="Reveal / Hide Card Number" onclick="toggleCardNumberDisplay('cardNum{{ loop.index }}', this)">
                 <i class="bi bi-eye"></i>
               </button>
-              <button type="button" class="btn-card-icon" title="Copy Account Number" onclick="copyToClipboard('{{ account.AccountNumber }}', 'Account number copied!')">
+              <button type="button" class="btn-card-icon" title="Copy 16-Digit Card Number" onclick="copyToClipboard('{{ card_num }}', '16-Digit Card number copied!')">
                 <i class="bi bi-clipboard"></i>
               </button>
             </div>
           </div>
 
-          <!-- Bottom: Cardholder, Expiry, Balance -->
+          <!-- Bottom: Cardholder, Expiry, CVV, Balance -->
           <div class="cyber-card-bottom">
             <div class="card-meta-group">
               <span class="card-meta-label">CARDHOLDER</span>
@@ -138,10 +141,46 @@
               <span class="card-meta-label">EXPIRES</span>
               <span class="card-meta-val">12/31</span>
             </div>
+            <div class="card-meta-group">
+              <span class="card-meta-label">CVV</span>
+              <span class="card-meta-val font-monospace card-cvv-interactive" onclick="toggleCvvDisplay(this, '{{ cvv_code }}')" title="Click to reveal CVV">•••</span>
+            </div>
             <div class="card-meta-group text-end ms-auto">
               <span class="card-meta-label">BALANCE</span>
               <span class="card-balance-highlight">MAD {{ "{:,.2f}".format(account.Balance) }}</span>
             </div>
+          </div>
+        </div>
+
+        <!-- Official Moroccan RIB & IBAN Slip Box -->
+        <div class="moroccan-rib-box mt-3 p-3 rounded-3">
+          <div class="d-flex justify-content-between align-items-center mb-1">
+            <span class="small fw-bold text-uppercase text-body-secondary"><i class="bi bi-bank text-primary me-1"></i>Moroccan RIB (24 Digits)</span>
+            <span class="badge bg-primary-soft text-primary font-monospace">Bank Al-Maghrib</span>
+          </div>
+          <div class="rib-display-row d-flex align-items-center justify-content-between p-2 rounded mb-2">
+            <span class="mono-text fw-bold fs-6 text-truncate me-2" title="{{ account.AccountNumber }}">{{ account.AccountNumber | format_rib }}</span>
+            <button type="button" class="btn btn-xs btn-outline-primary" onclick="copyToClipboard('{{ account.AccountNumber }}', '24-digit Moroccan RIB copied!')" title="Copy 24-digit RIB">
+              <i class="bi bi-copy me-1"></i>Copy RIB
+            </button>
+          </div>
+
+          <div class="d-flex justify-content-between align-items-center mb-1">
+            <span class="small fw-bold text-uppercase text-body-secondary"><i class="bi bi-globe text-info me-1"></i>Moroccan IBAN</span>
+            <span class="badge bg-info-soft text-info font-monospace">ISO 13616</span>
+          </div>
+          <div class="rib-display-row d-flex align-items-center justify-content-between p-2 rounded">
+            <span class="mono-text fw-semibold small text-truncate me-2" title="{{ account.AccountNumber | rib_to_iban }}">{{ account.AccountNumber | rib_to_iban | format_iban }}</span>
+            <button type="button" class="btn btn-xs btn-outline-info" onclick="copyToClipboard('{{ account.AccountNumber | rib_to_iban }}', 'Moroccan IBAN copied!')" title="Copy IBAN">
+              <i class="bi bi-copy me-1"></i>Copy IBAN
+            </button>
+          </div>
+
+          <div class="rib-meta-pills mt-2 pt-2 border-top d-flex flex-wrap gap-2 small text-muted">
+            <span><strong class="text-body">Code Banque:</strong> {{ account.AccountNumber[:3] }}</span>
+            <span><strong class="text-body">Guichet:</strong> {{ account.AccountNumber[3:6] }}</span>
+            <span><strong class="text-body">Clé:</strong> {{ account.AccountNumber[22:] }}</span>
+            <span class="ms-auto"><strong class="text-body">BIC:</strong> AKUMMAMAXXX</span>
           </div>
         </div>
       </div>
@@ -220,10 +259,15 @@
               {% for account in accounts %}
               <tr>
                 <td>
-                  <span class="mono-text fw-semibold">{{ account.AccountNumber }}</span>
-                  <button type="button" class="btn-copy-inline ms-1" onclick="copyToClipboard('{{ account.AccountNumber }}')" title="Copy Account Number">
-                    <i class="bi bi-copy"></i>
-                  </button>
+                  <div class="d-flex align-items-center gap-1">
+                    <span class="mono-text fw-semibold">{{ account.AccountNumber | format_rib }}</span>
+                    <button type="button" class="btn-copy-inline ms-1" onclick="copyToClipboard('{{ account.AccountNumber }}', 'Moroccan RIB copied!')" title="Copy Moroccan RIB">
+                      <i class="bi bi-copy"></i>
+                    </button>
+                  </div>
+                  <div class="small text-muted font-monospace mt-1">
+                    <i class="bi bi-credit-card me-1 text-primary"></i>{{ (account.CardNumber or (account | card_number))[:4] }} •••• •••• {{ (account.CardNumber or (account | card_number))[-4:] }}
+                  </div>
                 </td>
                 <td>
                   <span class="badge-acct-type badge-{{ account.AccountType|lower|replace(' ', '_') }}">{{ account.AccountType }}</span>
@@ -268,7 +312,7 @@
               <label class="form-label" for="withdraw_account">Select Debit Account</label>
               <select class="form-select" id="withdraw_account" name="account_id" required>
                 {% for account in accounts if account.Status == 'Active' %}
-                <option value="{{ account.AccountID }}">{{ account.AccountNumber }} ({{ account.AccountType }}) — MAD {{ "{:,.2f}".format(account.Balance) }}</option>
+                <option value="{{ account.AccountID }}">{{ account.AccountNumber | format_rib }} ({{ account.AccountType }}) — MAD {{ "{:,.2f}".format(account.Balance) }}</option>
                 {% else %}
                 <option value="" disabled>No active accounts</option>
                 {% endfor %}
@@ -307,18 +351,19 @@
               <label class="form-label" for="transfer_source">From Source Account</label>
               <select class="form-select" id="transfer_source" name="from_account_id" required>
                 {% for account in accounts if account.Status == 'Active' %}
-                <option value="{{ account.AccountID }}">{{ account.AccountNumber }} ({{ account.AccountType }}) — MAD {{ "{:,.2f}".format(account.Balance) }}</option>
+                <option value="{{ account.AccountID }}">{{ account.AccountNumber | format_rib }} ({{ account.AccountType }}) — MAD {{ "{:,.2f}".format(account.Balance) }}</option>
                 {% else %}
                 <option value="" disabled>No active accounts</option>
                 {% endfor %}
               </select>
             </div>
             <div class="mb-3">
-              <label class="form-label" for="destination_account">Destination Account Number</label>
+              <label class="form-label" for="destination_account">Destination Account (24-digit RIB or IBAN)</label>
               <div class="input-group">
-                <span class="input-group-text"><i class="bi bi-credit-card text-muted"></i></span>
-                <input class="form-control font-monospace" type="text" id="destination_account" name="to_account_number" placeholder="e.g. ACCT-89214732" maxlength="32" required />
+                <span class="input-group-text"><i class="bi bi-bank text-muted"></i></span>
+                <input class="form-control font-monospace" type="text" id="destination_account" name="to_account_number" placeholder="e.g. 240 810 00000000123456 78 or MA64..." maxlength="36" required />
               </div>
+              <div class="form-text small">Accepts 24-digit Moroccan RIB (with or without spaces) or International IBAN.</div>
             </div>
             <div class="mb-3">
               <label class="form-label" for="transfer_amount">Transfer Amount (MAD)</label>
@@ -372,7 +417,7 @@
         <select class="form-select" id="loan_account" name="account_id" required>
           <option value="">Choose receiving account</option>
           {% for account in active_accounts %}
-          <option value="{{ account.AccountID }}">{{ account.AccountNumber }} — {{ account.AccountType }}</option>
+          <option value="{{ account.AccountID }}">{{ account.AccountNumber | format_rib }} — {{ account.AccountType }}</option>
           {% endfor %}
         </select>
       </div>
@@ -412,7 +457,7 @@
             <td><span class="fw-semibold">{{ loan.LoanType }}</span></td>
             <td class="fw-bold font-monospace text-primary">MAD {{ "{:,.2f}".format(loan.Amount) }}</td>
             <td>{{ loan.InterestRate }}%{% if loan.Status == 'Pending' %} <span class="badge bg-warning-soft text-warning ms-1">Provisional</span>{% endif %}</td>
-            <td class="mono-text">{{ loan.DisbursementAccount or '—' }}{% if loan.DisbursedAt %}<span class="badge bg-success-soft text-success ms-2">Credited</span>{% endif %}</td>
+            <td class="mono-text">{{ (loan.DisbursementAccount | format_rib) if loan.DisbursementAccount else '—' }}{% if loan.DisbursedAt %}<span class="badge bg-success-soft text-success ms-2">Credited</span>{% endif %}</td>
             <td><small class="text-muted">{{ loan.StartDate }}</small></td>
             <td>
               <span class="badge-status-{{ loan.Status|lower }}">{{ loan.Status }}</span>
@@ -450,7 +495,7 @@
           {% for transaction in transactions %}
           <tr>
             <td><small class="text-muted font-monospace">{{ transaction.TransactionDate }}</small></td>
-            <td class="mono-text fw-semibold">{{ transaction.AccountNumber }}</td>
+            <td class="mono-text fw-semibold">{{ transaction.AccountNumber | format_rib }}</td>
             <td>
               <span class="badge-txn badge-txn-{{ transaction.TransactionType|lower }}">
                 {{ transaction.TransactionType }}

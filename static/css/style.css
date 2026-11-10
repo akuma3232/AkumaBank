@@ -929,6 +929,60 @@ h1, h2, h3, h4, h5, h6, .font-heading {
   text-shadow: 0 0 12px rgba(255, 255, 255, 0.4);
 }
 
+.card-network-badge {
+  font-family: var(--font-sans);
+  font-size: 0.72rem;
+  font-weight: 900;
+  font-style: italic;
+  letter-spacing: 0.12em;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.2);
+  padding: 2px 7px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.card-cvv-interactive {
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.15);
+  padding: 1px 6px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  transition: all var(--t-fast) var(--ease);
+  display: inline-block;
+}
+.card-cvv-interactive:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: scale(1.05);
+}
+
+.moroccan-rib-box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+  transition: all var(--t-normal) var(--ease);
+}
+.moroccan-rib-box:hover {
+  border-color: rgba(99, 102, 241, 0.4);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+}
+[data-theme="dark"] .moroccan-rib-box {
+  background: #0f172a;
+  border-color: rgba(255, 255, 255, 0.08);
+}
+.rib-display-row {
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-hover);
+}
+[data-theme="dark"] .rib-display-row {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+.rib-meta-pills {
+  border-color: var(--border-subtle) !important;
+}
+
 /* ── COMMAND HUD MODAL (Ctrl + K) ────────────────────────────── */
 .command-hud-backdrop {
   position: fixed; inset: 0;

@@ -50,10 +50,10 @@ def home():
     total_account_balance = Decimal("0.00")
     if customer:
         accounts = conn.execute(
-            """SELECT AccountID, AccountNumber, AccountType, Balance, Status,
-                      OpeningDate, BranchName, City
-               FROM ACCOUNT LEFT JOIN BRANCH USING (BranchID)
-               WHERE CustomerID=? ORDER BY AccountID""",
+            """SELECT a.AccountID, a.AccountNumber, a.CardNumber, a.AccountType, a.Balance, a.Status,
+                      a.OpeningDate, b.BranchName, b.City
+               FROM ACCOUNT a LEFT JOIN BRANCH b ON a.BranchID = b.BranchID
+               WHERE a.CustomerID=? ORDER BY a.AccountID""",
             (customer["CustomerID"],),
         ).fetchall()
         total_account_balance = sum(
@@ -150,9 +150,15 @@ def transfer():
     """Transfer funds from the signed-in customer's account to an active account."""
     amount = parse_amount(request.form.get("amount", ""))
     source_id = request.form.get("from_account_id", "")
-    destination_number = request.form.get("to_account_number", "").strip()
+    raw_dest = request.form.get("to_account_number", "").strip()
+    clean_dest = raw_dest.replace(" ", "").upper()
+    if clean_dest.startswith("MA64") and len(clean_dest) == 28:
+        destination_number = clean_dest[4:]
+    else:
+        destination_number = clean_dest
+
     if amount is None or not source_id.isdecimal() or not destination_number:
-        flash("Enter a valid source, destination account number, and positive amount.", "danger")
+        flash("Enter a valid source, destination account number (24-digit RIB or IBAN), and positive amount.", "danger")
         return redirect(url_for("customer_portal.home"))
 
     conn = get_db()
@@ -166,8 +172,9 @@ def transfer():
         ).fetchone()
         destination = conn.execute(
             """SELECT AccountID, AccountNumber, Balance, Status
-               FROM ACCOUNT WHERE AccountNumber=?""",
-            (destination_number,),
+               FROM ACCOUNT
+               WHERE AccountNumber=? OR REPLACE(AccountNumber, ' ', '')=?""",
+            (destination_number, destination_number),
         ).fetchone()
 
         if not source or not destination:

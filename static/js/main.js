@@ -138,25 +138,48 @@ function toggleCardNumberDisplay(elementId, btn) {
 
   const raw = el.getAttribute('data-raw-number') || '';
   const isMasked = el.classList.contains('is-revealed');
-  const icon = btn.querySelector('i');
+  const icon = btn ? btn.querySelector('i') : null;
 
   if (isMasked) {
-    // Mask again
+    // Mask again: 4240 •••• •••• 1234
+    const first4 = raw.length >= 4 ? raw.slice(0, 4) : '••••';
     const last4 = raw.length >= 4 ? raw.slice(-4) : raw;
-    el.innerHTML = `•••• &nbsp; •••• &nbsp; •••• &nbsp; ${last4}`;
+    el.innerHTML = `${first4} &nbsp; •••• &nbsp; •••• &nbsp; ${last4}`;
     el.classList.remove('is-revealed');
     if (icon) {
       icon.classList.remove('bi-eye-slash');
       icon.classList.add('bi-eye');
     }
   } else {
-    // Reveal formatted
+    // Reveal formatted: 4240 1234 5678 9012
     el.textContent = raw.replace(/(.{4})/g, '$1 ').trim();
     el.classList.add('is-revealed');
     if (icon) {
       icon.classList.remove('bi-eye');
       icon.classList.add('bi-eye-slash');
     }
+  }
+}
+
+// ── CVV Masking / Reveal ────────────────────────────────────────────────────
+function toggleCvvDisplay(spanEl, cvvCode) {
+  SoundFX.click();
+  if (!spanEl) return;
+  if (spanEl.getAttribute('data-revealed') === 'true') {
+    spanEl.textContent = '•••';
+    spanEl.removeAttribute('data-revealed');
+    spanEl.classList.remove('text-warning');
+  } else {
+    spanEl.textContent = cvvCode;
+    spanEl.setAttribute('data-revealed', 'true');
+    spanEl.classList.add('text-warning');
+    setTimeout(() => {
+      if (spanEl.getAttribute('data-revealed') === 'true') {
+        spanEl.textContent = '•••';
+        spanEl.removeAttribute('data-revealed');
+        spanEl.classList.remove('text-warning');
+      }
+    }, 4000);
   }
 }
 

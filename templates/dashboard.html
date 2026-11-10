@@ -198,7 +198,7 @@
                     <span class="fw-semibold">{{ t.CustomerName }}</span>
                   </div>
                 </td>
-                <td><span class="mono-text">{{ t.AccountNumber }}</span></td>
+                <td><span class="mono-text">{{ t.AccountNumber | format_rib }}</span></td>
                 <td>
                   <span class="badge-txn badge-txn-{{ t.TransactionType|lower }}">
                     {{ t.TransactionType }}

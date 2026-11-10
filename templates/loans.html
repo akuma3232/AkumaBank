@@ -95,7 +95,7 @@
             <td class="text-muted">{{ l.InterestRate }}%</td>
             <td class="text-warning fw-semibold">MAD {{ "{:,.0f}".format(l.annual_interest) }}</td>
             <td class="text-muted small">{{ l.StartDate }}</td>
-            <td>{{ l.DisbursementAccountNumber or 'Choose on approval' }}{% if l.DisbursedAt %}<div class="small text-success">Credited</div>{% endif %}</td>
+            <td><span class="mono-text small">{{ (l.DisbursementAccountNumber | format_rib) if l.DisbursementAccountNumber else 'Choose on approval' }}</span>{% if l.DisbursedAt %}<div class="small text-success">Credited</div>{% endif %}</td>
             <td>
               {% if l.Status == 'Approved' %}
                 <span class="badge bg-success-soft text-success"><i class="bi bi-check-circle-fill me-1"></i>Approved</span>
@@ -114,7 +114,7 @@
                 <select name="disbursement_account_id" class="form-select form-select-sm mb-1" required aria-label="Account to receive loan funds">
                   <option value="">Select deposit account</option>
                   {% for account in disbursement_accounts_by_customer.get(l.CustomerID, []) %}
-                  <option value="{{ account.AccountID }}" {% if l.DisbursementAccountID == account.AccountID %}selected{% endif %}>{{ account.AccountNumber }}</option>
+                  <option value="{{ account.AccountID }}" {% if l.DisbursementAccountID == account.AccountID %}selected{% endif %}>{{ account.AccountNumber | format_rib }}</option>
                   {% endfor %}
                 </select>
                 <input type="hidden" name="status" value="Approved" />
@@ -164,7 +164,7 @@
             <select name="disbursement_account_id" class="form-select" required>
               <option value="">— Select active account —</option>
               {% for account in disbursement_accounts %}
-              <option value="{{ account.AccountID }}">{{ account.CustomerName }} — {{ account.AccountNumber }}</option>
+              <option value="{{ account.AccountID }}">{{ account.CustomerName }} — {{ account.AccountNumber | format_rib }}</option>
               {% endfor %}
             </select>
           </div>

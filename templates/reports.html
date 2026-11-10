@@ -30,7 +30,7 @@
               <tr>
                 <td class="text-muted small">{{ t.TransactionID }}</td>
                 <td class="fw-semibold">{{ t.CustomerName }}</td>
-                <td><span class="mono-text">{{ t.AccountNumber }}</span></td>
+                <td><span class="mono-text">{{ t.AccountNumber | format_rib }}</span></td>
                 <td><span class="badge-txn badge-txn-{{ t.TransactionType|lower }}">{{ t.TransactionType }}</span></td>
                 <td class="fw-semibold {{ 'text-success' if t.TransactionType=='Deposit' else 'text-danger' }}">
                   MAD {{ "{:,.2f}".format(t.Amount) }}
@@ -183,7 +183,7 @@
               <tbody>
                 {% for a in inactive_accounts %}
                 <tr>
-                  <td><span class="mono-text">{{ a.AccountNumber }}</span></td>
+                  <td><span class="mono-text">{{ a.AccountNumber | format_rib }}</span></td>
                   <td class="fw-semibold">{{ a.Name }}</td>
                   <td class="text-muted">MAD {{ "{:,.0f}".format(a.Balance) }}</td>
                   <td>

@@ -117,7 +117,7 @@ def deposit():
         max_balance = tier_info.get("max_balance")
         if max_balance is not None and new_balance > Decimal(str(max_balance)):
             flash(
-                f"Deposit rejected: The new balance (MAD {new_balance:,.2f}) would exceed the card ceiling (Plafond: {tier_info['plafond']}).",
+                f"Deposit rejected: The new balance (MAD {new_balance:,.2f}) would exceed the account ceiling (Max Balance: {tier_info['plafond']}).",
                 "danger",
             )
             return redirect(url_for("transactions.transactions"))

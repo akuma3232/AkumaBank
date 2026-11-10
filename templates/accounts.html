@@ -107,11 +107,11 @@
             </td>
             <td>
               {% set tier_data = (a.CardTier or 'standard') | card_tier_info %}
-              <span class="badge-tier badge-tier-{{ a.CardTier or 'standard' }}" title="{{ tier_data.tagline }} (Plafond: {{ tier_data.plafond }})">
+              <span class="badge-tier badge-tier-{{ a.CardTier or 'standard' }}" title="{{ tier_data.tagline }} (Max Balance: {{ tier_data.plafond }})">
                 <i class="bi {{ tier_data.icon }}"></i> {{ tier_data.name }}
               </span>
               <div class="small text-muted font-monospace mt-1" style="font-size: 0.7rem;">
-                <i class="bi bi-shield me-1"></i>Plafond: {{ tier_data.plafond }}
+                <i class="bi bi-shield me-1"></i>Max Balance: {{ tier_data.plafond }}
               </div>
             </td>
             <td class="fw-semibold text-success">MAD {{ "{:,.2f}".format(a.Balance) }}</td>
@@ -286,7 +286,7 @@
                   <span class="badge bg-primary-soft text-primary" id="modalPreviewFee">0 MAD / mois</span>
                 </div>
                 <div class="small text-muted mb-2">
-                  <i class="bi bi-shield-check me-1 text-primary"></i>Plafond du compte (Solde max) : <strong class="text-body fw-bold" id="modalPreviewLimit">100 000 MAD</strong>
+                  <i class="bi bi-shield-check me-1 text-primary"></i>Account Ceiling (Max Balance) : <strong class="text-body fw-bold" id="modalPreviewLimit">100 000 MAD</strong>
                 </div>
                 <ul class="list-unstyled mb-0 small text-body-secondary" id="modalPreviewPerks" style="font-size: 0.8rem; line-height: 1.6;">
                   <li><i class="bi bi-check2-circle text-success me-2"></i><span>Carte bancaire sans frais de tenue de compte</span></li>
@@ -351,8 +351,8 @@
                     <h6 class="text-truncate fw-bold mb-1" title="{{ tier.name }}">{{ tier.name }}</h6>
                     <div class="d-flex align-items-center justify-content-between mt-1">
                       <span class="card-template-fee text-primary fw-semibold">{{ tier.monthly_fee }}</span>
-                      <span class="badge bg-body-secondary text-body border font-monospace" style="font-size: 0.68rem;" title="Plafond du compte (Solde maximum)">
-                        <i class="bi bi-shield-check text-primary me-1"></i>Plafond: {{ tier.plafond }}
+                      <span class="badge bg-body-secondary text-body border font-monospace" style="font-size: 0.68rem;" title="Account Ceiling (Max Balance)">
+                        <i class="bi bi-shield-check text-primary me-1"></i>Ceiling: {{ tier.plafond }}
                       </span>
                     </div>
                     <p class="small text-muted mb-0 mt-1 text-truncate" style="font-size: 0.72rem;">{{ tier.tagline }}</p>

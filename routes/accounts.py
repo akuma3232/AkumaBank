@@ -106,7 +106,7 @@ def add_account():
     tier_info = get_card_tier(card_tier)
     max_balance = tier_info.get("max_balance")
     if max_balance is not None and balance > max_balance:
-        flash(f"Opening deposit of MAD {balance:,.2f} exceeds the subscription ceiling (Plafond: {tier_info['plafond']}).", "danger")
+        flash(f"Opening deposit of MAD {balance:,.2f} exceeds the subscription ceiling (Max Balance: {tier_info['plafond']}).", "danger")
         return redirect(url_for("accounts.accounts"))
 
     conn = get_db()

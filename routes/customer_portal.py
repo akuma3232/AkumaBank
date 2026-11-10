@@ -190,13 +190,18 @@ def transfer():
             flash("Both accounts must be active to transfer funds.", "danger")
             return redirect(url_for("customer_portal.home"))
         source_balance = Decimal(str(source["Balance"]))
-        if amount + TRANSFER_FEE > source_balance:
+        if amount > source_balance:
             conn.rollback()
-            flash(f"Insufficient balance for this transfer plus the MAD {TRANSFER_FEE:.2f} fee.", "danger")
+            flash("Insufficient balance.", "danger")
+            return redirect(url_for("customer_portal.home"))
+        if amount <= TRANSFER_FEE:
+            conn.rollback()
+            flash(f"Transfer amount must exceed the MAD {TRANSFER_FEE:.2f} bank fee.", "danger")
             return redirect(url_for("customer_portal.home"))
 
+        # Fee is deducted from what the recipient receives — sender loses exactly `amount`
+        received_amount = amount - TRANSFER_FEE
         source_after_transfer = source_balance - amount
-        source_after_fee = source_after_transfer - TRANSFER_FEE
         conn.execute(
             """INSERT INTO TRANSACTIONS
                (AccountID, TransactionType, Amount, Description, BalanceAfter)
@@ -210,26 +215,16 @@ def transfer():
         conn.execute(
             """INSERT INTO TRANSACTIONS
                (AccountID, TransactionType, Amount, Description, BalanceAfter)
-               VALUES (?, 'Withdrawal', ?, ?, ?)""",
-            (
-                source["AccountID"], float(TRANSFER_FEE),
-                f"Bank transfer fee for {destination['AccountNumber']}",
-                float(source_after_fee),
-            ),
-        )
-        conn.execute(
-            """INSERT INTO TRANSACTIONS
-               (AccountID, TransactionType, Amount, Description, BalanceAfter)
                VALUES (?, 'Deposit', ?, ?, ?)""",
             (
-                destination["AccountID"], float(amount),
-                f"Transfer from {source['AccountNumber']}",
-                float(Decimal(str(destination["Balance"])) + amount),
+                destination["AccountID"], float(received_amount),
+                f"Transfer from {source['AccountNumber']} (MAD {TRANSFER_FEE:.2f} bank fee deducted)",
+                float(Decimal(str(destination["Balance"])) + received_amount),
             ),
         )
         conn.commit()
         flash(
-            f"MAD {amount:,.2f} transferred. MAD {TRANSFER_FEE:,.2f} bank fee charged.",
+            f"MAD {amount:,.2f} sent. Recipient receives MAD {received_amount:,.2f} after the MAD {TRANSFER_FEE:,.2f} bank fee.",
             "success",
         )
     except Exception as error:

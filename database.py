@@ -8,7 +8,8 @@ from morocco_banking import generate_moroccan_rib, generate_card_number
 
 DATABASE_DIR = os.path.join(os.path.dirname(__file__), "database")
 DB_PATH = os.path.join(DATABASE_DIR, "banking_system.db")
-TRANSFER_FEE = Decimal("10.00")
+TRANSFER_FEE = Decimal("10.00")   # deducted from received amount (not sender)
+DEPOSIT_FEE  = Decimal("1.00")    # deducted from each deposit
 
 
 def get_db():
@@ -521,6 +522,8 @@ def transfer_money(from_account_id: int, to_account_id: int, amount: float) -> d
     """
     Stored-procedure equivalent: TransferMoney()
     Atomically transfers `amount` from one account to another.
+    Fee model: sender's balance is debited by exactly `amount`.
+               recipient receives (amount - TRANSFER_FEE) — the fee is kept by the bank.
     Returns {'success': bool, 'message': str}
     """
     conn = get_db()
@@ -537,6 +540,12 @@ def transfer_money(from_account_id: int, to_account_id: int, amount: float) -> d
         except InvalidOperation:
             return {"success": False, "message": "Enter a valid transfer amount."}
 
+        if transfer_amount <= TRANSFER_FEE:
+            return {
+                "success": False,
+                "message": f"Transfer amount must exceed the MAD {TRANSFER_FEE:.2f} bank fee.",
+            }
+
         cur.execute("BEGIN IMMEDIATE")
         # Validate source account
         src = cur.execute(
@@ -548,11 +557,8 @@ def transfer_money(from_account_id: int, to_account_id: int, amount: float) -> d
         if src["Status"] != "Active":
             return {"success": False, "message": "Source account is not active."}
         source_balance = Decimal(str(src["Balance"]))
-        if source_balance < transfer_amount + TRANSFER_FEE:
-            return {
-                "success": False,
-                "message": f"Insufficient balance. Transfer plus the MAD {TRANSFER_FEE:.2f} fee is required.",
-            }
+        if source_balance < transfer_amount:
+            return {"success": False, "message": "Insufficient balance."}
 
         # Validate destination account
         dst = cur.execute(
@@ -564,11 +570,12 @@ def transfer_money(from_account_id: int, to_account_id: int, amount: float) -> d
         if dst["Status"] != "Active":
             return {"success": False, "message": "Destination account is not active."}
 
+        # Fee is deducted from the received amount, not from sender separately
+        received_amount = transfer_amount - TRANSFER_FEE
         new_src_balance = source_balance - transfer_amount
-        new_src_balance_after_fee = new_src_balance - TRANSFER_FEE
-        new_dst_balance = Decimal(str(dst["Balance"])) + transfer_amount
+        new_dst_balance = Decimal(str(dst["Balance"])) + received_amount
 
-        # Debit
+        # Debit sender (full amount)
         cur.execute(
             """INSERT INTO TRANSACTIONS (AccountID,TransactionType,Amount,Description,BalanceAfter)
                VALUES (?,?,?,?,?)""",
@@ -577,29 +584,24 @@ def transfer_money(from_account_id: int, to_account_id: int, amount: float) -> d
                 f"Transfer to {dst['AccountNumber']}", float(new_src_balance),
             ),
         )
-        # Record the bank fee separately so the sender's ledger explains the full debit.
+        # Credit recipient (amount minus bank fee)
         cur.execute(
             """INSERT INTO TRANSACTIONS (AccountID,TransactionType,Amount,Description,BalanceAfter)
                VALUES (?,?,?,?,?)""",
             (
-                from_account_id, "Withdrawal", float(TRANSFER_FEE), f"Bank transfer fee for {dst['AccountNumber']}",
-                float(new_src_balance_after_fee),
-            ),
-        )
-        # Credit
-        cur.execute(
-            """INSERT INTO TRANSACTIONS (AccountID,TransactionType,Amount,Description,BalanceAfter)
-               VALUES (?,?,?,?,?)""",
-            (
-                to_account_id, "Deposit", float(transfer_amount),
-                f"Transfer from {src['AccountNumber']}", float(new_dst_balance),
+                to_account_id, "Deposit", float(received_amount),
+                f"Transfer from {src['AccountNumber']} (MAD {TRANSFER_FEE:.2f} bank fee deducted)",
+                float(new_dst_balance),
             ),
         )
 
         conn.commit()
         return {
             "success": True,
-            "message": f"MAD {transfer_amount:,.2f} transferred. MAD {TRANSFER_FEE:,.2f} bank fee charged.",
+            "message": (
+                f"MAD {transfer_amount:,.2f} sent. "
+                f"Recipient receives MAD {received_amount:,.2f} after the MAD {TRANSFER_FEE:,.2f} bank fee."
+            ),
         }
     except Exception as e:
         conn.rollback()

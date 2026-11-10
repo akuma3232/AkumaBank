@@ -215,7 +215,7 @@
       </div>
       <form method="POST" action="{{ url_for('transactions.transfer') }}">
         <div class="modal-body">
-          <div class="alert alert-info py-2 small"><i class="bi bi-info-circle me-1"></i>Each transfer deducts a MAD 10.00 bank fee from the source account. The transfer and fee are recorded separately.</div>
+          <div class="alert alert-info py-2 small"><i class="bi bi-info-circle me-1"></i>Each transfer deducts a MAD 10.00 bank fee from the <strong>received amount</strong> — the sender's balance decreases by the full transfer amount only. Each deposit deducts a MAD 1.00 bank fee from the credited amount.</div>
           <div class="mb-3">
             <label class="form-label">From Account *</label>
             <select name="from_account_id" class="form-select" required>

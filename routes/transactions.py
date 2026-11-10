@@ -4,7 +4,7 @@ Uses the TransferMoney stored-procedure equivalent and the trigger UpdateBalance
 """
 
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash
-from database import get_db, transfer_money
+from database import get_db, transfer_money, DEPOSIT_FEE
 from functools import wraps
 
 transactions_bp = Blueprint("transactions", __name__)
@@ -84,7 +84,7 @@ def transactions():
 @login_required
 @owner_or_admin_required
 def deposit():
-    """Credit an amount to an account — trigger fires to update balance."""
+    """Credit an amount to an account after deducting the MAD 1.00 deposit fee."""
     account_id  = request.form.get("account_id")
     amount      = float(request.form.get("amount", 0))
     description = request.form.get("description", "Cash deposit").strip()
@@ -92,6 +92,14 @@ def deposit():
     if not account_id or amount <= 0:
         flash("Valid account and positive amount required.", "danger")
         return redirect(url_for("transactions.transactions"))
+
+    from decimal import Decimal
+    deposit_amount = Decimal(str(amount))
+    if deposit_amount <= DEPOSIT_FEE:
+        flash(f"Deposit amount must exceed the MAD {DEPOSIT_FEE:.2f} bank fee.", "danger")
+        return redirect(url_for("transactions.transactions"))
+
+    credited_amount = deposit_amount - DEPOSIT_FEE   # what actually lands in the account
 
     conn = get_db()
     try:
@@ -103,14 +111,17 @@ def deposit():
             flash("Account is not active.", "danger")
             return redirect(url_for("transactions.transactions"))
 
-        new_balance = acct["Balance"] + amount
+        new_balance = Decimal(str(acct["Balance"])) + credited_amount
         # INSERT fires the UpdateBalanceAfterTransaction trigger automatically
         conn.execute("""
             INSERT INTO TRANSACTIONS (AccountID, TransactionType, Amount, Description, BalanceAfter)
             VALUES (?, 'Deposit', ?, ?, ?)
-        """, (account_id, amount, description, new_balance))
+        """, (account_id, float(credited_amount), f"{description} (MAD {DEPOSIT_FEE:.2f} bank fee deducted)", float(new_balance)))
         conn.commit()
-        flash(f"MAD {amount:,.2f} deposited successfully.", "success")
+        flash(
+            f"MAD {credited_amount:,.2f} credited (MAD {DEPOSIT_FEE:,.2f} bank fee deducted from MAD {deposit_amount:,.2f} deposit).",
+            "success",
+        )
     except Exception as e:
         flash(f"Error: {e}", "danger")
     finally:

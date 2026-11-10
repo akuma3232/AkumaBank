@@ -344,7 +344,12 @@
         <div class="op-panel p-3 rounded-3 border">
           <div class="d-flex align-items-center justify-content-between mb-3">
             <h6 class="fw-bold mb-0 text-primary"><i class="bi bi-arrow-left-right me-2"></i>Inter-Account Transfer</h6>
-            <span class="badge bg-primary-soft text-primary">Fee: MAD {{ "{:,.2f}".format(transfer_fee) }}</span>
+            <span class="badge bg-primary-soft text-primary">Fee: MAD {{ "{:,.2f}".format(transfer_fee) }} from received amount</span>
+          </div>
+          <div class="alert alert-primary py-2 small mb-3 rounded-2">
+            <i class="bi bi-info-circle me-1"></i>
+            You send the <strong>full amount</strong> — the MAD {{ "{:,.2f}".format(transfer_fee) }} fee is deducted from what the recipient receives.
+            <br><small class="text-muted">Example: Send MAD 1,000 → recipient gets MAD {{ "{:,.2f}".format(1000 - transfer_fee) }}</small>
           </div>
           <form method="POST" action="{{ url_for('customer_portal.transfer') }}">
             <div class="mb-3">

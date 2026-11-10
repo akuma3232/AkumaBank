@@ -25,6 +25,7 @@ from routes.database_panel import database_bp
 from routes.users import users_bp
 from routes.profiles import profiles_bp
 from routes.customer_portal import customer_portal_bp
+from routes.documents import documents_bp
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SESSION_SECRET") or os.urandom(32)
@@ -45,6 +46,7 @@ app.register_blueprint(database_bp)
 app.register_blueprint(users_bp)
 app.register_blueprint(profiles_bp)
 app.register_blueprint(customer_portal_bp)
+app.register_blueprint(documents_bp)
 
 # ── Jinja Template Filters for Moroccan Banking & Cards ──────────────────────
 @app.template_filter("format_rib")
@@ -132,7 +134,7 @@ def restrict_customer_routes():
     ):
         return redirect(url_for("auth.change_password"))
     if user and user.get("role") == "Customer" and not endpoint.startswith(
-        ("customer_portal.", "profiles.", "auth.", "static")
+        ("customer_portal.", "profiles.", "auth.", "static", "documents.")
     ):
         return redirect(url_for("customer_portal.home"))
     return None

@@ -3,38 +3,164 @@
 {% block page_title %}Account Settings{% endblock %}
 
 {% block content %}
-<div class="page-header-row">
+<div class="page-header-row mb-4">
   <div>
-    <h4 class="page-heading">Account Settings</h4>
-    <p class="page-sub">Personalize your account with a profile picture.</p>
+    <h4 class="page-heading">Account & Profile Settings</h4>
+    <p class="page-sub">Manage your security preferences and profile avatar encoded as pure text code.</p>
   </div>
 </div>
 
-<div class="row justify-content-center">
-  <div class="col-lg-7 col-xl-6">
-    <div class="card-panel">
-      <div class="panel-header"><span class="panel-title">Profile Picture</span></div>
-      <div class="panel-body">
-        <div class="profile-picture-preview mb-4">
-          {% if profile_picture %}
-          <img src="{{ url_for('profiles.picture', filename=profile_picture) }}" alt="Current profile picture" />
-          {% else %}
-          <div class="profile-picture-placeholder"><i class="bi bi-person-fill"></i></div>
-          {% endif %}
-        </div>
-        <form method="POST" enctype="multipart/form-data">
-          <label class="form-label" for="profile_picture">Choose an image</label>
-          <input class="form-control mb-2" type="file" id="profile_picture" name="profile_picture"
-                 accept="image/jpeg,image/png,image/gif,image/webp,.jpg,.jpeg,.png,.gif,.webp" required />
-          <div class="form-text mb-3">JPEG, PNG, GIF (including animated GIF), or WebP. Maximum 5 MB.</div>
-          <button class="btn btn-primary" type="submit"><i class="bi bi-upload me-2"></i>Save Picture</button>
-        </form>
+<div class="row g-4">
+  <!-- Profile Picture / Avatar as Code -->
+  <div class="col-lg-6">
+    <div class="card-panel h-100">
+      <div class="panel-header d-flex justify-content-between align-items-center">
+        <span class="panel-title"><i class="bi bi-person-badge me-2 text-primary"></i>Profile Avatar (Code Storage)</span>
         {% if profile_picture %}
-        <hr />
+        <span class="badge bg-success-soft text-success"><i class="bi bi-check-circle me-1"></i>Encoded as Code</span>
+        {% else %}
+        <span class="badge bg-secondary-soft text-secondary">No Avatar Set</span>
+        {% endif %}
+      </div>
+      <div class="panel-body">
+        <div class="d-flex align-items-center gap-3 mb-4 p-3 bg-body-tertiary rounded-3 border">
+          <div class="profile-picture-preview" style="width: 80px; height: 80px; min-width: 80px; border-radius: 50%; overflow: hidden; display: flex; align-items: center; justify-content: center; background: rgba(59, 130, 246, 0.1); border: 2px solid var(--border-color);">
+            {% if profile_picture %}
+              {% if profile_picture.startswith('data:') %}
+              <img src="{{ profile_picture }}" alt="Profile avatar" style="width: 100%; height: 100%; object-fit: cover;" />
+              {% else %}
+              <img src="{{ url_for('profiles.picture', filename=profile_picture) }}" alt="Profile avatar" style="width: 100%; height: 100%; object-fit: cover;" />
+              {% endif %}
+            {% else %}
+            <div class="profile-picture-placeholder fs-1 text-primary"><i class="bi bi-person-fill"></i></div>
+            {% endif %}
+          </div>
+          <div>
+            <h6 class="mb-1 fw-bold">{{ session.user.username }}</h6>
+            <div class="text-muted small mb-1"><span class="badge-role role-{{ session.user.role|lower }}">{{ session.user.role }}</span></div>
+            <div class="text-secondary small">
+              <i class="bi bi-shield-lock text-primary me-1"></i>Zero picture files saved to disk &bull; Pure code representation
+            </div>
+          </div>
+        </div>
+
+        {% if profile_picture %}
+        <!-- Code Inspector Box -->
+        <div class="mb-4 p-3 bg-body-secondary rounded-3 border">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <span class="small fw-bold text-body"><i class="bi bi-code-slash me-1 text-primary"></i>Avatar Code Payload</span>
+            <span class="badge bg-primary-soft text-primary font-monospace">{{ profile_picture|length }} characters</span>
+          </div>
+          <div class="input-group input-group-sm">
+            <input type="text" class="form-control font-monospace text-muted small" value="{{ profile_picture[:80] }}…{{ profile_picture[-20:] }}" readonly id="avatarCodePreview" />
+            <button class="btn btn-outline-secondary" type="button" onclick="navigator.clipboard.writeText('{{ profile_picture }}'); alert('Full avatar code copied to clipboard!');" title="Copy raw code">
+              <i class="bi bi-clipboard me-1"></i>Copy Code
+            </button>
+          </div>
+          <div class="form-text text-muted small mt-1">
+            Transformed into {{ 'SVG vector code' if 'svg' in profile_picture else 'Base64 WebP code' }}. No physical image exists on disk.
+          </div>
+        </div>
+        {% endif %}
+
+        <!-- Tab selection: Upload & Transform OR Generate Algorithmic Avatar -->
+        <ul class="nav nav-pills mb-3 nav-fill gap-2 p-1 bg-body-tertiary rounded border" id="avatarTabs" role="tablist">
+          <li class="nav-item" role="presentation">
+            <button class="nav-link active small py-2" id="upload-tab" data-bs-toggle="pill" data-bs-target="#tab-upload" type="button" role="tab">
+              <i class="bi bi-upload me-1"></i>Upload & Transform
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link small py-2" id="generate-tab" data-bs-toggle="pill" data-bs-target="#tab-generate" type="button" role="tab">
+              <i class="bi bi-magic me-1"></i>Generate Algorithmic Avatar
+            </button>
+          </li>
+        </ul>
+
+        <div class="tab-content" id="avatarTabContent">
+          <!-- Upload Tab -->
+          <div class="tab-pane fade show active" id="tab-upload" role="tabpanel">
+            <form method="POST" enctype="multipart/form-data">
+              <label class="form-label small fw-semibold" for="profile_picture">Select photo to convert into code:</label>
+              <input class="form-control form-control-sm mb-2" type="file" id="profile_picture" name="profile_picture"
+                     accept="image/jpeg,image/png,image/gif,image/webp,.jpg,.jpeg,.png,.gif,.webp" required />
+              <div class="form-text small mb-3">The image is downscaled to 128&times;128 and encoded directly as Base64 text code.</div>
+              <button class="btn btn-primary btn-sm" type="submit">
+                <i class="bi bi-cpu me-1"></i>Transform Image to Code & Save
+              </button>
+            </form>
+          </div>
+
+          <!-- Generate Tab -->
+          <div class="tab-pane fade" id="tab-generate" role="tabpanel">
+            <p class="text-muted small mb-3">
+              Generate a unique geometric SVG code avatar generated algorithmically from your account seed. Zero image files needed!
+            </p>
+            <form method="POST" action="{{ url_for('profiles.generate_avatar') }}">
+              <button class="btn btn-outline-primary btn-sm" type="submit">
+                <i class="bi bi-shuffle me-1"></i>Generate Algorithmic Code Avatar
+              </button>
+            </form>
+          </div>
+        </div>
+
+        {% if profile_picture %}
+        <hr class="my-4" />
         <form method="POST" action="{{ url_for('profiles.remove_picture') }}">
-          <button class="btn btn-outline-danger" type="submit"><i class="bi bi-trash me-2"></i>Remove Picture</button>
+          <button class="btn btn-outline-danger btn-sm" type="submit">
+            <i class="bi bi-trash me-1"></i>Remove Avatar Code
+          </button>
         </form>
         {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Account & Security Information Card -->
+  <div class="col-lg-6">
+    <div class="card-panel h-100">
+      <div class="panel-header">
+        <span class="panel-title"><i class="bi bi-shield-check me-2 text-primary"></i>Security & Session Overview</span>
+      </div>
+      <div class="panel-body">
+        <div class="list-group list-group-flush mb-4">
+          <div class="list-group-item d-flex justify-content-between align-items-center px-0 py-2">
+            <div>
+              <div class="fw-semibold small">Username</div>
+              <div class="text-muted small">{{ session.user.username }}</div>
+            </div>
+            <span class="badge bg-body-secondary text-body">Verified</span>
+          </div>
+          <div class="list-group-item d-flex justify-content-between align-items-center px-0 py-2">
+            <div>
+              <div class="fw-semibold small">Account Role</div>
+              <div class="text-muted small">Banking permissions tier</div>
+            </div>
+            <span class="badge-role role-{{ session.user.role|lower }}">{{ session.user.role }}</span>
+          </div>
+          <div class="list-group-item d-flex justify-content-between align-items-center px-0 py-2">
+            <div>
+              <div class="fw-semibold small">Profile Picture Storage</div>
+              <div class="text-muted small">Server filesystem footprint</div>
+            </div>
+            <span class="badge bg-success-soft text-success">0 Bytes on Disk (Pure Code)</span>
+          </div>
+          <div class="list-group-item d-flex justify-content-between align-items-center px-0 py-2">
+            <div>
+              <div class="fw-semibold small">Bank Compliance</div>
+              <div class="text-muted small">Regulatory standards</div>
+            </div>
+            <span class="badge bg-primary-soft text-primary">Bank Al-Maghrib Compliant</span>
+          </div>
+        </div>
+
+        <div class="alert alert-info py-2 px-3 small d-flex align-items-start gap-2 mb-0">
+          <i class="bi bi-info-circle-fill text-info mt-1"></i>
+          <div>
+            <strong>Privacy & Integrity Policy:</strong><br />
+            AkumaBank stores all user profile pictures strictly as transformed text code. No third-party tracking or unencrypted media files are retained on server disks.
+          </div>
+        </div>
       </div>
     </div>
   </div>

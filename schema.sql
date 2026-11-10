@@ -128,6 +128,71 @@ CREATE TABLE IF NOT EXISTS PASSWORD_RESET_REQUEST (
 CREATE UNIQUE INDEX IF NOT EXISTS idx_password_reset_pending
     ON PASSWORD_RESET_REQUEST(UserID) WHERE Status='Pending';
 
+-- ─────────────────────────────────────────────────────────────────────────
+-- 8. TABLE: ACCOUNT_CLOSURE_REQUEST
+-- ─────────────────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS ACCOUNT_CLOSURE_REQUEST (
+    RequestID   INTEGER PRIMARY KEY AUTOINCREMENT,
+    AccountID   INTEGER NOT NULL,
+    CustomerID  INTEGER NOT NULL,
+    Reason      TEXT,
+    Status      TEXT NOT NULL DEFAULT 'Pending'
+               CHECK(Status IN ('Pending','Approved','Rejected')),
+    RequestedAt TEXT NOT NULL DEFAULT (datetime('now')),
+    ReviewedAt  TEXT,
+    ReviewedBy  INTEGER,
+    AdminNote   TEXT,
+    FOREIGN KEY (AccountID) REFERENCES ACCOUNT(AccountID) ON DELETE CASCADE,
+    FOREIGN KEY (CustomerID) REFERENCES CUSTOMER(CustomerID) ON DELETE CASCADE,
+    FOREIGN KEY (ReviewedBy) REFERENCES USERS(UserID) ON DELETE SET NULL
+);
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- 9. TABLE: DOCUMENT_REQUEST
+-- ─────────────────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS DOCUMENT_REQUEST (
+    RequestID     INTEGER PRIMARY KEY AUTOINCREMENT,
+    CustomerID    INTEGER NOT NULL,
+    AccountID     INTEGER,
+    DocumentType  TEXT NOT NULL,
+    DocumentTitle TEXT NOT NULL,
+    Purpose       TEXT,
+    Status        TEXT NOT NULL DEFAULT 'Pending'
+                  CHECK(Status IN ('Pending','Approved','Rejected','Cancelled')),
+    RequestedAt   TEXT NOT NULL DEFAULT (datetime('now')),
+    ProcessedAt   TEXT,
+    ProcessedBy   INTEGER,
+    AdminNote     TEXT,
+    SignedPdfFile TEXT,
+    FOREIGN KEY (CustomerID) REFERENCES CUSTOMER(CustomerID) ON DELETE CASCADE,
+    FOREIGN KEY (AccountID) REFERENCES ACCOUNT(AccountID) ON DELETE SET NULL,
+    FOREIGN KEY (ProcessedBy) REFERENCES USERS(UserID) ON DELETE SET NULL
+);
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- 10. TABLE: ACCOUNT_OPENING_REQUEST
+-- ─────────────────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS ACCOUNT_OPENING_REQUEST (
+    RequestID        INTEGER PRIMARY KEY AUTOINCREMENT,
+    CustomerID       INTEGER NOT NULL,
+    AccountType      TEXT NOT NULL DEFAULT 'Current',
+    CardTier         TEXT NOT NULL DEFAULT 'standard',
+    InitialDeposit   REAL DEFAULT 0.0,
+    BranchID         INTEGER,
+    Reason           TEXT,
+    Status           TEXT NOT NULL DEFAULT 'Pending'
+                     CHECK(Status IN ('Pending','Approved','Rejected')),
+    RequestedAt      TEXT NOT NULL DEFAULT (datetime('now')),
+    ReviewedAt       TEXT,
+    ReviewedBy       INTEGER,
+    AdminNote        TEXT,
+    CreatedAccountID INTEGER,
+    FOREIGN KEY (CustomerID) REFERENCES CUSTOMER(CustomerID) ON DELETE CASCADE,
+    FOREIGN KEY (BranchID) REFERENCES BRANCH(BranchID),
+    FOREIGN KEY (ReviewedBy) REFERENCES USERS(UserID),
+    FOREIGN KEY (CreatedAccountID) REFERENCES ACCOUNT(AccountID)
+);
+
 
 -- ═══════════════════════════════════════════════════════════════════════════
 -- INDEXES — for faster lookups on foreign-key columns

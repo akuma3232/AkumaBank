@@ -48,7 +48,11 @@
   <!-- User info -->
   <div class="sidebar-user">
     {% if session.user.profile_picture %}
-    <img class="user-avatar" src="{{ url_for('profiles.picture', filename=session.user.profile_picture) }}" alt="" />
+      {% if session.user.profile_picture.startswith('data:') %}
+      <img class="user-avatar" src="{{ session.user.profile_picture }}" alt="" />
+      {% else %}
+      <img class="user-avatar" src="{{ url_for('profiles.picture', filename=session.user.profile_picture) }}" alt="" />
+      {% endif %}
     {% else %}
     <div class="user-avatar">{{ session.user.username[0]|upper }}</div>
     {% endif %}
@@ -65,6 +69,10 @@
     <div class="nav-section-title">Banking Portal</div>
     <a href="{{ url_for('customer_portal.home') }}" class="nav-link {% if request.endpoint == 'customer_portal.home' %}active{% endif %}">
       <i class="bi bi-house-door-fill"></i><span>My Banking</span>
+      <span class="nav-indicator"></span>
+    </a>
+    <a href="{{ url_for('documents.customer_documents') }}" class="nav-link {% if request.endpoint and request.endpoint.startswith('documents.') %}active{% endif %}">
+      <i class="bi bi-folder2-open"></i><span>My Documents</span>
       <span class="nav-indicator"></span>
     </a>
     {% else %}
@@ -231,7 +239,11 @@
       <div class="dropdown">
         <div class="topbar-user-badge dropdown-toggle" id="userMenuBtn" data-bs-toggle="dropdown" aria-expanded="false" role="button">
           {% if session.user.profile_picture %}
-          <img class="topbar-avatar" src="{{ url_for('profiles.picture', filename=session.user.profile_picture) }}" alt="" />
+            {% if session.user.profile_picture.startswith('data:') %}
+            <img class="topbar-avatar" src="{{ session.user.profile_picture }}" alt="" />
+            {% else %}
+            <img class="topbar-avatar" src="{{ url_for('profiles.picture', filename=session.user.profile_picture) }}" alt="" />
+            {% endif %}
           {% else %}
           <div class="topbar-avatar">{{ session.user.username[0]|upper }}</div>
           {% endif %}

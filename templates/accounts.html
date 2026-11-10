@@ -5,25 +5,31 @@
 {% block content %}
 <!-- Stats row -->
 <div class="row g-3 mb-4">
-  <div class="col-6 col-md-3">
+  <div class="col-6 col-md">
     <div class="mini-stat">
       <div class="mini-stat-val">{{ stats.total }}</div>
       <div class="mini-stat-label">Total Accounts</div>
     </div>
   </div>
-  <div class="col-6 col-md-3">
+  <div class="col-6 col-md">
     <div class="mini-stat mini-stat-green">
       <div class="mini-stat-val">{{ stats.active }}</div>
       <div class="mini-stat-label">Active</div>
     </div>
   </div>
-  <div class="col-6 col-md-3">
+  <div class="col-6 col-md">
     <div class="mini-stat mini-stat-red">
       <div class="mini-stat-val">{{ stats.frozen }}</div>
       <div class="mini-stat-label">Frozen</div>
     </div>
   </div>
-  <div class="col-6 col-md-3">
+  <div class="col-6 col-md">
+    <div class="mini-stat" style="border-left: 3px solid #64748b;">
+      <div class="mini-stat-val text-secondary">{{ stats.closed or 0 }}</div>
+      <div class="mini-stat-label">Closed</div>
+    </div>
+  </div>
+  <div class="col-12 col-md-3">
     <div class="mini-stat mini-stat-blue">
       <div class="mini-stat-val">MAD {{ "{:,.0f}".format(stats.total_balance) }}</div>
       <div class="mini-stat-label">Total Balance</div>
@@ -35,14 +41,47 @@
 <div class="page-header-row">
   <div>
     <h4 class="page-heading">Bank Accounts</h4>
-    <p class="page-sub">View and manage all customer accounts — data from <code>CustomerAccountSummary</code> view</p>
+    <p class="page-sub">View and manage all customer accounts &bull; Generate official PDF certificates &bull; Unified Operations Requests Center</p>
   </div>
-  {% if can_create_account %}
-  <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addAccountModal">
-    <i class="bi bi-plus-circle-fill me-2"></i>New Account
-  </button>
-  {% endif %}
+  <div class="d-flex gap-2">
+    {% if can_create_account %}
+    <button class="btn btn-warning position-relative fw-semibold shadow-sm" data-bs-toggle="modal" data-bs-target="#requestsHubModal">
+      <i class="bi bi-inbox-fill me-1"></i>Requests Center
+      {% if total_pending_requests > 0 %}
+      <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+        {{ total_pending_requests }}
+      </span>
+      {% endif %}
+    </button>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addAccountModal">
+      <i class="bi bi-plus-circle-fill me-2"></i>New Account
+    </button>
+    {% endif %}
+  </div>
 </div>
+
+{% if total_pending_requests > 0 %}
+<div class="alert alert-warning py-2 px-3 d-flex justify-content-between align-items-center mb-4 rounded-3 border-0 bg-warning-subtle text-warning-emphasis shadow-sm">
+  <div class="d-flex align-items-center gap-2">
+    <i class="bi bi-exclamation-triangle-fill fs-5 text-warning"></i>
+    <div>
+      <strong>{{ total_pending_requests }} Operational Request(s) Pending Review</strong>
+      <div class="small">
+        {% set req_summary = [] %}
+        {% if pending_closures_count > 0 %}{% set _ = req_summary.append(pending_closures_count ~ ' Closure(s)') %}{% endif %}
+        {% if pending_documents_count > 0 %}{% set _ = req_summary.append(pending_documents_count ~ ' Document(s)') %}{% endif %}
+        {% if pending_openings_count > 0 %}{% set _ = req_summary.append(pending_openings_count ~ ' Account Opening(s)') %}{% endif %}
+        {% if pending_loans_count > 0 %}{% set _ = req_summary.append(pending_loans_count ~ ' Loan(s)') %}{% endif %}
+        {% if pending_passwords_count > 0 %}{% set _ = req_summary.append(pending_passwords_count ~ ' Password Reset(s)') %}{% endif %}
+        {{ req_summary|join(' &bull; ') }}
+      </div>
+    </div>
+  </div>
+  <button class="btn btn-warning btn-sm fw-bold px-3" data-bs-toggle="modal" data-bs-target="#requestsHubModal">
+    <i class="bi bi-inbox-fill me-1"></i>Open Requests Center
+  </button>
+</div>
+{% endif %}
 
 <!-- Search -->
 <div class="search-bar-row mb-4">
@@ -71,6 +110,7 @@
             <th>Balance</th>
             <th>Branch</th>
             <th>Status</th>
+            <th>Documents</th>
             <th class="text-center">Actions</th>
           </tr>
         </thead>
@@ -114,26 +154,46 @@
                 <i class="bi bi-shield me-1"></i>Max Balance: {{ tier_data.plafond }}
               </div>
             </td>
-            <td class="fw-semibold text-success">MAD {{ "{:,.2f}".format(a.Balance) }}</td>
+            <td class="fw-semibold {{ 'text-success' if a.Balance > 0 else 'text-muted' }}">MAD {{ "{:,.2f}".format(a.Balance) }}</td>
             <td class="text-muted small">{{ a.BranchName or '—' }}</td>
             <td>
-              <span class="badge {{ 'bg-success-soft text-success' if a.AccountStatus=='Active' else 'bg-danger-soft text-danger' }}">
-                <i class="bi {{ 'bi-check-circle-fill' if a.AccountStatus=='Active' else 'bi-x-circle-fill' }} me-1"></i>
-                {{ a.AccountStatus }}
-              </span>
+              {% if a.AccountStatus == 'Active' %}
+              <span class="badge bg-success-soft text-success"><i class="bi bi-check-circle-fill me-1"></i>Active</span>
+              {% elif a.AccountStatus == 'Frozen' %}
+              <span class="badge bg-warning-soft text-warning"><i class="bi bi-snow2 me-1"></i>Frozen</span>
+              {% else %}
+              <span class="badge bg-secondary-soft text-secondary"><i class="bi bi-x-octagon-fill me-1"></i>Closed</span>
+              {% endif %}
+            </td>
+            <td>
+              <button class="btn btn-sm btn-outline-primary py-1 px-2 fw-semibold d-inline-flex align-items-center gap-1 shadow-sm" type="button" data-bs-toggle="modal" data-bs-target="#docsModal{{ a.AccountID }}" style="font-size: 0.78rem;">
+                <i class="bi bi-file-earmark-pdf-fill text-danger"></i><span>PDF Docs</span>
+              </button>
             </td>
             <td class="text-center">
-              <form method="POST" action="{{ url_for('accounts.toggle_status', aid=a.AccountID) }}" class="d-inline">
-                <button type="submit" class="btn btn-sm {{ 'btn-outline-warning' if a.AccountStatus=='Active' else 'btn-outline-success' }}"
-                  title="{{ 'Freeze' if a.AccountStatus=='Active' else 'Activate' }}">
-                  <i class="bi {{ 'bi-snow2' if a.AccountStatus=='Active' else 'bi-check-circle' }}"></i>
-                  {{ 'Freeze' if a.AccountStatus=='Active' else 'Activate' }}
+              {% if a.AccountStatus != 'Closed' %}
+              <div class="d-inline-flex gap-1">
+                <form method="POST" action="{{ url_for('accounts.toggle_status', aid=a.AccountID) }}" class="d-inline">
+                  <button type="submit" class="btn btn-sm {{ 'btn-outline-warning' if a.AccountStatus=='Active' else 'btn-outline-success' }} py-1 px-2"
+                    title="{{ 'Freeze' if a.AccountStatus=='Active' else 'Activate' }}">
+                    <i class="bi {{ 'bi-snow2' if a.AccountStatus=='Active' else 'bi-check-circle' }}"></i>
+                  </button>
+                </form>
+                {% if can_create_account %}
+                <button type="button" class="btn btn-sm btn-outline-danger py-1 px-2" data-bs-toggle="modal" data-bs-target="#closeAccountModal{{ a.AccountID }}" title="Close & Liquidate Account">
+                  <i class="bi bi-x-circle"></i>
                 </button>
-              </form>
+                {% endif %}
+              </div>
+              {% else %}
+              <a href="{{ url_for('documents.download_closure_certificate', aid=a.AccountID) }}" class="btn btn-sm btn-outline-danger py-1 px-2" title="Download Official Closure Certificate">
+                <i class="bi bi-file-earmark-pdf"></i>
+              </a>
+              {% endif %}
             </td>
           </tr>
           {% else %}
-          <tr><td colspan="8" class="text-center py-5 text-muted">No accounts found.</td></tr>
+          <tr><td colspan="9" class="text-center py-5 text-muted">No accounts found.</td></tr>
           {% endfor %}
         </tbody>
       </table>
@@ -383,4 +443,677 @@
   window.CARD_TIERS_DATA = {{ CARD_TIERS | tojson | safe }};
 </script>
 {% endif %}
+
+<!-- Unified Operational Requests Center Modal -->
+<div class="modal fade" id="requestsHubModal" tabindex="-1" aria-labelledby="requestsHubModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content border-0 shadow-lg">
+      <div class="modal-header bg-dark text-white py-3 px-4">
+        <div class="d-flex align-items-center gap-2">
+          <i class="bi bi-inbox-fill fs-4 text-warning"></i>
+          <div>
+            <h5 class="modal-title fw-bold mb-0" id="requestsHubModalLabel">Operations Requests Center</h5>
+            <small class="text-white-50">Review and process customer requests: Closures, Documents, Openings, Loans, and Passwords</small>
+          </div>
+        </div>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+
+      <!-- Navigation Tabs -->
+      <div class="bg-body-tertiary border-bottom px-4 pt-2">
+        <ul class="nav nav-tabs border-0" id="requestsTab" role="tablist">
+          <li class="nav-item" role="presentation">
+            <button class="nav-link active fw-semibold" id="closures-tab" data-bs-toggle="tab" data-bs-target="#tab-closures" type="button" role="tab">
+              <i class="bi bi-x-circle me-1 text-danger"></i>Closures
+              {% if pending_closures_count > 0 %}<span class="badge bg-danger ms-1">{{ pending_closures_count }}</span>{% endif %}
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link fw-semibold" id="docs-tab" data-bs-toggle="tab" data-bs-target="#tab-docs" type="button" role="tab">
+              <i class="bi bi-file-earmark-pdf me-1 text-primary"></i>Documents
+              {% if pending_documents_count > 0 %}<span class="badge bg-danger ms-1">{{ pending_documents_count }}</span>{% endif %}
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link fw-semibold" id="openings-tab" data-bs-toggle="tab" data-bs-target="#tab-openings" type="button" role="tab">
+              <i class="bi bi-plus-circle me-1 text-success"></i>Openings
+              {% if pending_openings_count > 0 %}<span class="badge bg-danger ms-1">{{ pending_openings_count }}</span>{% endif %}
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link fw-semibold" id="loans-tab" data-bs-toggle="tab" data-bs-target="#tab-loans" type="button" role="tab">
+              <i class="bi bi-cash-coin me-1 text-warning"></i>Loans
+              {% if pending_loans_count > 0 %}<span class="badge bg-danger ms-1">{{ pending_loans_count }}</span>{% endif %}
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link fw-semibold" id="passwords-tab" data-bs-toggle="tab" data-bs-target="#tab-passwords" type="button" role="tab">
+              <i class="bi bi-key me-1 text-info"></i>Password Resets
+              {% if pending_passwords_count > 0 %}<span class="badge bg-danger ms-1">{{ pending_passwords_count }}</span>{% endif %}
+            </button>
+          </li>
+        </ul>
+      </div>
+
+      <div class="modal-body p-0">
+        <div class="tab-content" id="requestsTabContent">
+
+          <!-- 1. CLOSURE REQUESTS TAB -->
+          <div class="tab-pane fade show active p-3" id="tab-closures" role="tabpanel">
+            {% if closure_requests %}
+            <div class="table-responsive">
+              <table class="table table-hover align-middle mb-0 small">
+                <thead class="table-light">
+                  <tr>
+                    <th>ID &amp; Date</th>
+                    <th>Customer &amp; Account</th>
+                    <th>Current Balance</th>
+                    <th>Reason</th>
+                    <th>Status</th>
+                    <th class="text-end">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for r in closure_requests %}
+                  <tr>
+                    <td>
+                      <strong>#{{ r.RequestID }}</strong><br/>
+                      <span class="text-muted" style="font-size: 0.7rem;">{{ r.RequestedAt[:16] }}</span>
+                    </td>
+                    <td>
+                      <strong>{{ r.CustomerName }}</strong><br/>
+                      <span class="font-monospace text-muted" style="font-size: 0.72rem;">{{ r.AccountNumber | format_rib }}</span>
+                    </td>
+                    <td class="fw-bold {{ 'text-success' if r.Balance > 0 else 'text-muted' }}">
+                      MAD {{ "{:,.2f}".format(r.Balance) }}
+                    </td>
+                    <td class="text-wrap" style="max-width: 170px;">
+                      {{ r.Reason or 'No reason specified' }}
+                      {% if r.AdminNote %}
+                      <div class="text-muted fst-italic mt-1" style="font-size: 0.68rem;">Note: {{ r.AdminNote }}</div>
+                      {% endif %}
+                    </td>
+                    <td>
+                      {% if r.Status == 'Pending' %}
+                      <span class="badge bg-warning text-dark"><i class="bi bi-hourglass-split me-1"></i>Pending</span>
+                      {% elif r.Status == 'Approved' %}
+                      <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Approved</span>
+                      {% else %}
+                      <span class="badge bg-danger"><i class="bi bi-x-circle me-1"></i>Rejected</span>
+                      {% endif %}
+                    </td>
+                    <td class="text-end">
+                      {% if r.Status == 'Pending' and can_create_account %}
+                      <div class="d-inline-flex gap-1">
+                        <form method="POST" action="{{ url_for('accounts.approve_closure_request', rid=r.RequestID) }}">
+                          <button type="submit" class="btn btn-sm btn-success py-1 px-2" title="Approve and liquidate account" onclick="return confirm('Approve closure request and liquidate balance?');">
+                            <i class="bi bi-check-lg"></i> Approve
+                          </button>
+                        </form>
+                        <form method="POST" action="{{ url_for('accounts.reject_closure_request', rid=r.RequestID) }}">
+                          <button type="submit" class="btn btn-sm btn-outline-danger py-1 px-2" title="Reject closure request">
+                            <i class="bi bi-x-lg"></i> Reject
+                          </button>
+                        </form>
+                      </div>
+                      {% elif r.Status == 'Approved' %}
+                      <a href="{{ url_for('documents.download_closure_certificate', aid=r.AccountID) }}" target="_blank" class="btn btn-sm btn-outline-danger py-1 px-2" title="Download Closure Certificate PDF">
+                        <i class="bi bi-file-earmark-pdf me-1"></i>Closure PDF
+                      </a>
+                      {% else %}
+                      <span class="text-muted">—</span>
+                      {% endif %}
+                    </td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5 text-muted">
+              <i class="bi bi-inbox fs-1 d-block mb-2 text-secondary"></i>
+              No account closure requests have been submitted.
+            </div>
+            {% endif %}
+          </div>
+
+          <!-- 2. DOCUMENT REQUESTS TAB -->
+          <div class="tab-pane fade p-3" id="tab-docs" role="tabpanel">
+            {% if document_requests %}
+            <div class="table-responsive">
+              <table class="table table-hover align-middle mb-0 small">
+                <thead class="table-light">
+                  <tr>
+                    <th>Ref &amp; Date</th>
+                    <th>Customer &amp; RIB</th>
+                    <th>Document Requested</th>
+                    <th>Purpose / Reason</th>
+                    <th>Status</th>
+                    <th class="text-end">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for dr in document_requests %}
+                  <tr>
+                    <td>
+                      <strong class="font-monospace text-primary">#DOC-{{ "%05d"|format(dr.RequestID) }}</strong><br/>
+                      <span class="text-muted" style="font-size: 0.7rem;">{{ dr.RequestedAt[:16] }}</span>
+                    </td>
+                    <td>
+                      <strong>{{ dr.CustomerName }}</strong><br/>
+                      {% if dr.AccountNumber %}
+                      <span class="font-monospace text-muted" style="font-size: 0.72rem;">{{ dr.AccountNumber | format_rib }}</span>
+                      {% else %}
+                      <span class="text-muted small">No linked account</span>
+                      {% endif %}
+                    </td>
+                    <td>
+                      <div class="fw-semibold text-dark">{{ dr.DocumentTitle }}</div>
+                      <span class="badge bg-light text-secondary border" style="font-size: 0.68rem;">{{ dr.DocumentType }}</span>
+                    </td>
+                    <td class="text-wrap" style="max-width: 180px;">
+                      {{ dr.Purpose or 'Administrative use' }}
+                      {% if dr.AdminNote %}
+                      <div class="text-info fst-italic mt-1" style="font-size: 0.68rem;">Note: {{ dr.AdminNote }}</div>
+                      {% endif %}
+                    </td>
+                    <td>
+                      {% if dr.Status == 'Pending' %}
+                      <span class="badge bg-warning text-dark"><i class="bi bi-hourglass-split me-1"></i>Pending</span>
+                      {% elif dr.Status == 'Approved' %}
+                      <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Approved</span>
+                      {% elif dr.Status == 'Rejected' %}
+                      <span class="badge bg-danger"><i class="bi bi-x-circle me-1"></i>Rejected</span>
+                      {% else %}
+                      <span class="badge bg-secondary"><i class="bi bi-slash-circle me-1"></i>Cancelled</span>
+                      {% endif %}
+                    </td>
+                    <td class="text-end">
+                      {% if dr.Status == 'Pending' %}
+                      <div class="d-inline-flex flex-column align-items-end gap-1">
+                        <div class="d-flex gap-1">
+                          <a href="{{ url_for('documents.staff_preview_request_pdf', rid=dr.RequestID) }}" target="_blank" class="btn btn-sm btn-outline-primary py-1 px-2" title="Preview draft PDF to inspect or sign">
+                            <i class="bi bi-eye me-1"></i>Preview
+                          </a>
+                          <button type="button" class="btn btn-sm btn-success py-1 px-2" data-bs-toggle="collapse" data-bs-target="#approveDocCollapse{{ dr.RequestID }}" title="Sign and approve request">
+                            <i class="bi bi-check-lg me-1"></i>Approve
+                          </button>
+                          <form method="POST" action="{{ url_for('documents.staff_reject_request', rid=dr.RequestID) }}" class="d-inline" onsubmit="return confirm('Reject this document request?');">
+                            <button type="submit" class="btn btn-sm btn-outline-danger py-1 px-2" title="Reject request">
+                              <i class="bi bi-x-lg"></i>
+                            </button>
+                          </form>
+                        </div>
+                        <!-- Inline sign & upload form -->
+                        <div class="collapse mt-2 text-start" id="approveDocCollapse{{ dr.RequestID }}" style="min-width: 260px;">
+                          <div class="card card-body p-2 bg-light border shadow-sm">
+                            <form method="POST" action="{{ url_for('documents.staff_approve_request', rid=dr.RequestID) }}" enctype="multipart/form-data">
+                              <label class="form-label small fw-bold mb-1">Upload Signed PDF (Optional):</label>
+                              <input type="file" name="signed_pdf" accept="application/pdf" class="form-control form-control-sm mb-2">
+                              <input type="text" name="admin_note" class="form-control form-control-sm mb-2" placeholder="Certification note (optional)">
+                              <button type="submit" class="btn btn-sm btn-success w-100 fw-bold">
+                                <i class="bi bi-file-earmark-check me-1"></i>Confirm &amp; Issue
+                              </button>
+                            </form>
+                          </div>
+                        </div>
+                      </div>
+                      {% elif dr.Status == 'Approved' %}
+                      <a href="{{ url_for('documents.download_approved_document', rid=dr.RequestID) }}" target="_blank" class="btn btn-sm btn-outline-success py-1 px-2" title="View issued certified document">
+                        <i class="bi bi-file-earmark-check me-1"></i>View PDF
+                      </a>
+                      {% else %}
+                      <span class="text-muted">—</span>
+                      {% endif %}
+                    </td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5 text-muted">
+              <i class="bi bi-folder2-open fs-1 d-block mb-2 text-secondary"></i>
+              No customer document requests submitted yet.
+            </div>
+            {% endif %}
+          </div>
+
+          <!-- 3. ACCOUNT OPENING REQUESTS TAB -->
+          <div class="tab-pane fade p-3" id="tab-openings" role="tabpanel">
+            {% if opening_requests %}
+            <div class="table-responsive">
+              <table class="table table-hover align-middle mb-0 small">
+                <thead class="table-light">
+                  <tr>
+                    <th>Ref &amp; Date</th>
+                    <th>Customer</th>
+                    <th>Account Type &amp; Tier</th>
+                    <th>Deposit &amp; Branch</th>
+                    <th>Reason</th>
+                    <th>Status</th>
+                    <th class="text-end">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for aor in opening_requests %}
+                  <tr>
+                    <td>
+                      <strong class="font-monospace text-success">#OPN-{{ "%05d"|format(aor.RequestID) }}</strong><br/>
+                      <span class="text-muted" style="font-size: 0.7rem;">{{ aor.RequestedAt[:16] }}</span>
+                    </td>
+                    <td>
+                      <strong>{{ aor.CustomerName }}</strong><br/>
+                      <span class="text-muted" style="font-size: 0.72rem;">{{ aor.Email or aor.Phone }}</span>
+                    </td>
+                    <td>
+                      <span class="badge bg-primary-soft text-primary">{{ aor.AccountType }}</span><br/>
+                      <span class="badge bg-secondary-soft text-secondary mt-1">{{ aor.CardTier|title if aor.CardTier else 'Standard' }}</span>
+                    </td>
+                    <td>
+                      <strong class="text-success">MAD {{ "{:,.2f}".format(aor.InitialDeposit or 0) }}</strong><br/>
+                      <span class="text-muted small">{{ aor.BranchName or 'Headquarters' }}</span>
+                    </td>
+                    <td class="text-wrap" style="max-width: 170px;">
+                      {{ aor.Reason or 'Additional Account' }}
+                      {% if aor.AdminNote %}
+                      <div class="text-muted fst-italic mt-1" style="font-size: 0.68rem;">Note: {{ aor.AdminNote }}</div>
+                      {% endif %}
+                    </td>
+                    <td>
+                      {% if aor.Status == 'Pending' %}
+                      <span class="badge bg-warning text-dark"><i class="bi bi-hourglass-split me-1"></i>Pending</span>
+                      {% elif aor.Status == 'Approved' %}
+                      <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Approved</span>
+                      {% else %}
+                      <span class="badge bg-danger"><i class="bi bi-x-circle me-1"></i>Rejected</span>
+                      {% endif %}
+                    </td>
+                    <td class="text-end">
+                      {% if aor.Status == 'Pending' and can_create_account %}
+                      <div class="d-inline-flex gap-1">
+                        <form method="POST" action="{{ url_for('accounts.approve_opening_request', rid=aor.RequestID) }}">
+                          <button type="submit" class="btn btn-sm btn-success py-1 px-2" title="Approve and open account" onclick="return confirm('Approve account opening and generate Moroccan RIB?');">
+                            <i class="bi bi-check-lg"></i> Approve &amp; Open
+                          </button>
+                        </form>
+                        <form method="POST" action="{{ url_for('accounts.reject_opening_request', rid=aor.RequestID) }}">
+                          <button type="submit" class="btn btn-sm btn-outline-danger py-1 px-2" title="Reject opening request">
+                            <i class="bi bi-x-lg"></i> Reject
+                          </button>
+                        </form>
+                      </div>
+                      {% elif aor.Status == 'Approved' and aor.CreatedAccountID %}
+                      <a href="{{ url_for('documents.download_opening_certificate', aid=aor.CreatedAccountID) }}" target="_blank" class="btn btn-sm btn-outline-primary py-1 px-2" title="Download Welcome Pack PDF">
+                        <i class="bi bi-file-earmark-pdf me-1"></i>Welcome Pack
+                      </a>
+                      {% else %}
+                      <span class="text-muted">—</span>
+                      {% endif %}
+                    </td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5 text-muted">
+              <i class="bi bi-credit-card-2-front fs-1 d-block mb-2 text-secondary"></i>
+              No account opening requests submitted yet.
+            </div>
+            {% endif %}
+          </div>
+
+          <!-- 4. LOAN APPLICATIONS TAB -->
+          <div class="tab-pane fade p-3" id="tab-loans" role="tabpanel">
+            {% if loan_requests %}
+            <div class="table-responsive">
+              <table class="table table-hover align-middle mb-0 small">
+                <thead class="table-light">
+                  <tr>
+                    <th>Loan ID &amp; Date</th>
+                    <th>Customer</th>
+                    <th>Type &amp; Amount</th>
+                    <th>Interest Rate</th>
+                    <th>Status</th>
+                    <th class="text-end">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for l in loan_requests %}
+                  <tr>
+                    <td>
+                      <strong class="font-monospace text-warning">#LOAN-{{ "%04d"|format(l.LoanID) }}</strong><br/>
+                      <span class="text-muted" style="font-size: 0.7rem;">{{ l.StartDate }}</span>
+                    </td>
+                    <td>
+                      <strong>{{ l.CustomerName }}</strong>
+                      {% if l.DisbAccount %}
+                      <div class="font-monospace text-muted" style="font-size: 0.68rem;">Disburse: {{ l.DisbAccount | format_rib }}</div>
+                      {% endif %}
+                    </td>
+                    <td>
+                      <span class="badge bg-secondary-soft text-secondary">{{ l.LoanType }} Loan</span><br/>
+                      <strong class="text-primary">MAD {{ "{:,.2f}".format(l.Amount) }}</strong>
+                    </td>
+                    <td>
+                      <span class="fw-semibold">{{ l.InterestRate }}%</span>
+                    </td>
+                    <td>
+                      {% if l.Status == 'Pending' %}
+                      <span class="badge bg-warning text-dark"><i class="bi bi-hourglass-split me-1"></i>Pending</span>
+                      {% elif l.Status == 'Approved' %}
+                      <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Approved</span>
+                      {% elif l.Status == 'Closed' %}
+                      <span class="badge bg-info"><i class="bi bi-check-all me-1"></i>Closed</span>
+                      {% else %}
+                      <span class="badge bg-danger"><i class="bi bi-x-circle me-1"></i>Rejected</span>
+                      {% endif %}
+                    </td>
+                    <td class="text-end">
+                      <a href="{{ url_for('loans.loans') }}" class="btn btn-sm btn-outline-warning py-1 px-2" title="Manage loans in Loans Module">
+                        <i class="bi bi-box-arrow-up-right me-1"></i>Review in Loans
+                      </a>
+                    </td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5 text-muted">
+              <i class="bi bi-cash-coin fs-1 d-block mb-2 text-secondary"></i>
+              No loan requests currently submitted.
+            </div>
+            {% endif %}
+          </div>
+
+          <!-- 5. PASSWORD RESETS TAB -->
+          <div class="tab-pane fade p-3" id="tab-passwords" role="tabpanel">
+            {% if password_requests %}
+            <div class="table-responsive">
+              <table class="table table-hover align-middle mb-0 small">
+                <thead class="table-light">
+                  <tr>
+                    <th>Request ID &amp; Date</th>
+                    <th>User Account</th>
+                    <th>Email</th>
+                    <th>Status</th>
+                    <th class="text-end">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for pr in password_requests %}
+                  <tr>
+                    <td>
+                      <strong class="font-monospace text-info">#PWD-{{ "%04d"|format(pr.RequestID) }}</strong><br/>
+                      <span class="text-muted" style="font-size: 0.7rem;">{{ pr.RequestedAt[:16] }}</span>
+                    </td>
+                    <td>
+                      <strong>{{ pr.Username }}</strong>
+                      {% if pr.FullName %}
+                      <div class="text-muted small">{{ pr.FullName }}</div>
+                      {% endif %}
+                    </td>
+                    <td>
+                      <span class="text-muted font-monospace small">{{ pr.Email or '—' }}</span>
+                    </td>
+                    <td>
+                      {% if pr.Status == 'Pending' %}
+                      <span class="badge bg-warning text-dark"><i class="bi bi-hourglass-split me-1"></i>Pending</span>
+                      {% elif pr.Status == 'Approved' %}
+                      <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Approved</span>
+                      {% else %}
+                      <span class="badge bg-danger"><i class="bi bi-x-circle me-1"></i>Rejected</span>
+                      {% endif %}
+                    </td>
+                    <td class="text-end">
+                      {% if pr.Status == 'Pending' and can_create_account %}
+                      <div class="d-inline-flex gap-1">
+                        <form method="POST" action="{{ url_for('users.review_password_reset', request_id=pr.RequestID, action='approve') }}">
+                          <button type="submit" class="btn btn-sm btn-warning py-1 px-2" title="Generate temp password and approve" onclick="return confirm('Approve password reset and issue temporary credentials?');">
+                            <i class="bi bi-key-fill me-1"></i>Issue Temp Pass
+                          </button>
+                        </form>
+                        <form method="POST" action="{{ url_for('users.review_password_reset', request_id=pr.RequestID, action='reject') }}">
+                          <button type="submit" class="btn btn-sm btn-outline-danger py-1 px-2" title="Reject password reset">
+                            <i class="bi bi-x-lg"></i> Reject
+                          </button>
+                        </form>
+                      </div>
+                      {% else %}
+                      <span class="text-muted">—</span>
+                      {% endif %}
+                    </td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5 text-muted">
+              <i class="bi bi-shield-lock fs-1 d-block mb-2 text-secondary"></i>
+              No password reset requests pending.
+            </div>
+            {% endif %}
+          </div>
+
+        </div>
+      </div>
+
+      <div class="modal-footer bg-light px-4 py-2">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Backwards compatibility alias for closureRequestsModal -->
+<div class="modal fade d-none" id="closureRequestsModal" tabindex="-1" aria-hidden="true"></div>
+
+<!-- Direct Close Account Modals for Staff -->
+{% if can_create_account %}
+{% for a in accounts if a.AccountStatus != 'Closed' %}
+<div class="modal fade" id="closeAccountModal{{ a.AccountID }}" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <form method="POST" action="{{ url_for('accounts.close_account', aid=a.AccountID) }}" class="modal-content border-0 shadow">
+      <div class="modal-header bg-danger text-white py-3">
+        <h5 class="modal-title fw-bold"><i class="bi bi-exclamation-triangle-fill me-2"></i>Close Bank Account</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4">
+        <p class="mb-3">
+          Are you sure you want to permanently close account <strong>{{ a.AccountNumber | format_rib }}</strong> belonging to <strong>{{ a.CustomerName }}</strong>?
+        </p>
+
+        {% if a.Balance > 0 %}
+        <div class="alert alert-warning py-2 px-3 small d-flex align-items-center gap-2 mb-3">
+          <i class="bi bi-cash-stack fs-5"></i>
+          <div>
+            Remaining balance of <strong>MAD {{ "{:,.2f}".format(a.Balance) }}</strong> will be settled and liquidated to <strong>MAD 0.00</strong>.
+          </div>
+        </div>
+        {% endif %}
+
+        <div class="mb-3">
+          <label class="form-label small fw-bold">Reason for Account Closure</label>
+          <input type="text" name="reason" class="form-control form-control-sm" placeholder="e.g. Customer request, Service migration, Relocation" required />
+        </div>
+
+        <div class="form-text small text-muted">
+          <i class="bi bi-info-circle me-1"></i>Closing this account will permanently deactivate all associated cards and generate an official Bank Al-Maghrib compliant Account Closure Certificate &amp; Discharge (Quittus PDF).
+        </div>
+      </div>
+      <div class="modal-footer bg-light px-4 py-2">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+        <button type="submit" class="btn btn-danger btn-sm fw-bold">
+          <i class="bi bi-x-octagon-fill me-1"></i>Definitively Close &amp; Liquidate
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endfor %}
+{% endif %}
+
+<!-- Official Documents Modals for Each Account -->
+{% for a in accounts %}
+<div class="modal fade" id="docsModal{{ a.AccountID }}" tabindex="-1" aria-labelledby="docsModalLabel{{ a.AccountID }}" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content border-0 shadow-lg">
+      <div class="modal-header bg-dark text-white py-3 px-4">
+        <div>
+          <h5 class="modal-title fw-bold mb-0 d-flex align-items-center gap-2" id="docsModalLabel{{ a.AccountID }}">
+            <i class="bi bi-file-earmark-pdf-fill text-danger"></i> Official Bank Documents
+          </h5>
+          <div class="small text-white-50 mt-1 font-monospace">
+            RIB: {{ a.AccountNumber | format_rib }} &bull; {{ a.CustomerName }} &bull; Tier: {{ a.CardTier|title if a.CardTier else 'Standard' }}
+          </div>
+        </div>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-4">
+        <div class="row g-3">
+          <!-- 1. Opening Certificate & Welcome Kit -->
+          <div class="col-md-6">
+            <div class="card h-100 border p-3 bg-body-tertiary rounded-3">
+              <div class="d-flex align-items-start gap-2 mb-2">
+                <i class="bi bi-file-earmark-text text-primary fs-4"></i>
+                <div>
+                  <h6 class="fw-bold mb-0">Welcome Pack &amp; Opening Cert</h6>
+                  <span class="badge bg-primary-soft text-primary" style="font-size: 0.68rem;">Bank Al-Maghrib BAM/2026/088</span>
+                </div>
+              </div>
+              <p class="text-muted small mb-3">Official account opening certificate including the card visual specification and compliance notice.</p>
+              <div class="mt-auto d-flex gap-2">
+                <a href="{{ url_for('documents.download_opening_certificate', aid=a.AccountID) }}" target="_blank" class="btn btn-sm btn-outline-primary flex-fill">
+                  <i class="bi bi-eye me-1"></i>View PDF
+                </a>
+                <a href="{{ url_for('documents.download_opening_certificate', aid=a.AccountID) }}?download=1" class="btn btn-sm btn-primary" title="Download PDF file">
+                  <i class="bi bi-download"></i>
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <!-- 2. 24-Digit RIB Attestation -->
+          <div class="col-md-6">
+            <div class="card h-100 border p-3 bg-body-tertiary rounded-3">
+              <div class="d-flex align-items-start gap-2 mb-2">
+                <i class="bi bi-bank text-info fs-4"></i>
+                <div>
+                  <h6 class="fw-bold mb-0">Official 24-Digit RIB Slip</h6>
+                  <span class="badge bg-info-soft text-info" style="font-size: 0.68rem;">Modulo 97 BAM Certified</span>
+                </div>
+              </div>
+              <p class="text-muted small mb-3">Certified banking identity statement with IBAN, BIC, and Bank Al-Maghrib routing numbers.</p>
+              <div class="mt-auto d-flex gap-2">
+                <a href="{{ url_for('documents.download_rib_attestation', aid=a.AccountID) }}" target="_blank" class="btn btn-sm btn-outline-info flex-fill">
+                  <i class="bi bi-eye me-1"></i>View PDF
+                </a>
+                <a href="{{ url_for('documents.download_rib_attestation', aid=a.AccountID) }}?download=1" class="btn btn-sm btn-info text-white" title="Download PDF file">
+                  <i class="bi bi-download"></i>
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <!-- 3. Card Subscription Specification -->
+          <div class="col-md-6">
+            <div class="card h-100 border p-3 bg-body-tertiary rounded-3">
+              <div class="d-flex align-items-start gap-2 mb-2">
+                <i class="bi bi-credit-card text-success fs-4"></i>
+                <div>
+                  <h6 class="fw-bold mb-0">Card Subscription Agreement</h6>
+                  <span class="badge bg-success-soft text-success" style="font-size: 0.68rem;">{{ a.CardTier|title if a.CardTier else 'Standard' }} Tier</span>
+                </div>
+              </div>
+              <p class="text-muted small mb-3">Subscription agreement displaying card vector template, ceilings, insurance coverage, and card number.</p>
+              <div class="mt-auto d-flex gap-2">
+                <a href="{{ url_for('documents.download_card_certificate', aid=a.AccountID) }}" target="_blank" class="btn btn-sm btn-outline-success flex-fill">
+                  <i class="bi bi-eye me-1"></i>View PDF
+                </a>
+                <a href="{{ url_for('documents.download_card_certificate', aid=a.AccountID) }}?download=1" class="btn btn-sm btn-success" title="Download PDF file">
+                  <i class="bi bi-download"></i>
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <!-- 4. Account Statement & Logs -->
+          <div class="col-md-6">
+            <div class="card h-100 border p-3 bg-body-tertiary rounded-3">
+              <div class="d-flex align-items-start gap-2 mb-2">
+                <i class="bi bi-receipt text-secondary fs-4"></i>
+                <div>
+                  <h6 class="fw-bold mb-0">Account Statement &amp; Logs</h6>
+                  <span class="badge bg-secondary-soft text-secondary" style="font-size: 0.68rem;">Official Ledger</span>
+                </div>
+              </div>
+              <p class="text-muted small mb-3">Detailed account statement of operations, balance movements, audit logs, and transaction fees.</p>
+              <div class="mt-auto d-flex gap-2">
+                <a href="{{ url_for('documents.download_statement', aid=a.AccountID) }}" target="_blank" class="btn btn-sm btn-outline-secondary flex-fill">
+                  <i class="bi bi-eye me-1"></i>View PDF
+                </a>
+                <a href="{{ url_for('documents.download_statement', aid=a.AccountID) }}?download=1" class="btn btn-sm btn-secondary" title="Download PDF file">
+                  <i class="bi bi-download"></i>
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <!-- 5. Solvency Certificate -->
+          <div class="col-md-6">
+            <div class="card h-100 border p-3 bg-body-tertiary rounded-3">
+              <div class="d-flex align-items-start gap-2 mb-2">
+                <i class="bi bi-shield-check text-warning fs-4"></i>
+                <div>
+                  <h6 class="fw-bold mb-0">Solvency Certificate</h6>
+                  <span class="badge bg-warning-soft text-warning" style="font-size: 0.68rem;">Attestation de Solvabilité</span>
+                </div>
+              </div>
+              <p class="text-muted small mb-3">Certified financial solvency and balance certificate for visa, mortgage, or administrative purposes.</p>
+              <div class="mt-auto d-flex gap-2">
+                <a href="{{ url_for('documents.download_solvency_certificate', aid=a.AccountID) }}" target="_blank" class="btn btn-sm btn-outline-warning flex-fill">
+                  <i class="bi bi-eye me-1"></i>View PDF
+                </a>
+                <a href="{{ url_for('documents.download_solvency_certificate', aid=a.AccountID) }}?download=1" class="btn btn-sm btn-warning text-dark" title="Download PDF file">
+                  <i class="bi bi-download"></i>
+                </a>
+              </div>
+            </div>
+          </div>
+
+          {% if a.AccountStatus == 'Closed' %}
+          <!-- 6. Account Closure Certificate -->
+          <div class="col-md-6">
+            <div class="card h-100 border border-danger p-3 bg-danger-subtle rounded-3">
+              <div class="d-flex align-items-start gap-2 mb-2">
+                <i class="bi bi-file-earmark-x text-danger fs-4"></i>
+                <div>
+                  <h6 class="fw-bold mb-0 text-danger">Closure Certificate (Quittus)</h6>
+                  <span class="badge bg-danger text-white" style="font-size: 0.68rem;">Account Liquidated</span>
+                </div>
+              </div>
+              <p class="text-danger small mb-3">Official discharge certificate confirming final liquidation and closure of this Moroccan bank account.</p>
+              <div class="mt-auto d-flex gap-2">
+                <a href="{{ url_for('documents.download_closure_certificate', aid=a.AccountID) }}" target="_blank" class="btn btn-sm btn-outline-danger flex-fill">
+                  <i class="bi bi-eye me-1"></i>View PDF
+                </a>
+                <a href="{{ url_for('documents.download_closure_certificate', aid=a.AccountID) }}?download=1" class="btn btn-sm btn-danger" title="Download PDF file">
+                  <i class="bi bi-download"></i>
+                </a>
+              </div>
+            </div>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+      <div class="modal-footer bg-light px-4 py-2">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endfor %}
 {% endblock %}

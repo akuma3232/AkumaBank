@@ -8,6 +8,7 @@ from morocco_banking import generate_moroccan_rib, generate_card_number
 
 DATABASE_DIR = os.path.join(os.path.dirname(__file__), "database")
 DB_PATH = os.path.join(DATABASE_DIR, "banking_system.db")
+SIGNED_DOCS_DIR = os.path.join(DATABASE_DIR, "signed_documents")
 TRANSFER_FEE = Decimal("10.00")   # deducted from received amount (not sender)
 DEPOSIT_FEE  = Decimal("1.00")    # deducted from each deposit
 
@@ -223,6 +224,68 @@ def init_db(seed_demo_data=False):
     cur.execute(
         "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON USERS(Email) WHERE Email IS NOT NULL"
     )
+
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS ACCOUNT_CLOSURE_REQUEST (
+            RequestID   INTEGER PRIMARY KEY AUTOINCREMENT,
+            AccountID   INTEGER NOT NULL,
+            CustomerID  INTEGER NOT NULL,
+            Reason      TEXT,
+            Status      TEXT NOT NULL DEFAULT 'Pending'
+                       CHECK(Status IN ('Pending','Approved','Rejected')),
+            RequestedAt TEXT NOT NULL DEFAULT (datetime('now')),
+            ReviewedAt  TEXT,
+            ReviewedBy  INTEGER,
+            AdminNote   TEXT,
+            FOREIGN KEY (AccountID) REFERENCES ACCOUNT(AccountID) ON DELETE CASCADE,
+            FOREIGN KEY (CustomerID) REFERENCES CUSTOMER(CustomerID) ON DELETE CASCADE,
+            FOREIGN KEY (ReviewedBy) REFERENCES USERS(UserID) ON DELETE SET NULL
+        )
+    """)
+
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS DOCUMENT_REQUEST (
+            RequestID     INTEGER PRIMARY KEY AUTOINCREMENT,
+            CustomerID    INTEGER NOT NULL,
+            AccountID     INTEGER,
+            DocumentType  TEXT NOT NULL,
+            DocumentTitle TEXT NOT NULL,
+            Purpose       TEXT,
+            Status        TEXT NOT NULL DEFAULT 'Pending'
+                          CHECK(Status IN ('Pending','Approved','Rejected','Cancelled')),
+            RequestedAt   TEXT NOT NULL DEFAULT (datetime('now')),
+            ProcessedAt   TEXT,
+            ProcessedBy   INTEGER,
+            AdminNote     TEXT,
+            SignedPdfFile TEXT,
+            FOREIGN KEY (CustomerID) REFERENCES CUSTOMER(CustomerID) ON DELETE CASCADE,
+            FOREIGN KEY (AccountID) REFERENCES ACCOUNT(AccountID) ON DELETE SET NULL,
+            FOREIGN KEY (ProcessedBy) REFERENCES USERS(UserID) ON DELETE SET NULL
+        )
+    """)
+
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS ACCOUNT_OPENING_REQUEST (
+            RequestID        INTEGER PRIMARY KEY AUTOINCREMENT,
+            CustomerID       INTEGER NOT NULL,
+            AccountType      TEXT NOT NULL DEFAULT 'Current',
+            CardTier         TEXT NOT NULL DEFAULT 'standard',
+            InitialDeposit   REAL DEFAULT 0.0,
+            BranchID         INTEGER,
+            Reason           TEXT,
+            Status           TEXT NOT NULL DEFAULT 'Pending'
+                             CHECK(Status IN ('Pending','Approved','Rejected')),
+            RequestedAt      TEXT NOT NULL DEFAULT (datetime('now')),
+            ReviewedAt       TEXT,
+            ReviewedBy       INTEGER,
+            AdminNote        TEXT,
+            CreatedAccountID INTEGER,
+            FOREIGN KEY (CustomerID) REFERENCES CUSTOMER(CustomerID) ON DELETE CASCADE,
+            FOREIGN KEY (BranchID) REFERENCES BRANCH(BranchID),
+            FOREIGN KEY (ReviewedBy) REFERENCES USERS(UserID),
+            FOREIGN KEY (CreatedAccountID) REFERENCES ACCOUNT(AccountID)
+        )
+    """)
 
     branch_columns = {row["name"] for row in cur.execute("PRAGMA table_info(BRANCH)")}
     if "IFSCCode" in branch_columns and "BranchCode" not in branch_columns:
@@ -622,3 +685,56 @@ def transfer_money(from_account_id: int, to_account_id: int, amount: float) -> d
         return {"success": False, "message": str(e)}
     finally:
         conn.close()
+
+
+def close_account_permanently(account_id: int, reason: str = None, reviewed_by: int = None) -> dict:
+    """
+    Close an account definitively:
+    - If balance > 0, settle balance to 0 via final withdrawal transaction.
+    - Set account status to 'Closed'.
+    - Update any pending closure requests for this account to 'Approved'.
+    """
+    conn = get_db()
+    cur = conn.cursor()
+    try:
+        acct = cur.execute("SELECT * FROM ACCOUNT WHERE AccountID=?", (account_id,)).fetchone()
+        if not acct:
+            return {"success": False, "message": "Account not found."}
+        if acct["Status"] == "Closed":
+            return {"success": False, "message": "Account is already closed."}
+
+        current_balance = float(acct["Balance"])
+
+        # If balance > 0, clear it via settlement withdrawal
+        if current_balance > 0:
+            cur.execute("""
+                INSERT INTO TRANSACTIONS (AccountID, TransactionType, Amount, Description, BalanceAfter)
+                VALUES (?, 'Withdrawal', ?, ?, 0.0)
+            """, (
+                account_id,
+                current_balance,
+                f"Account Closure Settlement Payout - {reason or 'Final Clearance'}",
+            ))
+
+        # Set status to Closed
+        cur.execute("UPDATE ACCOUNT SET Status='Closed', Balance=0.0 WHERE AccountID=?", (account_id,))
+
+        # Update any pending requests
+        cur.execute("""
+            UPDATE ACCOUNT_CLOSURE_REQUEST
+            SET Status='Approved', ReviewedBy=?, ReviewedAt=datetime('now'), AdminNote=?
+            WHERE AccountID=? AND Status='Pending'
+        """, (reviewed_by, reason or "Approved and closed", account_id))
+
+        conn.commit()
+        return {
+            "success": True,
+            "message": f"Account {acct['AccountNumber']} has been successfully closed and liquidated.",
+            "cleared_balance": current_balance,
+        }
+    except Exception as e:
+        conn.rollback()
+        return {"success": False, "message": str(e)}
+    finally:
+        conn.close()
+

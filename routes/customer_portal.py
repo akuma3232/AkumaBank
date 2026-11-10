@@ -81,6 +81,23 @@ def home():
                FROM LOAN WHERE CustomerID=?""",
             (customer["CustomerID"],),
         ).fetchone()
+
+        closure_requests = conn.execute(
+            """SELECT * FROM ACCOUNT_CLOSURE_REQUEST WHERE CustomerID=? ORDER BY RequestedAt DESC""",
+            (customer["CustomerID"],),
+        ).fetchall()
+        pending_closure_map = {r["AccountID"]: dict(r) for r in closure_requests if r["Status"] == "Pending"}
+
+        opening_requests = conn.execute(
+            """SELECT * FROM ACCOUNT_OPENING_REQUEST WHERE CustomerID=? ORDER BY RequestedAt DESC""",
+            (customer["CustomerID"],),
+        ).fetchall()
+        branches = conn.execute("SELECT BranchID, BranchName, City FROM BRANCH ORDER BY BranchName").fetchall()
+    else:
+        closure_requests = []
+        pending_closure_map = {}
+        opening_requests = []
+        branches = []
     conn.close()
     return render_template(
         "customer_portal.html",
@@ -92,6 +109,10 @@ def home():
         loan_summary=loan_summary,
         total_account_balance=total_account_balance,
         transfer_fee=TRANSFER_FEE,
+        closure_requests=closure_requests,
+        pending_closure_map=pending_closure_map,
+        opening_requests=opening_requests,
+        branches=branches,
     )
 
 
@@ -285,3 +306,87 @@ def request_loan():
     finally:
         conn.close()
     return redirect(url_for("customer_portal.home"))
+
+
+@customer_portal_bp.post("/my-banking/account/<int:aid>/request-closure")
+@customer_required
+def request_account_closure(aid):
+    """Customer submits an account closure request."""
+    email = session.get("user", {}).get("email")
+    reason = request.form.get("reason", "Customer requested closure").strip()
+
+    conn = get_db()
+    customer = conn.execute("SELECT CustomerID FROM CUSTOMER WHERE lower(Email)=lower(?)", (email,)).fetchone()
+    if not customer:
+        conn.close()
+        flash("Customer profile not found.", "danger")
+        return redirect(url_for("customer_portal.home"))
+
+    account = conn.execute(
+        "SELECT * FROM ACCOUNT WHERE AccountID=? AND CustomerID=?",
+        (aid, customer["CustomerID"]),
+    ).fetchone()
+
+    if not account:
+        conn.close()
+        flash("Account not found or access denied.", "danger")
+        return redirect(url_for("customer_portal.home"))
+
+    if account["Status"] == "Closed":
+        conn.close()
+        flash("This account is already closed.", "warning")
+        return redirect(url_for("customer_portal.home"))
+
+    # Check for existing pending request
+    existing = conn.execute(
+        "SELECT 1 FROM ACCOUNT_CLOSURE_REQUEST WHERE AccountID=? AND Status='Pending'",
+        (aid,),
+    ).fetchone()
+    if existing:
+        conn.close()
+        flash("A closure request for this account is already pending review.", "info")
+        return redirect(url_for("customer_portal.home"))
+
+    conn.execute("""
+        INSERT INTO ACCOUNT_CLOSURE_REQUEST (AccountID, CustomerID, Reason, Status)
+        VALUES (?, ?, ?, 'Pending')
+    """, (aid, customer["CustomerID"], reason))
+    conn.commit()
+    conn.close()
+
+    flash("Account closure request submitted for review. A bank officer will process your request.", "success")
+    return redirect(url_for("customer_portal.home"))
+
+
+@customer_portal_bp.post("/my-banking/request-account-opening")
+@customer_required
+def request_account_opening():
+    """Customer submits a request to open an additional account."""
+    email = session.get("user", {}).get("email")
+    conn = get_db()
+    customer = conn.execute("SELECT CustomerID FROM CUSTOMER WHERE lower(Email)=lower(?)", (email,)).fetchone()
+    if not customer:
+        conn.close()
+        flash("Customer profile not found.", "danger")
+        return redirect(url_for("customer_portal.home"))
+
+    account_type = request.form.get("account_type", "Current").strip()
+    card_tier = request.form.get("card_tier", "standard").strip()
+    branch_id = request.form.get("branch_id") or None
+    reason = request.form.get("reason", "Additional account opening").strip()
+    try:
+        initial_deposit = max(0.0, float(request.form.get("initial_deposit", 0.0)))
+    except ValueError:
+        initial_deposit = 0.0
+
+    conn.execute("""
+        INSERT INTO ACCOUNT_OPENING_REQUEST (CustomerID, AccountType, CardTier, InitialDeposit, BranchID, Reason, Status)
+        VALUES (?, ?, ?, ?, ?, ?, 'Pending')
+    """, (customer["CustomerID"], account_type, card_tier, initial_deposit, branch_id, reason))
+    conn.commit()
+    conn.close()
+
+    flash("Account opening request submitted successfully. Our operations team will review and approve your account.", "success")
+    return redirect(url_for("customer_portal.home"))
+
+

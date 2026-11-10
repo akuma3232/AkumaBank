@@ -122,7 +122,7 @@ AkumaBank enforces strict operational boundaries across 4 permission tiers:
 
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/your-username/AkumaBank.git
+git clone https://github.com/akuma3232/AkumaBank.git
 cd AkumaBank
 ```
 

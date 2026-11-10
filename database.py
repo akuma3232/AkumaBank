@@ -566,22 +566,46 @@ def clear_business_data(include_users=False):
     """Remove customer banking records and optionally login users."""
     conn = get_db()
     try:
+        conn.execute("PRAGMA foreign_keys = OFF")
         conn.execute("BEGIN IMMEDIATE")
-        tables = ["TRANSACTIONS", "LOAN", "ACCOUNT", "CUSTOMER", "BRANCH"]
+        tables = [
+            "ACCOUNT_CLOSURE_REQUEST",
+            "DOCUMENT_REQUEST",
+            "ACCOUNT_OPENING_REQUEST",
+            "PASSWORD_RESET_REQUEST",
+            "TRANSACTIONS",
+            "LOAN",
+            "ACCOUNT",
+            "CUSTOMER",
+            "BRANCH",
+        ]
         if include_users:
             tables.append("USERS")
         for table in tables:
-            conn.execute(f"DELETE FROM {table}")
-        placeholders = ", ".join("?" for _ in tables)
-        conn.execute(
-            f"DELETE FROM sqlite_sequence WHERE name IN ({placeholders})",
-            tables,
-        )
+            table_exists = conn.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?", (table,)
+            ).fetchone()
+            if table_exists:
+                conn.execute(f"DELETE FROM {table}")
+
+        seq_exists = conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='sqlite_sequence'"
+        ).fetchone()
+        if seq_exists:
+            placeholders = ", ".join("?" for _ in tables)
+            conn.execute(
+                f"DELETE FROM sqlite_sequence WHERE name IN ({placeholders})",
+                tables,
+            )
         conn.commit()
     except Exception:
         conn.rollback()
         raise
     finally:
+        try:
+            conn.execute("PRAGMA foreign_keys = ON")
+        except Exception:
+            pass
         conn.close()
 
 

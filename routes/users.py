@@ -78,6 +78,62 @@ def users():
     )
 
 
+@users_bp.post("/users/profile-request/<int:request_id>/<action>")
+@owner_or_admin_required
+def review_profile_request(request_id, action):
+    """Approve or reject a customer's requested profile change."""
+    if action not in ("approve", "reject"):
+        return redirect(url_for("accounts.requests_center", tab="profiles"))
+
+    conn = get_db()
+    try:
+        conn.execute("BEGIN IMMEDIATE")
+        change = conn.execute(
+            "SELECT * FROM PROFILE_CHANGE_REQUEST WHERE RequestID=? AND Status='Pending'",
+            (request_id,),
+        ).fetchone()
+        if not change:
+            conn.rollback()
+            flash("That profile change request is no longer pending.", "warning")
+            return redirect(url_for("accounts.requests_center", tab="profiles"))
+
+        if action == "approve":
+            conn.execute(
+                """UPDATE USERS SET
+                   FullName=COALESCE(NULLIF(?, ''), FullName),
+                   CustomStatus=?, Pronouns=?, AboutMe=?
+                   WHERE UserID=?""",
+                (
+                    change["FullName"] or "",
+                    change["CustomStatus"] or "",
+                    change["Pronouns"] or "",
+                    change["AboutMe"] or "",
+                    change["UserID"],
+                ),
+            )
+
+        conn.execute(
+            """UPDATE PROFILE_CHANGE_REQUEST
+               SET Status=?, ReviewedAt=datetime('now'), ReviewedBy=?
+               WHERE RequestID=? AND Status='Pending'""",
+            ("Approved" if action == "approve" else "Rejected", session["user"]["id"], request_id),
+        )
+        conn.commit()
+        flash(
+            "Profile change approved and applied to the customer's card."
+            if action == "approve"
+            else "Profile change request rejected.",
+            "success" if action == "approve" else "info",
+        )
+    except Exception as error:
+        conn.rollback()
+        flash(f"Could not review the profile change request: {error}", "danger")
+    finally:
+        conn.close()
+
+    return redirect(request.referrer or url_for("accounts.requests_center", tab="profiles"))
+
+
 @users_bp.post("/users/password-reset/<int:request_id>/<action>")
 @owner_or_admin_required
 def review_password_reset(request_id, action):

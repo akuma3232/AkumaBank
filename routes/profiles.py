@@ -263,10 +263,32 @@ def settings():
         return redirect(url_for("auth.login"))
 
     is_owner = session["user"].get("role") == "Owner"
+    is_customer = session["user"].get("role") == "Customer"
+
+    # Customers cannot edit their card directly: changes go through an
+    # owner/admin approval request. Show their latest request (and preview
+    # the proposed values while it is still pending).
+    profile_request = None
+    if is_customer:
+        conn = get_db()
+        profile_request = conn.execute(
+            "SELECT * FROM PROFILE_CHANGE_REQUEST WHERE UserID=? ORDER BY RequestID DESC LIMIT 1",
+            (user_id,),
+        ).fetchone()
+        conn.close()
+        if profile_request and profile_request["Status"] == "Pending":
+            user_view = profile_data["user"]
+            user_view["FullName"] = profile_request["FullName"] or user_view["FullName"]
+            user_view["CustomStatus"] = profile_request["CustomStatus"]
+            user_view["Pronouns"] = profile_request["Pronouns"]
+            user_view["AboutMe"] = profile_request["AboutMe"]
+
     return render_template(
         "account_settings.html",
         profile=profile_data,
         is_owner=is_owner,
+        is_customer=is_customer,
+        profile_request=profile_request,
     )
 
 
@@ -454,12 +476,46 @@ def remove_banner():
 @profiles_bp.post("/account/settings/profile-info")
 @login_required
 def update_profile_info():
-    """Update Display Name, Custom Status, Title/Pronouns, and About Me Bio."""
+    """Update profile details, or queue the change for approval when a customer asks."""
     user_id = session["user"]["id"]
     full_name = request.form.get("full_name", "").strip()
     custom_status = request.form.get("custom_status", "").strip()
     about_me = request.form.get("about_me", "").strip()
     pronouns = request.form.get("pronouns", "").strip()
+
+    if len(full_name) > 120 or len(custom_status) > 150 or len(pronouns) > 50 or len(about_me) > 500:
+        flash("One of the profile fields is longer than allowed. Please shorten it and try again.", "danger")
+        return redirect(url_for("profiles.settings"))
+
+    if session["user"].get("role") == "Customer":
+        conn = get_db()
+        try:
+            pending = conn.execute(
+                "SELECT RequestID FROM PROFILE_CHANGE_REQUEST WHERE UserID=? AND Status='Pending'",
+                (user_id,),
+            ).fetchone()
+            if pending:
+                conn.execute(
+                    """UPDATE PROFILE_CHANGE_REQUEST
+                       SET FullName=?, CustomStatus=?, Pronouns=?, AboutMe=?, RequestedAt=datetime('now')
+                       WHERE RequestID=?""",
+                    (full_name, custom_status, pronouns, about_me, pending["RequestID"]),
+                )
+            else:
+                conn.execute(
+                    """INSERT INTO PROFILE_CHANGE_REQUEST (UserID, FullName, CustomStatus, Pronouns, AboutMe)
+                       VALUES (?, ?, ?, ?, ?)""",
+                    (user_id, full_name, custom_status, pronouns, about_me),
+                )
+            conn.commit()
+        except Exception as err:
+            conn.rollback()
+            flash(f"Could not submit your profile change request: {err}", "danger")
+        else:
+            flash("Profile change request submitted. The Bank Owner or an Admin must approve it before it appears on your card.", "info")
+        finally:
+            conn.close()
+        return redirect(url_for("profiles.settings"))
 
     conn = get_db()
     conn.execute(

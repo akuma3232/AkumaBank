@@ -352,6 +352,27 @@ def init_db(seed_demo_data=False):
         )
     """)
 
+    # ─────────────────────────────────────────────
+    # CUSTOMER PROFILE CHANGE REQUESTS (OWNER / ADMIN APPROVAL)
+    # ─────────────────────────────────────────────
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS PROFILE_CHANGE_REQUEST (
+            RequestID    INTEGER PRIMARY KEY AUTOINCREMENT,
+            UserID       INTEGER NOT NULL,
+            FullName     TEXT,
+            CustomStatus TEXT,
+            Pronouns     TEXT,
+            AboutMe      TEXT,
+            Status       TEXT    NOT NULL DEFAULT 'Pending',
+            RequestedAt  TEXT    NOT NULL DEFAULT (datetime('now')),
+            ReviewedAt   TEXT,
+            ReviewedBy   INTEGER,
+            FOREIGN KEY (UserID) REFERENCES USERS(UserID) ON DELETE CASCADE
+        )
+    """)
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_profile_request_status ON PROFILE_CHANGE_REQUEST(Status)")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_profile_request_user   ON PROFILE_CHANGE_REQUEST(UserID)")
+
     branch_columns = {row["name"] for row in cur.execute("PRAGMA table_info(BRANCH)")}
     if "IFSCCode" in branch_columns and "BranchCode" not in branch_columns:
         cur.execute("ALTER TABLE BRANCH RENAME COLUMN IFSCCode TO BranchCode")
@@ -640,6 +661,7 @@ def clear_business_data(include_users=False):
             "DOCUMENT_REQUEST",
             "ACCOUNT_OPENING_REQUEST",
             "PASSWORD_RESET_REQUEST",
+            "PROFILE_CHANGE_REQUEST",
             "TRANSACTIONS",
             "LOAN",
             "ACCOUNT",

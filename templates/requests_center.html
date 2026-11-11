@@ -7,7 +7,7 @@
 <div class="page-header-row mb-4">
   <div>
     <h4 class="page-heading">Operations Requests Center</h4>
-    <p class="page-sub">Centralized hub for all bank requests: Customer Signups, Account Openings, Closures, Document Certifications, Loans, and Password Resets.</p>
+    <p class="page-sub">Centralized hub for all bank requests: Customer Signups, Account Openings, Closures, Document Certifications, Loans, Password Resets, and Profile Changes.</p>
   </div>
   <div class="d-flex align-items-center gap-2">
     {% if total_pending_requests > 0 %}
@@ -85,6 +85,12 @@
         <button class="nav-link fw-semibold {% if active_tab == 'passwords' %}active{% endif %}" id="tab-btn-passwords" data-bs-toggle="tab" data-bs-target="#pane-passwords" type="button" role="tab">
           <i class="bi bi-key-fill me-1 text-secondary"></i>Password Resets
           {% if pending_passwords_count > 0 %}<span class="badge bg-danger ms-1">{{ pending_passwords_count }}</span>{% endif %}
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link fw-semibold {% if active_tab == 'profiles' %}active{% endif %}" id="tab-btn-profiles" data-bs-toggle="tab" data-bs-target="#pane-profiles" type="button" role="tab">
+          <i class="bi bi-person-lines-fill me-1 text-primary"></i>Profile Changes
+          {% if pending_profiles_count > 0 %}<span class="badge bg-danger ms-1">{{ pending_profiles_count }}</span>{% endif %}
         </button>
       </li>
     </ul>
@@ -585,6 +591,94 @@
         <div class="text-center py-5 text-muted">
           <i class="bi bi-shield-lock fs-1 d-block mb-2 text-secondary"></i>
           No password reset requests pending.
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- ════ 7. PROFILE CHANGES ════ -->
+      <div class="tab-pane fade {% if active_tab == 'profiles' %}show active{% endif %}" id="pane-profiles" role="tabpanel">
+        <div class="p-3 border-bottom bg-light d-flex justify-content-between align-items-center">
+          <div>
+            <h6 class="fw-bold mb-0">Customer Profile Change Requests</h6>
+            <small class="text-muted">Customers cannot edit their profile card directly. Review and approve their identity updates.</small>
+          </div>
+          <span class="badge bg-secondary-soft text-secondary font-monospace">{{ profile_requests|length }} record(s)</span>
+        </div>
+        {% if profile_requests %}
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>Request ID &amp; Date</th>
+                <th>Customer</th>
+                <th>Requested Changes</th>
+                <th>Status</th>
+                <th class="text-end">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for pr in profile_requests %}
+              <tr>
+                <td>
+                  <strong class="font-monospace text-info">#PRF-{{ "%04d"|format(pr.RequestID) }}</strong><br/>
+                  <span class="text-muted small">{{ pr.RequestedAt[:16] }}</span>
+                </td>
+                <td>
+                  <strong>{{ pr.Username }}</strong>
+                  <div class="text-muted small">{{ pr.CurrentFullName or '—' }}{% if pr.Email %} &bull; {{ pr.Email }}{% endif %}</div>
+                </td>
+                <td class="small">
+                  {% set no_change = (pr.FullName or '') == (pr.CurrentFullName or '') and (pr.CustomStatus or '') == (pr.CurrentStatus or '') and (pr.Pronouns or '') == (pr.CurrentPronouns or '') and (pr.AboutMe or '') == (pr.CurrentAboutMe or '') %}
+                  {% if (pr.FullName or '') != (pr.CurrentFullName or '') %}
+                  <div><span class="text-muted">Display name:</span> {{ pr.CurrentFullName or '—' }} &rarr; <strong>{{ pr.FullName or '(unchanged)' }}</strong></div>
+                  {% endif %}
+                  {% if (pr.CustomStatus or '') != (pr.CurrentStatus or '') %}
+                  <div><span class="text-muted">Status:</span> {{ pr.CurrentStatus or '—' }} &rarr; <strong>{{ pr.CustomStatus or '(cleared)' }}</strong></div>
+                  {% endif %}
+                  {% if (pr.Pronouns or '') != (pr.CurrentPronouns or '') %}
+                  <div><span class="text-muted">Title:</span> {{ pr.CurrentPronouns or '—' }} &rarr; <strong>{{ pr.Pronouns or '(cleared)' }}</strong></div>
+                  {% endif %}
+                  {% if (pr.AboutMe or '') != (pr.CurrentAboutMe or '') %}
+                  <div><span class="text-muted">About me:</span> {{ pr.AboutMe or '(cleared)' }}</div>
+                  {% endif %}
+                  {% if no_change %}<span class="text-muted">No field changes.</span>{% endif %}
+                </td>
+                <td>
+                  {% if pr.Status == 'Pending' %}
+                  <span class="badge bg-warning text-dark"><i class="bi bi-hourglass-split me-1"></i>Pending</span>
+                  {% elif pr.Status == 'Approved' %}
+                  <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Approved</span>
+                  {% else %}
+                  <span class="badge bg-danger"><i class="bi bi-x-circle me-1"></i>Rejected</span>
+                  {% endif %}
+                </td>
+                <td class="text-end text-nowrap">
+                  {% if pr.Status == 'Pending' and can_create_account %}
+                  <div class="d-inline-flex gap-1">
+                    <form method="POST" action="{{ url_for('users.review_profile_request', request_id=pr.RequestID, action='approve') }}">
+                      <button type="submit" class="btn btn-sm btn-success px-3" onclick="return confirm('Apply this profile change to {{ pr.Username }}?');">
+                        <i class="bi bi-check-lg me-1"></i>Approve
+                      </button>
+                    </form>
+                    <form method="POST" action="{{ url_for('users.review_profile_request', request_id=pr.RequestID, action='reject') }}">
+                      <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Reject this profile change request?');">
+                        <i class="bi bi-x-lg"></i>
+                      </button>
+                    </form>
+                  </div>
+                  {% else %}
+                  <span class="text-muted">—</span>
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5 text-muted">
+          <i class="bi bi-person-lines-fill fs-1 d-block mb-2 text-secondary"></i>
+          No profile change requests.
         </div>
         {% endif %}
       </div>

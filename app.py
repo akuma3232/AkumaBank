@@ -124,8 +124,9 @@ def inject_operations_requests_counts():
         openings = conn.execute("SELECT COUNT(*) FROM ACCOUNT_OPENING_REQUEST WHERE Status='Pending'").fetchone()[0]
         loans = conn.execute("SELECT COUNT(*) FROM LOAN WHERE Status='Pending'").fetchone()[0]
         passwords = conn.execute("SELECT COUNT(*) FROM PASSWORD_RESET_REQUEST WHERE Status='Pending'").fetchone()[0]
+        profiles = conn.execute("SELECT COUNT(*) FROM PROFILE_CHANGE_REQUEST WHERE Status='Pending'").fetchone()[0]
         conn.close()
-        total = signups + closures + docs + openings + loans + passwords
+        total = signups + closures + docs + openings + loans + passwords + profiles
         return {
             "total_pending_requests": total,
             "pending_signups_count": signups,
@@ -134,6 +135,7 @@ def inject_operations_requests_counts():
             "pending_openings_count": openings,
             "pending_loans_count": loans,
             "pending_passwords_count": passwords,
+            "pending_profiles_count": profiles,
         }
     except Exception:
         return {}

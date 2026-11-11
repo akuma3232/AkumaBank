@@ -135,13 +135,25 @@ def accounts():
     """).fetchall()
     pending_signups_count = len(signup_requests)
 
+    # Customer profile change requests
+    profile_requests = conn.execute("""
+        SELECT pr.*, u.Username, u.Email, u.FullName AS CurrentFullName,
+               u.CustomStatus AS CurrentStatus, u.Pronouns AS CurrentPronouns,
+               u.AboutMe AS CurrentAboutMe
+        FROM PROFILE_CHANGE_REQUEST pr
+        JOIN USERS u ON u.UserID = pr.UserID
+        ORDER BY CASE WHEN pr.Status='Pending' THEN 1 ELSE 2 END, pr.RequestedAt DESC
+    """).fetchall()
+    pending_profiles_count = sum(1 for r in profile_requests if r["Status"] == "Pending")
+
     total_pending_requests = (
         pending_signups_count +
         pending_closures_count +
         pending_documents_count +
         pending_openings_count +
         pending_loans_count +
-        pending_passwords_count
+        pending_passwords_count +
+        pending_profiles_count
     )
 
     conn.close()
@@ -164,6 +176,8 @@ def accounts():
         pending_loans_count=pending_loans_count,
         password_requests=password_requests,
         pending_passwords_count=pending_passwords_count,
+        profile_requests=profile_requests,
+        pending_profiles_count=pending_profiles_count,
         total_pending_requests=total_pending_requests,
         can_create_account=session.get("user", {}).get("role") in ("Owner", "Admin"),
     )
@@ -228,13 +242,24 @@ def requests_center():
     """).fetchall()
     pending_passwords_count = sum(1 for r in password_requests if r["Status"] == "Pending")
 
+    profile_requests = conn.execute("""
+        SELECT pr.*, u.Username, u.Email, u.FullName AS CurrentFullName,
+               u.CustomStatus AS CurrentStatus, u.Pronouns AS CurrentPronouns,
+               u.AboutMe AS CurrentAboutMe
+        FROM PROFILE_CHANGE_REQUEST pr
+        JOIN USERS u ON u.UserID = pr.UserID
+        ORDER BY CASE WHEN pr.Status='Pending' THEN 1 ELSE 2 END, pr.RequestedAt DESC
+    """).fetchall()
+    pending_profiles_count = sum(1 for r in profile_requests if r["Status"] == "Pending")
+
     total_pending_requests = (
         pending_signups_count +
         pending_closures_count +
         pending_documents_count +
         pending_openings_count +
         pending_loans_count +
-        pending_passwords_count
+        pending_passwords_count +
+        pending_profiles_count
     )
 
     pending_temporary_passwords = session.get("pending_temporary_passwords", [])
@@ -252,6 +277,8 @@ def requests_center():
             active_tab = "loans"
         elif pending_passwords_count > 0:
             active_tab = "passwords"
+        elif pending_profiles_count > 0:
+            active_tab = "profiles"
         else:
             active_tab = "signups"
 
@@ -270,6 +297,8 @@ def requests_center():
         pending_loans_count=pending_loans_count,
         password_requests=password_requests,
         pending_passwords_count=pending_passwords_count,
+        profile_requests=profile_requests,
+        pending_profiles_count=pending_profiles_count,
         total_pending_requests=total_pending_requests,
         pending_temporary_passwords=pending_temporary_passwords,
         active_tab=active_tab,

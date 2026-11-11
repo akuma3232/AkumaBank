@@ -6,7 +6,13 @@
 <div class="page-header-row mb-4">
   <div>
     <h4 class="page-heading">Executive Profile &amp; Account Settings</h4>
-    <p class="page-sub">Craft your sovereign profile card with animated avatars, banners, roles, and official bank badges.</p>
+    <p class="page-sub">
+      {% if is_customer %}
+      Your avatar and banner update instantly. Display name, status, title and bio changes are sent to the Bank Owner or an Admin for approval.
+      {% else %}
+      Craft your sovereign profile card with animated avatars, banners, roles, and official bank badges.
+      {% endif %}
+    </p>
   </div>
   {% if is_owner %}
   <a href="{{ url_for('profiles.owner_studio') }}" class="btn btn-sm btn-warning text-dark fw-bold">
@@ -199,6 +205,24 @@
         <div class="tab-pane fade" id="tab-bio" role="tabpanel">
           <h5 class="fw-bold mb-3"><i class="bi bi-chat-square-text-fill text-primary me-2"></i>Identity &amp; Bio Information</h5>
 
+          {% if is_customer %}
+          <div class="alert alert-info d-flex gap-2 align-items-start mb-3 py-2 px-3">
+            <i class="bi bi-shield-lock-fill fs-5"></i>
+            <div class="small">
+              {% if profile_request and profile_request.Status == 'Pending' %}
+              <strong>Change request pending approval.</strong>
+              Submitted {{ profile_request.RequestedAt[:16] }} &mdash; the Bank Owner or an Admin must approve it before it appears on your card. The fields below show your requested values.
+              {% elif profile_request and profile_request.Status == 'Rejected' %}
+              <strong>Your last change request was rejected.</strong>
+              Submitted {{ profile_request.RequestedAt[:16] }}{% if profile_request.ReviewedAt %} &bull; reviewed {{ profile_request.ReviewedAt[:16] }}{% endif %}. Edit the form below and submit a new request.
+              {% else %}
+              <strong>Profile changes require approval.</strong>
+              Customers cannot edit their card directly: saving this form sends a change request to the Bank Owner or an Admin, and the update appears once approved.
+              {% endif %}
+            </div>
+          </div>
+          {% endif %}
+
           <form method="POST" action="{{ url_for('profiles.update_profile_info') }}">
             <div class="mb-3">
               <label class="form-label small fw-semibold" for="full_name">Display Name (Full Legal Name)</label>
@@ -226,7 +250,11 @@
             </div>
 
             <button class="btn btn-primary btn-sm fw-semibold" type="submit">
+              {% if is_customer %}
+              <i class="bi bi-send me-1"></i>Submit for Approval
+              {% else %}
               <i class="bi bi-check-circle me-1"></i>Save Profile Information
+              {% endif %}
             </button>
           </form>
         </div>

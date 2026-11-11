@@ -74,6 +74,7 @@
         {% if pending_openings_count > 0 %}{% set _ = req_summary.append(pending_openings_count ~ ' Account Opening(s)') %}{% endif %}
         {% if pending_loans_count > 0 %}{% set _ = req_summary.append(pending_loans_count ~ ' Loan(s)') %}{% endif %}
         {% if pending_passwords_count > 0 %}{% set _ = req_summary.append(pending_passwords_count ~ ' Password Reset(s)') %}{% endif %}
+        {% if pending_profiles_count > 0 %}{% set _ = req_summary.append(pending_profiles_count ~ ' Profile Change(s)') %}{% endif %}
         {{ req_summary|join(' &bull; ') }}
       </div>
     </div>

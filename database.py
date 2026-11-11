@@ -293,90 +293,49 @@ def init_db(seed_demo_data=False):
     """)
 
     # ─────────────────────────────────────────────
-    # DISCORD PROFILE ROLES & BADGES
+    # EXECUTIVE PROFILE BADGES (OWNER UPLOADABLE PNGs)
     # ─────────────────────────────────────────────
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS CUSTOM_ROLE (
-            RoleID   INTEGER PRIMARY KEY AUTOINCREMENT,
-            Name     TEXT    NOT NULL UNIQUE,
-            Color    TEXT    NOT NULL DEFAULT '#5865f2',
-            Icon     TEXT,
-            Position INTEGER DEFAULT 0
-        )
-    """)
-
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS USER_CUSTOM_ROLE (
-            UserID INTEGER NOT NULL,
-            RoleID INTEGER NOT NULL,
-            PRIMARY KEY (UserID, RoleID),
-            FOREIGN KEY (UserID) REFERENCES USERS(UserID) ON DELETE CASCADE,
-            FOREIGN KEY (RoleID) REFERENCES CUSTOM_ROLE(RoleID) ON DELETE CASCADE
-        )
-    """)
-
     cur.execute("""
         CREATE TABLE IF NOT EXISTS BADGE (
             BadgeID     INTEGER PRIMARY KEY AUTOINCREMENT,
-            Code        TEXT    NOT NULL UNIQUE,
             Name        TEXT    NOT NULL,
             Description TEXT,
-            Icon        TEXT    NOT NULL
+            Icon        TEXT    NOT NULL,
+            CreatedAt   TEXT    NOT NULL DEFAULT (datetime('now'))
         )
     """)
 
     cur.execute("""
         CREATE TABLE IF NOT EXISTS USER_BADGE (
-            UserID  INTEGER NOT NULL,
-            BadgeID INTEGER NOT NULL,
+            UserID    INTEGER NOT NULL,
+            BadgeID   INTEGER NOT NULL,
+            GrantedAt TEXT    NOT NULL DEFAULT (datetime('now')),
             PRIMARY KEY (UserID, BadgeID),
             FOREIGN KEY (UserID) REFERENCES USERS(UserID) ON DELETE CASCADE,
             FOREIGN KEY (BadgeID) REFERENCES BADGE(BadgeID) ON DELETE CASCADE
         )
     """)
 
-    # Seed default roles if empty
-    default_roles = [
-        ("Bank Owner", "#f59e0b", "roles/crown.png", 1),
-        ("Executive Admin", "#ef4444", "roles/shield.png", 2),
-        ("Compliance Officer", "#3b82f6", "roles/officer.png", 3),
-        ("Branch Manager", "#8b5cf6", "roles/manager.png", 4),
-        ("Senior Banker", "#10b981", "roles/banker.png", 5),
-        ("VIP Client", "#ec4899", "roles/vip.png", 6),
-        ("Verified Customer", "#06b6d4", "roles/verified.png", 7),
+    # Seed starter official PNG badges if empty
+    starter_badges = [
+        ("Bank Owner", "Sovereign Executive Authority of AkumaBank Core", "badges/owner_crown.png"),
+        ("Official Staff", "Certified AkumaBank Banking Operations Officer", "badges/staff_shield.png"),
+        ("BAM Verified", "Bank Al-Maghrib Regulatory & Modulo 97 Compliance", "badges/bam_verified.png"),
+        ("VIP Vault", "Moroccan High-Volume Dirham Liquidity Tier", "badges/nitro_vault.png"),
     ]
-    for r_name, r_color, r_icon, r_pos in default_roles:
-        cur.execute(
-            "INSERT OR IGNORE INTO CUSTOM_ROLE (Name, Color, Icon, Position) VALUES (?, ?, ?, ?)",
-            (r_name, r_color, r_icon, r_pos),
-        )
+    if cur.execute("SELECT COUNT(*) FROM BADGE").fetchone()[0] == 0:
+        for b_name, b_desc, b_icon in starter_badges:
+            cur.execute(
+                "INSERT INTO BADGE (Name, Description, Icon) VALUES (?, ?, ?)",
+                (b_name, b_desc, b_icon),
+            )
 
-    # Seed default badges if empty
-    default_badges = [
-        ("owner_crown", "Bank Owner", "Supreme Sovereign Authority of AkumaBank", "badges/owner_crown.png"),
-        ("staff_shield", "Official Staff", "Certified AkumaBank Banking Officer", "badges/staff_shield.png"),
-        ("bam_verified", "BAM Verified", "Bank Al-Maghrib Regulatory Compliance", "badges/bam_verified.png"),
-        ("early_supporter", "Early Supporter", "Original AkumaBank Pioneer Member", "badges/early_supporter.png"),
-        ("active_dev", "Core Architect", "High-Tech Financial Core Systems Developer", "badges/active_dev.png"),
-        ("nitro_vault", "Nitro Vault", "High-Volume Dirham Liquidity Tier", "badges/nitro_vault.png"),
-        ("hypesquad", "HypeSquad Casablanca", "Casablanca Financial Center Ambassador", "badges/hypesquad.png"),
-        ("bug_hunter", "Security Auditor", "Quantum Cryptographic Vault Auditor", "badges/bug_hunter.png"),
-    ]
-    for b_code, b_name, b_desc, b_icon in default_badges:
-        cur.execute(
-            "INSERT OR IGNORE INTO BADGE (Code, Name, Description, Icon) VALUES (?, ?, ?, ?)",
-            (b_code, b_name, b_desc, b_icon),
-        )
-
-    # Automatically grant Owner roles/badges to existing Owner users
+    # Automatically grant Owner badge to existing Owner users
     owners = cur.execute("SELECT UserID FROM USERS WHERE Role='Owner'").fetchall()
-    owner_role = cur.execute("SELECT RoleID FROM CUSTOM_ROLE WHERE Name='Bank Owner'").fetchone()
-    owner_badge = cur.execute("SELECT BadgeID FROM BADGE WHERE Code='owner_crown'").fetchone()
-    staff_badge = cur.execute("SELECT BadgeID FROM BADGE WHERE Code='staff_shield'").fetchone()
+    owner_badge = cur.execute("SELECT BadgeID FROM BADGE WHERE Name='Bank Owner'").fetchone()
+    staff_badge = cur.execute("SELECT BadgeID FROM BADGE WHERE Name='Official Staff'").fetchone()
     for o in owners:
         uid = o["UserID"]
-        if owner_role:
-            cur.execute("INSERT OR IGNORE INTO USER_CUSTOM_ROLE (UserID, RoleID) VALUES (?, ?)", (uid, owner_role["RoleID"]))
         if owner_badge:
             cur.execute("INSERT OR IGNORE INTO USER_BADGE (UserID, BadgeID) VALUES (?, ?)", (uid, owner_badge["BadgeID"]))
         if staff_badge:
@@ -675,7 +634,7 @@ def clear_business_data(include_users=False):
             "BRANCH",
         ]
         if include_users:
-            tables.extend(["USER_CUSTOM_ROLE", "USER_BADGE", "USERS"])
+            tables.extend(["USER_BADGE", "USERS"])
         for table in tables:
             table_exists = conn.execute(
                 "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?", (table,)

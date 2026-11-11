@@ -22,6 +22,7 @@
 <a href="#-unified-operations-requests-center">📥 Requests Center</a> •
 <a href="#-official-bank-al-maghrib-pdf-suite">📄 PDF Suite</a> •
 <a href="#-card-subscription-tiers">💳 Card Tiers</a> •
+<a href="#-executive-profile--identity-system">🪪 Profiles</a> •
 <a href="#-role-based-access-control-rbac">👥 User Roles</a> •
 <a href="#-quick-start--installation">⚡ Quick Start</a> •
 <a href="#-database--architecture">🗄️ Architecture</a> •
@@ -37,11 +38,14 @@
 
 AkumaBank v4.0 introduces major architectural enhancements tailored to authentic Moroccan and international retail banking standards:
 
-* 📥 **Unified Operations Requests Center (`/requests`):** A centralized command hub managing all 6 request lifecycles (Customer Signups, Account Openings, Account Closures, Document Certifications, Loan Underwriting, and Password Resets) with real-time pending badges.
+* 📥 **Unified Operations Requests Center (`/requests`):** A centralized command hub managing all 7 request lifecycles (Customer Signups, Account Openings, Account Closures, Document Certifications, Loan Underwriting, Password Resets, and Profile Changes) with real-time pending badges.
 * 📄 **Official Bank Al-Maghrib PDF Generation Suite:** 6 regulatory PDF certificates dynamically rendered with ReportLab, featuring clean vector EMV smart cards, Bank Al-Maghrib circular stamps, and electronic signatures.
 * 📁 **Customer "My Documents" Portal (`/my-documents`):** Self-service document issuance with a dynamic state lifecycle — customer requests certificate &rarr; staff inspects draft &rarr; uploads physically signed/stamped PDF &rarr; customer's **"Cancel Request"** button transforms into **"Download PDF"**.
 * 💳 **Multi-Tier Card Subscription Framework:** 4 distinct Moroccan banking tiers (`Silver Pulse`, `Titanium Elite`, `Gold Sovereign`, and `Obsidian Noir`) with specific spending ceilings, contactless limits, and insurance coverage.
-* 🖼️ **Pure-Code Profile Avatar System:** Profile pictures are downscaled to 128&times;128 and converted into Base64 WebP code stored directly in the database. **Zero image files are saved to disk.**
+* 🪪 **Discord-Style Executive Profile Cards:** Banners, overlapping avatars, a framed badge tray, PNG role pills and sectioned About / Roles / Accounts blocks, shared by every member and served identically in the global profile popup.
+* 🎖️ **Owner Studio (`/owner/studio`):** Owners design custom roles and official badges from uploaded PNGs, then grant roles and badges to any member. Glyph-based badges were retired in favour of image icons.
+* 🛡️ **Approval-Gated Customer Profiles:** Customers can no longer rewrite their display name, status, title or bio directly &mdash; those edits become requests that an Owner or Admin reviews in the Requests Center.
+* 🖼️ **Served Avatar &amp; Banner Routes:** Uploads are compressed in memory (256&times;256 WebP avatars, 1024&times;400 banners, animated GIFs resized frame-by-frame) and streamed from `/user/<id>/avatar` and `/user/<id>/banner`, so the session cookie stays tiny.
 * 🪟 **Official Bank Document Windows:** Clean, responsive modals replace cramped dropdowns, providing in-browser preview (`target="_blank"`) and direct file downloads for all accounts.
 
 ---
@@ -108,6 +112,12 @@ All bank requests are consolidated into a dedicated, full-page operations worksp
       <td>Customer forgotten credentials</td>
       <td>Issue temporary password</td>
       <td>Delivered via Temporary Passwords Queue</td>
+    </tr>
+    <tr>
+      <td><strong>🪪 Profile Changes</strong></td>
+      <td>Customer edits display name, status, title or bio</td>
+      <td>Review the before &rarr; after diff, approve or reject</td>
+      <td>Identity fields applied to the customer's card on approval</td>
     </tr>
   </tbody>
 </table>
@@ -198,15 +208,33 @@ AkumaBank offers 4 tailored card subscription tiers:
 
 ---
 
-## 🖼️ Zero-Disk Avatar Architecture (Code Storage)
+## 🪪 Executive Profile & Identity System
 
-To guarantee database self-containment and eliminate image file storage on the server:
+Every staff member and customer receives a Discord-style executive profile card: banner, overlapping avatar with a status dot, framed badge tray, PNG role pills, and sectioned About Me / Roles / Accounts blocks. Badges and role icons are uploaded PNGs only &mdash; glyph-based badges were retired.
 
-1. **Upload &amp; Transform:** When a user uploads a photo (JPEG, PNG, WebP), the server decodes the image in memory.
-2. **Dimension Normalization:** Pillow downscales and crops the image to a standardized $128 \times 128$ square.
-3. **Encoding:** The pixels are converted directly into a Base64-encoded WebP string (`data:image/webp;base64,...`).
-4. **Pure-Text Storage:** The resulting string is saved directly into the `USERS.ProfilePicture` text field.
-5. **Disk Hygiene:** Zero image files exist on the host filesystem.
+### Avatars &amp; Banners (Served, Not Embedded)
+
+1. **Upload &amp; Validate:** JPEG, PNG, WebP and animated GIF up to 8&nbsp;MB are decoded in memory with Pillow.
+2. **Normalize &amp; Compress:** Avatars become 256&times;256 WebP (animated GIFs are resized frame-by-frame, capped at 150 frames); banners become 1024&times;400 WebP.
+3. **Store in SQLite:** The compressed bytes are kept as a data URI on `USERS.ProfilePicture` and `USERS.BannerImage`. **Zero image files are written to disk.**
+4. **Serve by Route:** `/user/<id>/avatar` and `/user/<id>/banner` stream the bytes with private caching and a version query string so new uploads replace cached ones instantly.
+5. **Small Sessions:** The session cookie stores only a `has_pfp` flag and an avatar version &mdash; never the image itself.
+6. **Site-Wide Use:** The same routes feed the sidebar, topbar, profile card, settings preview, global profile popup, staff tables and Owner Studio.
+
+### Owner Studio (`/owner/studio`, Owner only)
+
+* Create custom profile roles with a color and optional PNG icon (rendered as a 16px pill icon, with a colored dot fallback) and delete them with one click.
+* Register official bank badges from square PNG icons (64&times;64), each with a description and accent color, or delete them from the registry.
+* Assign badges and roles to any member from the studio member table, a profile card, or the global profile popup.
+* Role member counts and both registries stay visible while you work, and every studio action returns to the studio.
+
+### Badge Hover Card
+
+Hovering any badge icon &mdash; on the profile card, settings preview, global profile popup or Owner Studio members table &mdash; opens a floating card with the badge icon, name, an "Official Bank Badge" label and its description. It positions above the badge, flips below when space runs out, and clamps to the viewport edges.
+
+### Customer Profile Change Requests
+
+Customers cannot rewrite their own identity fields. Saving **About Me &amp; Status** creates a `PROFILE_CHANGE_REQUEST` holding the proposed display name, custom status, title and bio instead of updating `USERS`. The settings page shows the request state (pending or rejected) and previews the proposed values on the live card. Owners and Admins review requests in **Requests Center &rarr; Profile Changes**, which shows a before &rarr; after diff per field, and approval applies the values while recording the reviewer and timestamp. Avatar and banner uploads remain self-service.
 
 ---
 
@@ -223,6 +251,9 @@ AkumaBank enforces strict operational separation across 4 distinct user roles:
 | **Approve / Sign Official PDFs** | ✅ | ✅ | ❌ | ❌ |
 | **Underwrite &amp; Disburse Loans** | ✅ | ✅ | 👁️ Review | ❌ |
 | **Manage Staff Users** | ✅ | ❌ | ❌ | ❌ |
+| **Owner Studio (Roles &amp; Badges)** | ✅ | ❌ | ❌ | ❌ |
+| **Approve Profile Change Requests** | ✅ | ✅ | ❌ | ❌ |
+| **Edit Own Profile Identity** | ✅ | ✅ | ✅ | 📝 Request |
 | **Client Portal Self-Service** | ❌ | ❌ | ❌ | ✅ |
 | **Customer Document Requests** | ❌ | ❌ | ❌ | ✅ |
 
@@ -313,10 +344,10 @@ AkumaBank/
 │   ├── database_panel.py          # Interactive SQL query console & table explorer
 │   ├── documents.py               # PDF downloads, draft preview, and signature upload
 │   ├── loans.py                   # Credit underwriting & loan disbursement
-│   ├── profiles.py                # Profile settings & Base64 code avatar transformation
+│   ├── profiles.py                # Profile cards, Owner Studio, roles, badges, avatars & requests
 │   ├── reports.py                 # Financial audit statements & balance sheets
 │   ├── transactions.py            # Deposit, withdrawal, and transfer ledger
-│   └── users.py                   # Staff credentials & password reset approval
+│   └── users.py                   # Staff credentials, password resets & profile change approvals
 ├── static/
 │   ├── css/
 │   │   └── style.css              # Design system, glassmorphism, 3D card tilt, dark/light theme
@@ -325,12 +356,14 @@ AkumaBank/
 ├── templates/
 │   ├── base.html                  # Master layout with Command HUD, theme switcher & sidebar
 │   ├── accounts.html              # Bank accounts list with official PDF tools modals
-│   ├── requests_center.html       # Full-page unified Operations Requests Center (6 categories)
+│   ├── requests_center.html       # Full-page unified Operations Requests Center (7 categories)
 │   ├── customer_documents.html    # Customer 'My Documents' portal with Cancel/Download actions
 │   ├── customer_portal.html       # Customer banking portal with 3D cards & request actions
 │   ├── customers.html             # Customer directory with direct account PDF jump links
 │   ├── dashboard.html             # Executive telemetry & Chart.js analytics
-│   ├── account_settings.html      # Custom profile picture upload (code transformation)
+│   ├── account_settings.html      # Live profile card preview, avatar/banner uploads & bio requests
+│   ├── profile_card.html          # Standalone executive profile card with Owner assignment modals
+│   ├── owner_studio.html          # Owner Studio for roles, badges & member assignments
 │   └── ...                        # Supporting templates (login, register, loans, reports...)
 └── tools/
     ├── create_owner.py            # Initial administrator provisioner CLI
@@ -356,6 +389,7 @@ erDiagram
     ACCOUNT ||--o{ ACCOUNT_CLOSURE_REQUEST : targets
     ACCOUNT ||--o{ DOCUMENT_REQUEST : targets
     USERS ||--o{ PASSWORD_RESET_REQUEST : submits
+    USERS ||--o{ PROFILE_CHANGE_REQUEST : requests
 
     CUSTOMER {
         int CustomerID PK
@@ -412,6 +446,16 @@ erDiagram
         decimal Amount
         decimal BalanceAfter
         datetime TransactionDate
+    }
+    PROFILE_CHANGE_REQUEST {
+        int RequestID PK
+        int UserID FK
+        string FullName
+        string CustomStatus
+        string Pronouns
+        string AboutMe
+        string Status
+        int ReviewedBy
     }
 ```
 

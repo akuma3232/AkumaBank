@@ -21,170 +21,673 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet" />
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+
+  <style>
+    :root {
+      --login-card-bg: rgba(13, 21, 39, 0.82);
+      --login-card-border: rgba(255, 255, 255, 0.12);
+      --login-card-border-top: rgba(255, 255, 255, 0.28);
+      --login-input-bg: rgba(255, 255, 255, 0.05);
+      --login-input-border: rgba(255, 255, 255, 0.12);
+      --login-focus-ring: rgba(37, 99, 235, 0.35);
+      --login-text-primary: #ffffff;
+      --login-text-secondary: rgba(255, 255, 255, 0.65);
+      --terminal-bg: rgba(10, 16, 32, 0.88);
+      --terminal-border: rgba(59, 130, 246, 0.22);
+    }
+
+    [data-theme="light"] {
+      --login-card-bg: rgba(255, 255, 255, 0.94);
+      --login-card-border: rgba(226, 232, 240, 0.9);
+      --login-card-border-top: rgba(255, 255, 255, 0.95);
+      --login-input-bg: #f8fafc;
+      --login-input-border: #cbd5e1;
+      --login-focus-ring: rgba(37, 99, 235, 0.22);
+      --login-text-primary: #0f172a;
+      --login-text-secondary: #64748b;
+      --terminal-bg: rgba(255, 255, 255, 0.9);
+      --terminal-border: rgba(203, 213, 225, 0.9);
+    }
+
+    .login-page {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      background: var(--bg);
+      font-family: 'Inter', -apple-system, sans-serif;
+      overflow-x: hidden;
+    }
+
+    .login-bg {
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(circle at 18% 22%, #0e1e48 0%, #060a17 52%, #03050c 100%);
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    [data-theme="light"] .login-bg {
+      background: radial-gradient(circle at 18% 22%, #dbeafe 0%, #f1f5f9 55%, #e2e8f0 100%);
+    }
+
+    .cyber-grid-overlay {
+      position: absolute;
+      inset: 0;
+      background-image: 
+        linear-gradient(rgba(59, 130, 246, 0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(59, 130, 246, 0.05) 1px, transparent 1px);
+      background-size: 40px 40px;
+      mask-image: radial-gradient(circle at center, black 40%, transparent 88%);
+      -webkit-mask-image: radial-gradient(circle at center, black 40%, transparent 88%);
+    }
+
+    .glow-orb {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(85px);
+      opacity: 0.24;
+      animation: float-orb 14s ease-in-out infinite alternate;
+      pointer-events: none;
+    }
+    .orb-1 { width: 520px; height: 520px; background: #00f2fe; top: -120px; left: -100px; }
+    .orb-2 { width: 480px; height: 480px; background: #3b82f6; bottom: -100px; left: 32%; animation-delay: -5s; }
+    .orb-3 { width: 400px; height: 400px; background: #8b5cf6; top: 15%; right: -100px; animation-delay: -9s; }
+
+    @keyframes float-orb {
+      0% { transform: translate(0, 0) scale(1); }
+      100% { transform: translate(40px, -40px) scale(1.1); }
+    }
+
+    /* Topbar */
+    .login-topbar {
+      position: relative;
+      z-index: 10;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 32px;
+    }
+
+    .morocco-badge-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      backdrop-filter: blur(12px);
+      padding: 6px 16px;
+      border-radius: 99px;
+      font-size: 0.73rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      color: var(--login-text-primary);
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1);
+    }
+    [data-theme="light"] .morocco-badge-pill {
+      background: rgba(255, 255, 255, 0.85);
+      border-color: rgba(203, 213, 225, 0.85);
+    }
+
+    .pulse-dot-green {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #10b981;
+      box-shadow: 0 0 10px #10b981;
+      animation: pulse-ring 2s infinite;
+    }
+    @keyframes pulse-ring {
+      0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+      70% { box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+    }
+
+    /* Main Container */
+    .login-main-container {
+      position: relative;
+      z-index: 5;
+      display: flex;
+      flex: 1;
+      min-height: calc(100vh - 72px);
+    }
+
+    /* Left Showcase Panel */
+    .login-showcase {
+      flex: 1.1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 36px 50px;
+    }
+
+    .showcase-content {
+      max-width: 520px;
+      width: 100%;
+    }
+
+    /* KYC Steps Terminal Card */
+    .onboarding-pipeline-card {
+      background: var(--terminal-bg);
+      border: 1px solid var(--terminal-border);
+      border-top: 1px solid rgba(255, 255, 255, 0.25);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-radius: 20px;
+      padding: 24px;
+      margin: 28px 0 24px;
+      box-shadow: 
+        0 24px 50px -15px rgba(0, 0, 0, 0.55),
+        0 0 30px rgba(59, 130, 246, 0.15);
+    }
+
+    .pipeline-step-item {
+      display: flex;
+      gap: 14px;
+      position: relative;
+      padding-bottom: 20px;
+    }
+    .pipeline-step-item:last-child {
+      padding-bottom: 0;
+    }
+    .pipeline-step-item:not(:last-child)::after {
+      content: '';
+      position: absolute;
+      left: 17px;
+      top: 36px;
+      bottom: 0;
+      width: 2px;
+      background: linear-gradient(180deg, #3b82f6, rgba(59, 130, 246, 0.1));
+    }
+
+    .step-number-bubble {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background: rgba(59, 130, 246, 0.15);
+      border: 1px solid rgba(59, 130, 246, 0.35);
+      color: #3b82f6;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 0.95rem;
+      flex-shrink: 0;
+      position: relative;
+      z-index: 2;
+    }
+
+    .step-text-title {
+      font-weight: 700;
+      font-size: 0.9rem;
+      color: var(--login-text-primary);
+      margin-bottom: 3px;
+    }
+    .step-text-desc {
+      font-size: 0.76rem;
+      color: var(--login-text-secondary);
+      line-height: 1.35;
+    }
+
+    /* Right Form Panel */
+    .register-form-panel {
+      flex: 1.35;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 36px 40px;
+    }
+
+    .register-glass-card {
+      width: 100%;
+      max-width: 580px;
+      background: var(--login-card-bg);
+      border: 1px solid var(--login-card-border);
+      border-top: 1px solid var(--login-card-border-top);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border-radius: 24px;
+      padding: 34px 32px;
+      box-shadow: 
+        0 20px 50px -15px rgba(0, 0, 0, 0.45),
+        0 0 30px rgba(59, 130, 246, 0.08);
+    }
+
+    .form-section-title {
+      font-size: 0.72rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #3b82f6;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .custom-input-wrap {
+      position: relative;
+      margin-bottom: 14px;
+    }
+    .custom-input-label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--login-text-secondary);
+      margin-bottom: 6px;
+      display: block;
+    }
+
+    .input-box {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .input-icon-lead {
+      position: absolute;
+      left: 14px;
+      color: #3b82f6;
+      font-size: 1.1rem;
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    .custom-form-control {
+      width: 100%;
+      background: var(--login-input-bg);
+      border: 1px solid var(--login-input-border);
+      border-radius: 11px;
+      padding: 11px 14px 11px 42px;
+      font-size: 0.92rem;
+      color: var(--login-text-primary);
+      transition: all 0.2s ease;
+    }
+    .custom-form-control:focus {
+      outline: none;
+      border-color: #3b82f6;
+      background: rgba(255, 255, 255, 0.08);
+      box-shadow: 0 0 0 4px var(--login-focus-ring);
+      color: var(--login-text-primary);
+    }
+    [data-theme="light"] .custom-form-control:focus {
+      background: #ffffff;
+    }
+
+    .btn-toggle-eye {
+      position: absolute;
+      right: 12px;
+      background: transparent;
+      border: none;
+      color: var(--login-text-secondary);
+      font-size: 1.1rem;
+      cursor: pointer;
+      padding: 4px;
+      display: flex;
+      align-items: center;
+      z-index: 2;
+    }
+    .btn-toggle-eye:hover { color: var(--login-text-primary); }
+
+    /* Password strength meter */
+    .strength-meter-wrap {
+      height: 4px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+      overflow: hidden;
+      margin-top: 6px;
+    }
+    .strength-meter-bar {
+      height: 100%;
+      width: 0%;
+      transition: width 0.3s ease, background-color 0.3s ease;
+    }
+
+    /* Submit Button */
+    .btn-auth-submit {
+      width: 100%;
+      padding: 13px 20px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #2563eb 0%, #00d2ff 100%);
+      border: none;
+      color: #ffffff;
+      font-weight: 700;
+      font-size: 0.98rem;
+      letter-spacing: 0.02em;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      box-shadow: 0 8px 24px -4px rgba(37, 99, 235, 0.5);
+      position: relative;
+      overflow: hidden;
+      cursor: pointer;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      margin-top: 14px;
+    }
+    .btn-auth-submit:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 30px -4px rgba(37, 99, 235, 0.65);
+    }
+    .btn-auth-submit:active { transform: translateY(0); }
+
+    .btn-auth-submit::after {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -60%;
+      width: 40%;
+      height: 200%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.35), transparent);
+      transform: rotate(25deg);
+      animation: btn-shine-sweep 4s infinite ease-in-out;
+    }
+    @keyframes btn-shine-sweep {
+      0% { left: -60%; }
+      30%, 100% { left: 140%; }
+    }
+
+    @media (max-width: 992px) {
+      .login-main-container { flex-direction: column; }
+      .login-showcase { display: none; }
+      .register-form-panel { width: 100%; padding: 24px 16px; }
+      .register-glass-card { padding: 26px 18px; }
+    }
+  </style>
 </head>
 <body class="login-page">
 
-<!-- Cyber background elements -->
+<!-- Ambient Cyber Background -->
 <div class="login-bg">
   <div class="cyber-grid-overlay"></div>
-  <div class="login-shapes">
-    <div class="shape shape-1"></div>
-    <div class="shape shape-2"></div>
-    <div class="shape shape-3"></div>
+  <div class="glow-orb orb-1"></div>
+  <div class="glow-orb orb-2"></div>
+  <div class="glow-orb orb-3"></div>
+</div>
+
+<!-- Topbar with Moroccan Regulator Pill & Theme Toggle -->
+<header class="login-topbar">
+  <div class="morocco-badge-pill">
+    <span class="pulse-dot-green"></span>
+    <span>🇲🇦 CASABLANCA FINANCE CITY &bull; BANK AL-MAGHRIB COMPLIANT</span>
   </div>
-</div>
 
-<!-- Floating theme toggle button in top right -->
-<div class="login-theme-switch position-fixed top-0 end-0 p-3" style="z-index: 100;">
-  <button class="topbar-icon-btn theme-toggle-btn" id="themeToggleBtn" title="Switch Theme (Dark/Light)" aria-label="Toggle theme">
-    <i class="bi bi-moon-stars-fill theme-moon-icon"></i>
-    <i class="bi bi-sun-fill theme-sun-icon"></i>
-  </button>
-</div>
+  <div class="d-flex align-items-center gap-2">
+    <button class="topbar-icon-btn theme-toggle-btn" id="themeToggleBtn" title="Switch Theme (Dark/Light)" aria-label="Toggle theme">
+      <i class="bi bi-moon-stars-fill theme-moon-icon"></i>
+      <i class="bi bi-sun-fill theme-sun-icon"></i>
+    </button>
+  </div>
+</header>
 
-<div class="login-container">
-  <!-- Left panel -->
-  <div class="login-left d-none d-lg-flex">
-    <div class="login-left-content">
-      <div class="login-logo-cyber mb-4">
-        <div class="brand-icon-large">
+<main class="login-main-container">
+  <!-- Left panel: Moroccan Client Onboarding Pipeline Showcase -->
+  <section class="login-showcase">
+    <div class="showcase-content">
+      <!-- Brand Header -->
+      <div class="d-flex align-items-center gap-3 mb-2">
+        <div class="brand-icon-large shadow-lg">
           <i class="bi bi-bank2"></i>
         </div>
-      </div>
-      <h1 class="login-heading font-heading">AkumaBank</h1>
-      <p class="login-subheading">Digital Client Onboarding System</p>
-
-      <div class="login-features mt-5">
-        <div class="login-feature">
-          <div class="feat-icon"><i class="bi bi-person-vcard-fill"></i></div>
-          <div>
-            <strong>Moroccan National ID (CIN) Verification</strong>
-            <div class="small opacity-75">Secure electronic identity matching</div>
-          </div>
-        </div>
-        <div class="login-feature">
-          <div class="feat-icon"><i class="bi bi-credit-card-2-front-fill"></i></div>
-          <div>
-            <strong>Automated Card Generation</strong>
-            <div class="small opacity-75">Instant issuance of 3D virtual bank cards</div>
-          </div>
-        </div>
-        <div class="login-feature">
-          <div class="feat-icon"><i class="bi bi-shield-lock-fill"></i></div>
-          <div>
-            <strong>Encrypted Credentials</strong>
-            <div class="small opacity-75">Strict PBKDF2 password hashing protocols</div>
-          </div>
+        <div>
+          <h1 class="login-heading font-heading mb-0" style="letter-spacing: -0.02em;">Akuma<span class="text-primary">Bank</span></h1>
+          <div class="small opacity-75 font-monospace">Digital Moroccan Client Onboarding</div>
         </div>
       </div>
 
-      <div class="login-badge-pill mt-5">
-        <span class="status-dot-pulse"></span>
-        <span>CASABLANCA &bull; BANK AL-MAGHRIB REGULATED</span>
+      <!-- KYC Pipeline Visualizer Card -->
+      <div class="onboarding-pipeline-card">
+        <div class="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom border-secondary border-opacity-25">
+          <span class="fw-bold small font-monospace"><i class="bi bi-shield-check text-success me-1"></i>KYC Verification Pipeline</span>
+          <span class="badge bg-primary-soft text-primary font-monospace" style="font-size: 0.68rem;">Instant Dirham Core</span>
+        </div>
+
+        <div class="pipeline-step-item">
+          <div class="step-number-bubble">1</div>
+          <div>
+            <div class="step-text-title">National Identity (CIN) Verification</div>
+            <div class="step-text-desc">Electronic Moroccan identity verification in accordance with BAM &amp; CNDP regulations.</div>
+          </div>
+        </div>
+
+        <div class="pipeline-step-item">
+          <div class="step-number-bubble">2</div>
+          <div>
+            <div class="step-text-title">24-Digit RIB Modulo 97 Generation</div>
+            <div class="step-text-desc">Automated issuance of your certified Moroccan Bank Identity Statement (RIB) and routing code.</div>
+          </div>
+        </div>
+
+        <div class="pipeline-step-item">
+          <div class="step-number-bubble">3</div>
+          <div>
+            <div class="step-text-title">Encrypted Dirham Vault Issuance</div>
+            <div class="step-text-desc">Immediate provisioning of your personal multi-currency accounts and contactless card specifications.</div>
+          </div>
+        </div>
+
+        <div class="pipeline-step-item">
+          <div class="step-number-bubble">4</div>
+          <div>
+            <div class="step-text-title">Instant Official PDF Certification</div>
+            <div class="step-text-desc">Regulatory Welcome Pack, RIB Slip, and Certified Solvency attestations ready upon review.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Trust Badges Row -->
+      <div class="d-flex flex-wrap gap-2">
+        <div class="telemetry-item">
+          <i class="bi bi-patch-check-fill text-success"></i>
+          <span>BAM BAM/2026/088 Licensed</span>
+        </div>
+        <div class="telemetry-item">
+          <i class="bi bi-lock-fill text-info"></i>
+          <span>256-Bit Cryptographic Vault</span>
+        </div>
+        <div class="telemetry-item">
+          <i class="bi bi-shield-shaded text-warning"></i>
+          <span>CNDP Law 09-08 Protected</span>
+        </div>
       </div>
     </div>
-  </div>
+  </section>
 
-  <!-- Right panel: Form -->
-  <div class="login-right">
-    <div class="login-card-glow-wrap my-4">
-      <div class="login-form-wrapper" style="max-width: 440px;">
-        <div class="login-form-logo d-lg-none mb-3 d-flex align-items-center gap-2">
-          <div class="brand-icon"><i class="bi bi-bank2"></i></div>
-          <span class="fw-bold fs-4">AkumaBank</span>
-        </div>
+  <!-- Right panel: High-End Registration Form -->
+  <section class="register-form-panel">
+    <div class="register-glass-card">
+      <div class="d-flex align-items-center justify-content-between mb-2">
+        <h2 class="login-form-title font-heading mb-0" style="font-size: 1.55rem;">Open Client Account</h2>
+        <span class="badge bg-primary-soft text-primary font-monospace" style="font-size: 0.68rem;">CLIENT ONBOARDING</span>
+      </div>
+      <p class="login-form-sub mb-3" style="font-size: 0.82rem;">
+        Submit your verified KYC details. Once verified, your 24-digit Moroccan RIB and digital accounts will be issued.
+      </p>
 
-        <h2 class="login-form-title font-heading">Open an Account</h2>
-        <p class="login-form-sub mb-4">
-          Submit your KYC credentials for review. Upon administrator verification, your virtual accounts and dirham vault will be issued.
-        </p>
-
-        {% with messages = get_flashed_messages(with_categories=true) %}
-          {% for cat, msg in messages %}
-          <div class="alert alert-{{ cat }} alert-dismissible fade show shadow-sm" role="alert">
+      <!-- Flash messages -->
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for cat, msg in messages %}
+          <div class="alert alert-{{ cat }} alert-dismissible fade show shadow-sm py-2 px-3 small rounded-3 mb-3" role="alert">
             <i class="bi bi-{% if cat=='success' %}check-circle-fill{% elif cat=='danger' %}x-circle-fill{% else %}info-circle-fill{% endif %} me-2"></i>
             {{ msg }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            <button type="button" class="btn-close py-2" data-bs-dismiss="alert"></button>
           </div>
-          {% endfor %}
-        {% endwith %}
+        {% endfor %}
+      {% endwith %}
 
-        <form method="POST" class="login-form">
-          <div class="row g-3">
-            <div class="col-12">
-              <label class="form-label fw-semibold" for="full_name">Full Name (Legal)</label>
-              <div class="input-group">
-                <span class="input-group-text"><i class="bi bi-person text-primary"></i></span>
-                <input class="form-control" id="full_name" name="full_name" autocomplete="name" maxlength="120" placeholder="e.g. Youssef El Amrani" required autofocus />
-              </div>
-            </div>
-
-            <div class="col-md-6">
-              <label class="form-label fw-semibold" for="national_id">National ID (CIN)</label>
-              <div class="input-group">
-                <span class="input-group-text"><i class="bi bi-person-vcard text-primary"></i></span>
-                <input class="form-control font-monospace" type="text" id="national_id" name="national_id" maxlength="20" placeholder="e.g. BE123456" required />
-              </div>
-            </div>
-
-            <div class="col-md-6">
-              <label class="form-label fw-semibold" for="date_of_birth">Date of Birth</label>
-              <input class="form-control" type="date" id="date_of_birth" name="date_of_birth" max="{{ today }}" autocomplete="bday" required />
-            </div>
-
-            <div class="col-md-6">
-              <label class="form-label fw-semibold" for="email">Email Address</label>
-              <div class="input-group">
-                <span class="input-group-text"><i class="bi bi-envelope text-primary"></i></span>
-                <input class="form-control" type="email" id="email" name="email" autocomplete="email" placeholder="name@domain.ma" required />
-              </div>
-            </div>
-
-            <div class="col-md-6">
-              <label class="form-label fw-semibold" for="phone">Phone (Morocco)</label>
-              <div class="input-group">
-                <span class="input-group-text"><i class="bi bi-telephone text-primary"></i></span>
-                <input class="form-control font-monospace" type="tel" id="phone" name="phone" maxlength="30" autocomplete="tel" placeholder="+212 6..." required />
-              </div>
-            </div>
-
-            <div class="col-12">
-              <label class="form-label fw-semibold" for="address">Residential Address</label>
-              <div class="input-group">
-                <span class="input-group-text"><i class="bi bi-geo-alt text-primary"></i></span>
-                <input class="form-control" type="text" id="address" name="address" maxlength="250" autocomplete="street-address" placeholder="Avenue Mohammed V, Casablanca" required />
-              </div>
-            </div>
-
-            <div class="col-md-6">
-              <label class="form-label fw-semibold" for="password">Create Password</label>
-              <input class="form-control" type="password" id="password" name="password" minlength="12" autocomplete="new-password" placeholder="Min 12 characters" required />
-            </div>
-
-            <div class="col-md-6">
-              <label class="form-label fw-semibold" for="password_confirmation">Confirm Password</label>
-              <input class="form-control" type="password" id="password_confirmation" name="password_confirmation" minlength="12" autocomplete="new-password" placeholder="Re-enter password" required />
-            </div>
-          </div>
-
-          <div class="form-text small mt-2 mb-3"><i class="bi bi-shield-check text-success me-1"></i>Passwords are hashed with salt and PBKDF2 cryptography.</div>
-
-          <button class="btn btn-primary btn-lg w-100 login-btn shadow-md" type="submit">
-            <i class="bi bi-check2-circle me-2"></i>Submit Application
-          </button>
-        </form>
-
-        <div class="text-center mt-4">
-          <a class="text-primary small fw-semibold text-decoration-none" href="{{ url_for('auth.login') }}">Already registered? Sign in</a>
-          <span class="mx-2 text-muted">&bull;</span>
-          <a class="text-muted small fw-semibold text-decoration-none" href="{{ url_for('auth.login', mode='staff') }}">Staff access</a>
+      <form method="POST" class="login-form" id="registerForm">
+        <!-- 1. Identity Information -->
+        <div class="form-section-title">
+          <i class="bi bi-person-badge"></i> Personal Identity (Morocco)
         </div>
+
+        <div class="row g-2 mb-2">
+          <div class="col-12">
+            <div class="custom-input-wrap mb-2">
+              <label class="custom-input-label" for="full_name">Full Legal Name</label>
+              <div class="input-box">
+                <i class="bi bi-person input-icon-lead"></i>
+                <input class="custom-form-control" id="full_name" name="full_name" autocomplete="name" maxlength="120" placeholder="e.g. Youssef El Amrani" required autofocus />
+              </div>
+            </div>
+          </div>
+
+          <div class="col-md-6">
+            <div class="custom-input-wrap mb-2">
+              <label class="custom-input-label" for="national_id">National ID (CIN / CNIE)</label>
+              <div class="input-box">
+                <i class="bi bi-person-vcard input-icon-lead"></i>
+                <input class="custom-form-control font-monospace" type="text" id="national_id" name="national_id" maxlength="20" placeholder="e.g. BE123456" required style="text-transform: uppercase;" />
+              </div>
+            </div>
+          </div>
+
+          <div class="col-md-6">
+            <div class="custom-input-wrap mb-2">
+              <label class="custom-input-label" for="date_of_birth">Date of Birth</label>
+              <div class="input-box">
+                <i class="bi bi-calendar-date input-icon-lead"></i>
+                <input class="custom-form-control" type="date" id="date_of_birth" name="date_of_birth" max="{{ today }}" autocomplete="bday" required />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. Contact & Address -->
+        <div class="form-section-title mt-3">
+          <i class="bi bi-geo-alt"></i> Contact &amp; Residential Location
+        </div>
+
+        <div class="row g-2 mb-2">
+          <div class="col-md-6">
+            <div class="custom-input-wrap mb-2">
+              <label class="custom-input-label" for="email">Email Address</label>
+              <div class="input-box">
+                <i class="bi bi-envelope input-icon-lead"></i>
+                <input class="custom-form-control" type="email" id="email" name="email" autocomplete="email" placeholder="client@akumabank.ma" required />
+              </div>
+            </div>
+          </div>
+
+          <div class="col-md-6">
+            <div class="custom-input-wrap mb-2">
+              <label class="custom-input-label" for="phone">Mobile Phone (Morocco)</label>
+              <div class="input-box">
+                <i class="bi bi-telephone input-icon-lead"></i>
+                <input class="custom-form-control font-monospace" type="tel" id="phone" name="phone" maxlength="30" autocomplete="tel" placeholder="+212 612 345678" required />
+              </div>
+            </div>
+          </div>
+
+          <div class="col-12">
+            <div class="custom-input-wrap mb-2">
+              <label class="custom-input-label" for="address">Residential Address</label>
+              <div class="input-box">
+                <i class="bi bi-building input-icon-lead"></i>
+                <input class="custom-form-control" type="text" id="address" name="address" maxlength="250" autocomplete="street-address" placeholder="e.g. 45 Boulevard d'Anfa, Casablanca" required />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. Security Password -->
+        <div class="form-section-title mt-3">
+          <i class="bi bi-shield-lock"></i> Vault Security Credentials
+        </div>
+
+        <div class="row g-2">
+          <div class="col-md-6">
+            <div class="custom-input-wrap mb-1">
+              <label class="custom-input-label" for="password">Security Password</label>
+              <div class="input-box">
+                <i class="bi bi-lock input-icon-lead"></i>
+                <input class="custom-form-control" type="password" id="password" name="password" minlength="12" autocomplete="new-password" placeholder="Min 12 characters" required oninput="checkStrength(this.value)" />
+                <button type="button" class="btn-toggle-eye" onclick="togglePass('password', 'eye1')">
+                  <i class="bi bi-eye" id="eye1"></i>
+                </button>
+              </div>
+              <div class="strength-meter-wrap">
+                <div class="strength-meter-bar" id="strengthBar"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-md-6">
+            <div class="custom-input-wrap mb-1">
+              <label class="custom-input-label" for="password_confirmation">Confirm Password</label>
+              <div class="input-box">
+                <i class="bi bi-shield-check input-icon-lead"></i>
+                <input class="custom-form-control" type="password" id="password_confirmation" name="password_confirmation" minlength="12" autocomplete="new-password" placeholder="Re-enter password" required />
+                <button type="button" class="btn-toggle-eye" onclick="togglePass('password_confirmation', 'eye2')">
+                  <i class="bi bi-eye" id="eye2"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-check mt-3 mb-2">
+          <input class="form-check-input" type="checkbox" id="termsCheck" required checked />
+          <label class="form-check-label small opacity-75" for="termsCheck" style="font-size: 0.74rem;">
+            I confirm the accuracy of my KYC details under Moroccan regulatory framework Law 09-08 and Bank Al-Maghrib standards.
+          </label>
+        </div>
+
+        <!-- Submit Button -->
+        <button class="btn-auth-submit" type="submit">
+          <i class="bi bi-check2-circle fs-5"></i>
+          <span>Submit Application &amp; Open Vault</span>
+        </button>
+      </form>
+
+      <!-- Bottom Navigation Links -->
+      <div class="text-center mt-3 pt-2 border-top">
+        <a class="text-primary small fw-semibold text-decoration-none" href="{{ url_for('auth.login') }}">
+          <i class="bi bi-arrow-left me-1"></i>Already registered? Sign In
+        </a>
+        <span class="mx-2 text-muted">&bull;</span>
+        <a class="text-muted small fw-semibold text-decoration-none" href="{{ url_for('auth.login', mode='staff') }}">
+          <i class="bi bi-shield-lock me-1"></i>Staff Terminal
+        </a>
       </div>
     </div>
-  </div>
-</div>
+  </section>
+</main>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+<script>
+function togglePass(id, eyeId) {
+  const inp = document.getElementById(id);
+  const ico = document.getElementById(eyeId);
+  if (inp.type === 'password') {
+    inp.type = 'text';
+    ico.classList.replace('bi-eye', 'bi-eye-slash');
+  } else {
+    inp.type = 'password';
+    ico.classList.replace('bi-eye-slash', 'bi-eye');
+  }
+}
+
+function checkStrength(val) {
+  const bar = document.getElementById('strengthBar');
+  if (!bar) return;
+  let score = 0;
+  if (val.length >= 12) score += 40;
+  if (/[A-Z]/.test(val)) score += 20;
+  if (/[0-9]/.test(val)) score += 20;
+  if (/[^A-Za-z0-9]/.test(val)) score += 20;
+
+  bar.style.width = score + '%';
+  if (score < 40) {
+    bar.style.backgroundColor = '#ef4444';
+  } else if (score < 80) {
+    bar.style.backgroundColor = '#f59e0b';
+  } else {
+    bar.style.backgroundColor = '#10b981';
+  }
+}
+</script>
 </body>
 </html>

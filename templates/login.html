@@ -21,159 +21,852 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet" />
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+
+  <style>
+    /* ── ADVANCED HIGH-TECH LOGIN STYLES ── */
+    :root {
+      --login-card-bg: rgba(13, 21, 39, 0.78);
+      --login-card-border: rgba(255, 255, 255, 0.12);
+      --login-card-border-top: rgba(255, 255, 255, 0.25);
+      --login-input-bg: rgba(255, 255, 255, 0.05);
+      --login-input-border: rgba(255, 255, 255, 0.12);
+      --login-focus-ring: rgba(37, 99, 235, 0.35);
+      --login-text-primary: #ffffff;
+      --login-text-secondary: rgba(255, 255, 255, 0.65);
+    }
+
+    [data-theme="light"] {
+      --login-card-bg: rgba(255, 255, 255, 0.92);
+      --login-card-border: rgba(226, 232, 240, 0.85);
+      --login-card-border-top: rgba(255, 255, 255, 0.9);
+      --login-input-bg: #f8fafc;
+      --login-input-border: #cbd5e1;
+      --login-focus-ring: rgba(37, 99, 235, 0.25);
+      --login-text-primary: #0f172a;
+      --login-text-secondary: #64748b;
+    }
+
+    /* Ambient cyber backdrop */
+    .login-page {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      background: var(--bg);
+      font-family: 'Inter', -apple-system, sans-serif;
+      overflow-x: hidden;
+    }
+
+    .login-bg {
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(circle at 15% 25%, #0d1e4a 0%, #060a17 55%, #04060e 100%);
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    [data-theme="light"] .login-bg {
+      background: radial-gradient(circle at 15% 25%, #dbeafe 0%, #f1f5f9 55%, #e2e8f0 100%);
+    }
+
+    .cyber-grid-overlay {
+      position: absolute;
+      inset: 0;
+      background-image: 
+        linear-gradient(rgba(59, 130, 246, 0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(59, 130, 246, 0.04) 1px, transparent 1px);
+      background-size: 40px 40px;
+      mask-image: radial-gradient(circle at center, black 40%, transparent 85%);
+      -webkit-mask-image: radial-gradient(circle at center, black 40%, transparent 85%);
+    }
+
+    .glow-orb {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(80px);
+      opacity: 0.22;
+      animation: float-orb 14s ease-in-out infinite alternate;
+      pointer-events: none;
+    }
+    .orb-1 { width: 500px; height: 500px; background: #00f2fe; top: -100px; left: -100px; }
+    .orb-2 { width: 450px; height: 450px; background: #3b82f6; bottom: -80px; left: 30%; animation-delay: -5s; }
+    .orb-3 { width: 380px; height: 380px; background: #8b5cf6; top: 20%; right: -80px; animation-delay: -9s; }
+
+    @keyframes float-orb {
+      0% { transform: translate(0, 0) scale(1); }
+      100% { transform: translate(40px, -40px) scale(1.1); }
+    }
+
+    /* Top Utility Bar */
+    .login-topbar {
+      position: relative;
+      z-index: 10;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 28px;
+    }
+
+    .morocco-badge-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      backdrop-filter: blur(12px);
+      padding: 6px 14px;
+      border-radius: 99px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      color: var(--login-text-primary);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    }
+    [data-theme="light"] .morocco-badge-pill {
+      background: rgba(255, 255, 255, 0.8);
+      border-color: rgba(203, 213, 225, 0.8);
+    }
+
+    /* Main Container Layout */
+    .login-main-container {
+      position: relative;
+      z-index: 5;
+      display: flex;
+      flex: 1;
+      min-height: calc(100vh - 72px);
+    }
+
+    /* Left Showcase Panel */
+    .login-showcase {
+      flex: 1.15;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 60px;
+    }
+
+    .showcase-content {
+      max-width: 520px;
+      width: 100%;
+    }
+
+    /* 3D Holographic Card Component */
+    .card-3d-wrap {
+      perspective: 1200px;
+      margin: 32px 0 28px;
+    }
+
+    .hologram-card {
+      position: relative;
+      width: 100%;
+      height: 250px;
+      border-radius: 20px;
+      background: linear-gradient(135deg, #090e1f 0%, #152244 50%, #0d1733 100%);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-top: 1px solid rgba(255, 255, 255, 0.4);
+      padding: 24px;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      box-shadow: 
+        0 24px 48px -12px rgba(0, 0, 0, 0.6),
+        0 0 35px rgba(59, 130, 246, 0.2),
+        inset 0 1px 1px rgba(255, 255, 255, 0.4);
+      overflow: hidden;
+      transform-style: preserve-3d;
+      transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.2s ease;
+      cursor: pointer;
+    }
+
+    .hologram-card:hover {
+      box-shadow: 
+        0 30px 60px -10px rgba(0, 0, 0, 0.7),
+        0 0 45px rgba(0, 242, 254, 0.35),
+        inset 0 1px 2px rgba(255, 255, 255, 0.5);
+    }
+
+    /* Card holographic glare sheen */
+    .card-glare {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(125deg, rgba(255, 255, 255, 0.3) 0%, rgba(0, 242, 254, 0.15) 30%, transparent 60%);
+      opacity: 0.65;
+      pointer-events: none;
+      mix-blend-mode: overlay;
+    }
+
+    .card-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: relative;
+      z-index: 2;
+    }
+
+    .card-bank-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .card-emv-chip {
+      width: 44px;
+      height: 34px;
+      background: linear-gradient(135deg, #d4af37 0%, #f9d976 50%, #b8860b 100%);
+      border-radius: 7px;
+      position: relative;
+      box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .chip-line {
+      position: absolute;
+      background: rgba(0, 0, 0, 0.25);
+    }
+    .chip-line-h { width: 100%; height: 1px; top: 50%; left: 0; }
+    .chip-line-v { height: 100%; width: 1px; left: 50%; top: 0; }
+
+    .card-number-display {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.35rem;
+      letter-spacing: 0.22em;
+      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+      position: relative;
+      z-index: 2;
+      margin: 12px 0;
+      font-weight: 600;
+    }
+
+    .card-bottom {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      position: relative;
+      z-index: 2;
+    }
+
+    .card-holder-title {
+      font-size: 0.62rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      opacity: 0.7;
+      margin-bottom: 2px;
+    }
+    .card-holder-name {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 0.95rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .card-badge-tier {
+      background: linear-gradient(135deg, #00f2fe, #4facfe);
+      color: #050814;
+      font-weight: 800;
+      font-size: 0.65rem;
+      padding: 3px 10px;
+      border-radius: 6px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    /* Telemetry pill bar */
+    .telemetry-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+    .telemetry-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      padding: 6px 12px;
+      border-radius: 99px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--login-text-primary);
+    }
+    [data-theme="light"] .telemetry-item {
+      background: rgba(255, 255, 255, 0.8);
+      border-color: #e2e8f0;
+    }
+
+    .pulse-dot-green {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #10b981;
+      box-shadow: 0 0 10px #10b981;
+      animation: pulse-ring 2s infinite;
+    }
+    @keyframes pulse-ring {
+      0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+      70% { box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+    }
+
+    /* Showcase feature mini cards */
+    .feature-grid-showcase {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+    .feature-mini-card {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(12px);
+      border-radius: 14px;
+      padding: 14px;
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      transition: transform 0.2s ease, border-color 0.2s ease;
+    }
+    .feature-mini-card:hover {
+      transform: translateY(-2px);
+      border-color: rgba(59, 130, 246, 0.4);
+      background: rgba(255, 255, 255, 0.07);
+    }
+    [data-theme="light"] .feature-mini-card {
+      background: rgba(255, 255, 255, 0.7);
+      border-color: #e2e8f0;
+    }
+    .feat-icon-box {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.15rem;
+      flex-shrink: 0;
+    }
+    .feat-icon-cyan { background: rgba(0, 242, 254, 0.15); color: #00f2fe; }
+    .feat-icon-blue { background: rgba(59, 130, 246, 0.15); color: #3b82f6; }
+    .feat-icon-amber { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
+    .feat-icon-emerald { background: rgba(16, 185, 129, 0.15); color: #10b981; }
+
+    /* Right Auth Panel */
+    .login-auth-panel {
+      width: 540px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 40px;
+      position: relative;
+    }
+
+    .auth-glass-card {
+      width: 100%;
+      max-width: 440px;
+      background: var(--login-card-bg);
+      border: 1px solid var(--login-card-border);
+      border-top: 1px solid var(--login-card-border-top);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border-radius: 24px;
+      padding: 36px 32px;
+      box-shadow: 
+        0 20px 50px -15px rgba(0, 0, 0, 0.45),
+        0 0 30px rgba(59, 130, 246, 0.08);
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Segmented Mode Switcher (Client vs Staff) */
+    .auth-mode-switcher {
+      display: flex;
+      background: rgba(0, 0, 0, 0.25);
+      border: 1px solid var(--login-input-border);
+      border-radius: 14px;
+      padding: 4px;
+      margin-bottom: 26px;
+      position: relative;
+    }
+    [data-theme="light"] .auth-mode-switcher {
+      background: #f1f5f9;
+    }
+
+    .auth-tab-btn {
+      flex: 1;
+      padding: 10px 14px;
+      border: none;
+      background: transparent;
+      color: var(--login-text-secondary);
+      font-weight: 600;
+      font-size: 0.85rem;
+      border-radius: 10px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      cursor: pointer;
+      text-decoration: none;
+    }
+    .auth-tab-btn.active {
+      background: linear-gradient(135deg, #2563eb, #1d4ed8);
+      color: #ffffff;
+      box-shadow: 0 4px 14px rgba(37, 99, 235, 0.4);
+    }
+    [data-theme="light"] .auth-tab-btn.active {
+      background: #ffffff;
+      color: #1e293b;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    }
+
+    /* Auth Inputs */
+    .custom-input-wrap {
+      position: relative;
+      margin-bottom: 18px;
+    }
+    .custom-input-label {
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--login-text-secondary);
+      margin-bottom: 7px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .input-box {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .input-icon-lead {
+      position: absolute;
+      left: 16px;
+      color: #3b82f6;
+      font-size: 1.15rem;
+      pointer-events: none;
+      transition: color 0.2s ease;
+      z-index: 2;
+    }
+
+    .custom-form-control {
+      width: 100%;
+      background: var(--login-input-bg);
+      border: 1px solid var(--login-input-border);
+      border-radius: 12px;
+      padding: 13px 16px 13px 46px;
+      font-size: 0.95rem;
+      color: var(--login-text-primary);
+      transition: all 0.2s ease;
+    }
+    .custom-form-control:focus {
+      outline: none;
+      border-color: #3b82f6;
+      background: rgba(255, 255, 255, 0.08);
+      box-shadow: 0 0 0 4px var(--login-focus-ring);
+      color: var(--login-text-primary);
+    }
+    [data-theme="light"] .custom-form-control:focus {
+      background: #ffffff;
+    }
+
+    .btn-toggle-eye {
+      position: absolute;
+      right: 12px;
+      background: transparent;
+      border: none;
+      color: var(--login-text-secondary);
+      font-size: 1.1rem;
+      cursor: pointer;
+      padding: 6px;
+      display: flex;
+      align-items: center;
+      transition: color 0.2s ease;
+      z-index: 2;
+    }
+    .btn-toggle-eye:hover { color: var(--login-text-primary); }
+
+    /* Submit Button with High-Tech Shine Sweep */
+    .btn-auth-submit {
+      width: 100%;
+      padding: 14px 20px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #2563eb 0%, #00d2ff 100%);
+      border: none;
+      color: #ffffff;
+      font-weight: 700;
+      font-size: 1rem;
+      letter-spacing: 0.02em;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      box-shadow: 0 8px 24px -4px rgba(37, 99, 235, 0.5);
+      position: relative;
+      overflow: hidden;
+      cursor: pointer;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      margin-top: 10px;
+    }
+    .btn-auth-submit:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 30px -4px rgba(37, 99, 235, 0.65);
+    }
+    .btn-auth-submit:active { transform: translateY(0); }
+
+    .btn-auth-submit::after {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -60%;
+      width: 40%;
+      height: 200%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.35), transparent);
+      transform: rotate(25deg);
+      animation: btn-shine-sweep 4s infinite ease-in-out;
+    }
+    @keyframes btn-shine-sweep {
+      0% { left: -60%; }
+      30%, 100% { left: 140%; }
+    }
+
+    /* Quick Demo Bar */
+    .demo-credentials-box {
+      margin-top: 22px;
+      padding: 12px 14px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px dashed var(--login-input-border);
+      border-radius: 12px;
+      font-size: 0.76rem;
+    }
+    .demo-btn-pill {
+      background: rgba(59, 130, 246, 0.12);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      color: #3b82f6;
+      border-radius: 8px;
+      padding: 4px 10px;
+      font-size: 0.74rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .demo-btn-pill:hover {
+      background: #3b82f6;
+      color: #ffffff;
+    }
+
+    /* Responsive */
+    @media (max-width: 992px) {
+      .login-main-container { flex-direction: column; }
+      .login-showcase { display: none; }
+      .login-auth-panel { width: 100%; padding: 24px 16px; }
+      .auth-glass-card { padding: 28px 20px; }
+    }
+  </style>
 </head>
 <body class="login-page">
 
 <!-- Cyber background elements -->
 <div class="login-bg">
   <div class="cyber-grid-overlay"></div>
-  <div class="login-shapes">
-    <div class="shape shape-1"></div>
-    <div class="shape shape-2"></div>
-    <div class="shape shape-3"></div>
+  <div class="glow-orb orb-1"></div>
+  <div class="glow-orb orb-2"></div>
+  <div class="glow-orb orb-3"></div>
+</div>
+
+<!-- Topbar with Moroccan Regulator Pill & Theme Toggle -->
+<header class="login-topbar">
+  <div class="morocco-badge-pill">
+    <span class="pulse-dot-green"></span>
+    <span>🇲🇦 CASABLANCA FINANCE CITY &bull; BANK AL-MAGHRIB COMPLIANT</span>
   </div>
-</div>
 
-<!-- Floating theme toggle button in top right -->
-<div class="login-theme-switch position-fixed top-0 end-0 p-3" style="z-index: 100;">
-  <button class="topbar-icon-btn theme-toggle-btn" id="themeToggleBtn" title="Switch Theme (Dark/Light)" aria-label="Toggle theme">
-    <i class="bi bi-moon-stars-fill theme-moon-icon"></i>
-    <i class="bi bi-sun-fill theme-sun-icon"></i>
-  </button>
-</div>
+  <div class="d-flex align-items-center gap-2">
+    <button class="topbar-icon-btn theme-toggle-btn" id="themeToggleBtn" title="Switch Theme (Dark/Light)" aria-label="Toggle theme">
+      <i class="bi bi-moon-stars-fill theme-moon-icon"></i>
+      <i class="bi bi-sun-fill theme-sun-icon"></i>
+    </button>
+  </div>
+</header>
 
-<div class="login-container">
-  <!-- Left panel: High-Tech Showcase -->
-  <div class="login-left d-none d-lg-flex">
-    <div class="login-left-content">
-      <div class="login-logo-cyber mb-4">
-        <div class="brand-icon-large">
+<main class="login-main-container">
+  <!-- Left panel: Next-Gen Moroccan Banking Showcase -->
+  <section class="login-showcase">
+    <div class="showcase-content">
+      <!-- Brand Header -->
+      <div class="d-flex align-items-center gap-3 mb-2">
+        <div class="brand-icon-large shadow-lg">
           <i class="bi bi-bank2"></i>
         </div>
-      </div>
-      <h1 class="login-heading font-heading">AkumaBank</h1>
-      <p class="login-subheading">Next-Generation Moroccan Banking Core</p>
-
-      <div class="login-features mt-5">
-        <div class="login-feature">
-          <div class="feat-icon"><i class="bi bi-shield-check-fill"></i></div>
-          <div>
-            <strong>Quantum-Grade Security</strong>
-            <div class="small opacity-75">256-bit AES end-to-end encryption layer</div>
-          </div>
-        </div>
-        <div class="login-feature">
-          <div class="feat-icon"><i class="bi bi-lightning-charge-fill"></i></div>
-          <div>
-            <strong>Real-time RTGS Settlement</strong>
-            <div class="small opacity-75">Instant Moroccan Dirham transactions</div>
-          </div>
-        </div>
-        <div class="login-feature">
-          <div class="feat-icon"><i class="bi bi-credit-card-2-front-fill"></i></div>
-          <div>
-            <strong>3D Holographic Virtual Cards</strong>
-            <div class="small opacity-75">Dynamic contactless card issuance</div>
-          </div>
-        </div>
-        <div class="login-feature">
-          <div class="feat-icon"><i class="bi bi-cpu-fill"></i></div>
-          <div>
-            <strong>Automated Bank Telemetry</strong>
-            <div class="small opacity-75">Integrated Bank Al-Maghrib standards</div>
-          </div>
+        <div>
+          <h1 class="login-heading font-heading mb-0" style="letter-spacing: -0.02em;">Akuma<span class="text-primary">Bank</span></h1>
+          <div class="small opacity-75 font-monospace">Next-Generation Moroccan Digital Core</div>
         </div>
       </div>
 
-      <div class="login-badge-pill mt-5">
-        <span class="status-dot-pulse"></span>
-        <span>CASABLANCA FINANCIAL CENTER &bull; BAM REGULATED</span>
+      <!-- 3D Interactive Hologram Card -->
+      <div class="card-3d-wrap">
+        <div class="hologram-card" id="tiltCard">
+          <div class="card-glare" id="cardGlare"></div>
+          <div class="card-top">
+            <div class="card-bank-brand">
+              <i class="bi bi-bank2 fs-4 text-white"></i>
+              <span class="fw-bold font-heading fs-5 tracking-wide">AKUMA</span>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+              <i class="bi bi-wifi fs-4 opacity-75" title="Contactless NFC"></i>
+              <span class="card-badge-tier">Titanium</span>
+            </div>
+          </div>
+
+          <div class="d-flex align-items-center gap-3 my-auto">
+            <div class="card-emv-chip">
+              <div class="chip-line chip-line-h"></div>
+              <div class="chip-line chip-line-v"></div>
+            </div>
+            <div class="card-number-display">
+              •••• &nbsp; •••• &nbsp; •••• &nbsp; 8892
+            </div>
+          </div>
+
+          <div class="card-bottom">
+            <div>
+              <div class="card-holder-title">Cardholder &bull; Titulaire</div>
+              <div class="card-holder-name">MOHAMMED EL ALAMI</div>
+            </div>
+            <div class="text-end">
+              <div class="card-holder-title">Expires &bull; Exp</div>
+              <div class="font-monospace fw-bold" style="font-size: 0.95rem;">08/29</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Real-Time Telemetry Bar -->
+      <div class="telemetry-row">
+        <div class="telemetry-item">
+          <span class="pulse-dot-green"></span>
+          <span>RTGS Core: 99.99% Uptime</span>
+        </div>
+        <div class="telemetry-item">
+          <i class="bi bi-shield-check text-info"></i>
+          <span>24-Digit Modulo 97</span>
+        </div>
+        <div class="telemetry-item">
+          <i class="bi bi-currency-exchange text-warning"></i>
+          <span>EUR/MAD: 10.84</span>
+        </div>
+      </div>
+
+      <!-- Feature Grid Showcase -->
+      <div class="feature-grid-showcase">
+        <div class="feature-mini-card">
+          <div class="feat-icon-box feat-icon-cyan">
+            <i class="bi bi-shield-lock-fill"></i>
+          </div>
+          <div>
+            <strong class="d-block small" style="color: var(--login-text-primary);">Zero-Knowledge Vault</strong>
+            <span class="text-muted" style="font-size: 0.72rem;">256-bit AES encryption &amp; hardware isolation</span>
+          </div>
+        </div>
+
+        <div class="feature-mini-card">
+          <div class="feat-icon-box feat-icon-blue">
+            <i class="bi bi-lightning-charge-fill"></i>
+          </div>
+          <div>
+            <strong class="d-block small" style="color: var(--login-text-primary);">Instant BAM Transfers</strong>
+            <span class="text-muted" style="font-size: 0.72rem;">Real-time Moroccan RTGS dirham clearing</span>
+          </div>
+        </div>
+
+        <div class="feature-mini-card">
+          <div class="feat-icon-box feat-icon-amber">
+            <i class="bi bi-file-earmark-pdf-fill"></i>
+          </div>
+          <div>
+            <strong class="d-block small" style="color: var(--login-text-primary);">Certified Documents</strong>
+            <span class="text-muted" style="font-size: 0.72rem;">Sealed RIB slips, solvencies &amp; quittus PDFs</span>
+          </div>
+        </div>
+
+        <div class="feature-mini-card">
+          <div class="feat-icon-box feat-icon-emerald">
+            <i class="bi bi-credit-card-2-front-fill"></i>
+          </div>
+          <div>
+            <strong class="d-block small" style="color: var(--login-text-primary);">Virtual Card Ceilings</strong>
+            <span class="text-muted" style="font-size: 0.72rem;">Instant freeze &amp; dynamic 3D secure protection</span>
+          </div>
+        </div>
       </div>
     </div>
-  </div>
+  </section>
 
-  <!-- Right panel: Glassmorphic Auth Form -->
-  <div class="login-right">
-    <div class="login-card-glow-wrap">
-      <div class="login-form-wrapper">
-        <div class="login-form-logo d-lg-none mb-3 d-flex align-items-center gap-2">
-          <div class="brand-icon"><i class="bi bi-bank2"></i></div>
-          <span class="fw-bold fs-4">AkumaBank</span>
-        </div>
+  <!-- Right panel: High-End Glassmorphic Authentication Portal -->
+  <section class="login-auth-panel">
+    <div class="auth-glass-card">
+      <!-- Segmented Mode Switcher (Client vs Staff) -->
+      <div class="auth-mode-switcher">
+        <a href="{{ url_for('auth.login') }}" class="auth-tab-btn {{ 'active' if mode != 'staff' else '' }}" id="tabClient">
+          <i class="bi bi-person-fill"></i> Client Portal
+        </a>
+        <a href="{{ url_for('auth.login', mode='staff') }}" class="auth-tab-btn {{ 'active' if mode == 'staff' else '' }}" id="tabStaff">
+          <i class="bi bi-shield-lock-fill"></i> Staff Terminal
+        </a>
+      </div>
 
-        <div class="d-flex align-items-center justify-content-between mb-2">
-          <h2 class="login-form-title font-heading mb-0">{{ 'Staff Sign In' if mode == 'staff' else 'Welcome Back' }}</h2>
-          <span class="badge bg-primary-soft text-primary font-monospace">{{ 'STAFF ACCESS' if mode == 'staff' else 'CLIENT PORTAL' }}</span>
+      <!-- Header -->
+      <div class="mb-4">
+        <div class="d-flex align-items-center justify-content-between mb-1">
+          <h2 class="login-form-title font-heading mb-0" id="authTitle" style="font-size: 1.65rem;">
+            {{ 'Staff Authentication' if mode == 'staff' else 'Personal Vault Access' }}
+          </h2>
+          <span class="badge bg-primary-soft text-primary font-monospace" id="authBadge" style="font-size: 0.7rem;">
+            {{ 'CORE TERMINAL' if mode == 'staff' else 'CLIENT SECURE' }}
+          </span>
         </div>
-        <p class="login-form-sub mb-4">
-          {{ 'Authenticate with your staff username or email' if mode == 'staff' else 'Enter your client credentials to access your vaults' }}
+        <p class="login-form-sub mb-0" id="authSubtitle">
+          {{ 'Authenticate with your official staff username or staff email.' if mode == 'staff' else 'Sign in with your registered email or customer name.' }}
         </p>
+      </div>
 
-        <!-- Flash messages -->
-        {% with messages = get_flashed_messages(with_categories=true) %}
-          {% for cat, msg in messages %}
-            <div class="alert alert-{{ cat }} alert-dismissible fade show shadow-sm" role="alert">
-              <i class="bi bi-{% if cat=='success' %}check-circle-fill{% elif cat=='danger' %}x-circle-fill{% else %}info-circle-fill{% endif %} me-2"></i>
-              {{ msg }}
-              <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>
-          {% endfor %}
-        {% endwith %}
-
-        <form action="{{ url_for('auth.login') }}" method="POST" class="login-form">
-          <input type="hidden" name="mode" value="{{ mode }}" />
-
-          <div class="mb-3">
-            <label class="form-label fw-semibold">{{ 'Staff Username or Email' if mode == 'staff' else 'Full Name or Email' }}</label>
-            <div class="input-group input-group-lg">
-              <span class="input-group-text"><i class="bi bi-person-fill text-primary"></i></span>
-              <input type="text" name="identifier" class="form-control" placeholder="{{ 'e.g. staff_id or email' if mode == 'staff' else 'e.g. Full Name or email' }}" required autofocus autocomplete="username" />
-            </div>
+      <!-- Flash messages -->
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for cat, msg in messages %}
+          <div class="alert alert-{{ cat }} alert-dismissible fade show shadow-sm py-2 px-3 small rounded-3" role="alert">
+            <i class="bi bi-{% if cat=='success' %}check-circle-fill{% elif cat=='danger' %}x-circle-fill{% else %}info-circle-fill{% endif %} me-2"></i>
+            {{ msg }}
+            <button type="button" class="btn-close py-2" data-bs-dismiss="alert"></button>
           </div>
+        {% endfor %}
+      {% endwith %}
 
-          <div class="mb-4">
-            <label class="form-label fw-semibold">Security Password</label>
-            <div class="input-group input-group-lg">
-              <span class="input-group-text"><i class="bi bi-lock-fill text-primary"></i></span>
-              <input type="password" name="password" id="passwordInput" class="form-control" placeholder="Enter password" required />
-              <button type="button" class="input-group-text btn-reveal" onclick="togglePassword()">
-                <i class="bi bi-eye" id="eyeIcon"></i>
-              </button>
-            </div>
+      <!-- Login Form -->
+      <form action="{{ url_for('auth.login') }}" method="POST" class="login-form" id="loginForm">
+        <input type="hidden" name="mode" id="formModeInput" value="{{ mode }}" />
+
+        <!-- Identifier input -->
+        <div class="custom-input-wrap">
+          <label class="custom-input-label" id="identifierLabel">
+            <span><i class="bi bi-person me-1"></i>{{ 'Staff Username or Email' if mode == 'staff' else 'Full Name or Email' }}</span>
+          </label>
+          <div class="input-box">
+            <i class="bi bi-person-badge input-icon-lead"></i>
+            <input 
+              type="text" 
+              name="identifier" 
+              id="identifierInput"
+              class="custom-form-control" 
+              placeholder="{{ 'e.g. akuma or staff@akumabank.ma' if mode == 'staff' else 'e.g. Mohammed El Alami or client@email.com' }}" 
+              required 
+              autofocus 
+              autocomplete="username" 
+            />
           </div>
-
-          <button type="submit" class="btn btn-primary btn-lg w-100 login-btn shadow-md">
-            <i class="bi bi-fingerprint me-2"></i>Authenticate &amp; Enter
-          </button>
-        </form>
-
-        <div class="mt-4 d-grid gap-2">
-          {% if mode == 'staff' %}
-          <a class="btn btn-outline-secondary" href="{{ url_for('auth.login') }}">
-            <i class="bi bi-person me-1"></i>Switch to Customer Login
-          </a>
-          {% else %}
-          <div class="d-flex justify-content-between align-items-center my-1">
-            <a class="text-primary small fw-semibold text-decoration-none" href="{{ url_for('auth.forgot_password') }}">Forgot Password?</a>
-            <a class="text-muted small fw-semibold text-decoration-none" href="{{ url_for('auth.login', mode='staff') }}"><i class="bi bi-shield-lock me-1"></i>Staff Portal</a>
-          </div>
-          <a class="btn btn-outline-primary" href="{{ url_for('auth.register') }}">
-            <i class="bi bi-person-plus-fill me-1"></i>Apply for Customer Account
-          </a>
-          {% endif %}
         </div>
 
-        <div class="text-center mt-4">
-          <small class="text-muted font-monospace"><i class="bi bi-lock me-1"></i>Encrypted SSL/TLS 256-bit Connection</small>
+        <!-- Password input -->
+        <div class="custom-input-wrap">
+          <div class="custom-input-label">
+            <span><i class="bi bi-key me-1"></i>Security Password</span>
+            {% if mode != 'staff' %}
+            <a href="{{ url_for('auth.forgot_password') }}" class="text-primary text-decoration-none small text-capitalize fw-normal" style="font-size: 0.74rem;">
+              Forgot password?
+            </a>
+            {% endif %}
+          </div>
+          <div class="input-box">
+            <i class="bi bi-lock-fill input-icon-lead"></i>
+            <input 
+              type="password" 
+              name="password" 
+              id="passwordInput" 
+              class="custom-form-control" 
+              placeholder="Enter master security key" 
+              required 
+              autocomplete="current-password"
+            />
+            <button type="button" class="btn-toggle-eye" onclick="togglePassword()" title="Reveal/Hide Password" aria-label="Toggle password view">
+              <i class="bi bi-eye" id="eyeIcon"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Remember device toggle -->
+        <div class="d-flex align-items-center justify-content-between mb-3 mt-1">
+          <div class="form-check mb-0">
+            <input class="form-check-input" type="checkbox" id="rememberMe" checked />
+            <label class="form-check-label small opacity-75" for="rememberMe" style="cursor: pointer; font-size: 0.78rem;">
+              Remember this workstation
+            </label>
+          </div>
+          <span class="badge bg-secondary-soft text-secondary font-monospace" style="font-size: 0.65rem;">
+            <i class="bi bi-lock-fill me-1"></i>TLS 1.3
+          </span>
+        </div>
+
+        <!-- Submit Button -->
+        <button type="submit" class="btn-auth-submit" id="submitBtn">
+          <i class="bi bi-fingerprint fs-5"></i>
+          <span>Authenticate &amp; Enter</span>
+        </button>
+      </form>
+
+      <!-- Quick Demo Credentials Box -->
+      <div class="demo-credentials-box">
+        <div class="d-flex align-items-center justify-content-between mb-2">
+          <span class="fw-bold text-muted"><i class="bi bi-lightning-fill text-warning me-1"></i>Quick Demo Accounts:</span>
+          <span class="badge bg-info-soft text-info" style="font-size: 0.65rem;">1-Click Fill</span>
+        </div>
+        <div class="d-flex gap-2">
+          <button type="button" class="demo-btn-pill flex-fill" onclick="fillDemo('customer')">
+            <i class="bi bi-person me-1"></i>Demo Client
+          </button>
+          <button type="button" class="demo-btn-pill flex-fill" onclick="fillDemo('staff')">
+            <i class="bi bi-shield-lock me-1"></i>Demo Staff
+          </button>
         </div>
       </div>
+
+      <!-- Customer Onboarding Callout (if client mode) -->
+      {% if mode != 'staff' %}
+      <div class="mt-4 pt-3 border-top text-center">
+        <p class="text-muted small mb-2">Don't have an AkumaBank account yet?</p>
+        <a class="btn btn-outline-primary btn-sm w-100 fw-semibold py-2 rounded-3" href="{{ url_for('auth.register') }}">
+          <i class="bi bi-person-plus-fill me-1"></i>Open Moroccan Bank Account in 2 Min
+        </a>
+      </div>
+      {% else %}
+      <div class="mt-4 pt-3 border-top text-center">
+        <p class="text-muted small mb-2">Need personal client banking services?</p>
+        <a class="btn btn-outline-secondary btn-sm w-100 fw-semibold py-2 rounded-3" href="{{ url_for('auth.login') }}">
+          <i class="bi bi-arrow-left me-1"></i>Return to Client Portal
+        </a>
+      </div>
+      {% endif %}
+
+      <!-- Trust Seals Footer -->
+      <div class="text-center mt-3 pt-2">
+        <small class="text-muted font-monospace" style="font-size: 0.68rem;">
+          <i class="bi bi-shield-check text-success me-1"></i>Bank Al-Maghrib BAM/2026/088 &bull; CNDP Data Protected
+        </small>
+      </div>
     </div>
-  </div>
-</div>
+  </section>
+</main>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 <script>
+// 1. Password reveal toggle
 function togglePassword() {
   const inp = document.getElementById('passwordInput');
   const ico = document.getElementById('eyeIcon');
@@ -184,6 +877,64 @@ function togglePassword() {
     inp.type = 'password';
     ico.classList.replace('bi-eye-slash', 'bi-eye');
   }
+}
+
+// 2. Interactive 3D Card Tilt Effect on Mouse Move
+const card = document.getElementById('tiltCard');
+const glare = document.getElementById('cardGlare');
+if (card) {
+  card.addEventListener('mousemove', (e) => {
+    const rect = card.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    
+    const centerX = rect.width / 2;
+    const centerY = rect.height / 2;
+    
+    const rotateX = ((y - centerY) / centerY) * -12;
+    const rotateY = ((x - centerX) / centerX) * 12;
+    
+    card.style.transform = `rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale(1.02)`;
+    
+    // Move glare
+    if (glare) {
+      const glareX = (x / rect.width) * 100;
+      const glareY = (y / rect.height) * 100;
+      glare.style.background = `radial-gradient(circle at ${glareX}% ${glareY}%, rgba(255,255,255,0.4) 0%, rgba(0,242,254,0.15) 40%, transparent 80%)`;
+    }
+  });
+
+  card.addEventListener('mouseleave', () => {
+    card.style.transform = 'rotateX(0deg) rotateY(0deg) scale(1)';
+    if (glare) {
+      glare.style.background = 'linear-gradient(125deg, rgba(255, 255, 255, 0.3) 0%, rgba(0, 242, 254, 0.15) 30%, transparent 60%)';
+    }
+  });
+}
+
+// 3. Quick Demo Autofill Helper
+function fillDemo(type) {
+  const idInput = document.getElementById('identifierInput');
+  const passInput = document.getElementById('passwordInput');
+  const modeInput = document.getElementById('formModeInput');
+  
+  if (type === 'customer') {
+    idInput.value = 'akuma@test.com';
+    passInput.value = 'password123';
+    if (modeInput.value === 'staff') {
+      window.location.href = "{{ url_for('auth.login') }}";
+      return;
+    }
+  } else if (type === 'staff') {
+    idInput.value = 'akuma';
+    passInput.value = 'password123';
+    if (modeInput.value !== 'staff') {
+      window.location.href = "{{ url_for('auth.login', mode='staff') }}";
+      return;
+    }
+  }
+  
+  passInput.focus();
 }
 </script>
 </body>

@@ -110,6 +110,34 @@ def inject_card_tiers():
     }
 
 
+@app.context_processor
+def inject_operations_requests_counts():
+    user = session.get("user")
+    if not user or user.get("role") == "Customer":
+        return {}
+    try:
+        conn = get_db()
+        signups = conn.execute("SELECT COUNT(*) FROM USERS WHERE Role='Customer' AND ApprovalStatus='Pending'").fetchone()[0]
+        closures = conn.execute("SELECT COUNT(*) FROM ACCOUNT_CLOSURE_REQUEST WHERE Status='Pending'").fetchone()[0]
+        docs = conn.execute("SELECT COUNT(*) FROM DOCUMENT_REQUEST WHERE Status='Pending'").fetchone()[0]
+        openings = conn.execute("SELECT COUNT(*) FROM ACCOUNT_OPENING_REQUEST WHERE Status='Pending'").fetchone()[0]
+        loans = conn.execute("SELECT COUNT(*) FROM LOAN WHERE Status='Pending'").fetchone()[0]
+        passwords = conn.execute("SELECT COUNT(*) FROM PASSWORD_RESET_REQUEST WHERE Status='Pending'").fetchone()[0]
+        conn.close()
+        total = signups + closures + docs + openings + loans + passwords
+        return {
+            "total_pending_requests": total,
+            "pending_signups_count": signups,
+            "pending_closures_count": closures,
+            "pending_documents_count": docs,
+            "pending_openings_count": openings,
+            "pending_loans_count": loans,
+            "pending_passwords_count": passwords,
+        }
+    except Exception:
+        return {}
+
+
 @app.before_request
 def restrict_customer_routes():
     """Keep customer logins out of staff banking operations."""

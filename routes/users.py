@@ -118,13 +118,13 @@ def review_password_reset(request_id, action):
     except Exception as error:
         conn.rollback()
         flash(f"Could not review password reset request: {error}", "danger")
-        return redirect(url_for("customers.customers"))
+        return redirect(request.referrer or url_for("accounts.requests_center", tab="passwords"))
     finally:
         conn.close()
 
     if temporary_password:
         queue_temporary_password(reset_request["Email"], temporary_password)
-        flash("Password reset approved. Copy the temporary password from the Customers page and deliver it through a verified channel.", "warning")
+        flash("Password reset approved. Copy the temporary password from the Temporary Passwords queue and deliver it through a verified channel.", "warning")
     else:
         flash("Password reset request rejected.", "success")
-    return redirect(url_for("customers.customers"))
+    return redirect(request.referrer or url_for("accounts.requests_center", tab="passwords"))

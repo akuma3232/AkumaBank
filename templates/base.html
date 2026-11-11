@@ -81,12 +81,19 @@
       <i class="bi bi-speedometer2"></i><span>Dashboard</span>
       <span class="nav-indicator"></span>
     </a>
-    <a href="{{ url_for('customers.customers') }}" class="nav-link {% if request.endpoint and 'customer' in request.endpoint %}active{% endif %}">
+    <a href="{{ url_for('customers.customers') }}" class="nav-link {% if request.endpoint and 'customer' in request.endpoint and 'portal' not in request.endpoint %}active{% endif %}">
       <i class="bi bi-people-fill"></i><span>Customers</span>
       <span class="nav-indicator"></span>
     </a>
-    <a href="{{ url_for('accounts.accounts') }}" class="nav-link {% if request.endpoint and 'account' in request.endpoint %}active{% endif %}">
+    <a href="{{ url_for('accounts.accounts') }}" class="nav-link {% if request.endpoint=='accounts.accounts' %}active{% endif %}">
       <i class="bi bi-credit-card-2-front-fill"></i><span>Accounts</span>
+      <span class="nav-indicator"></span>
+    </a>
+    <a href="{{ url_for('accounts.requests_center') }}" class="nav-link {% if request.endpoint=='accounts.requests_center' %}active{% endif %}">
+      <i class="bi bi-inbox-fill"></i><span>Requests</span>
+      {% if total_pending_requests and total_pending_requests > 0 %}
+      <span class="badge rounded-pill bg-danger ms-auto" style="font-size: 0.68rem; padding: 0.25em 0.55em;">{{ total_pending_requests }}</span>
+      {% endif %}
       <span class="nav-indicator"></span>
     </a>
     <a href="{{ url_for('transactions.transactions') }}" class="nav-link {% if request.endpoint and 'transaction' in request.endpoint %}active{% endif %}">

@@ -126,7 +126,17 @@ def accounts():
     """).fetchall()
     pending_passwords_count = sum(1 for r in password_requests if r["Status"] == "Pending")
 
+    # Customer signup / creation requests (from customer page)
+    signup_requests = conn.execute("""
+        SELECT UserID, FullName, Email, DateOfBirth, Phone, Address, NationalID
+        FROM USERS
+        WHERE Role='Customer' AND ApprovalStatus='Pending'
+        ORDER BY UserID DESC
+    """).fetchall()
+    pending_signups_count = len(signup_requests)
+
     total_pending_requests = (
+        pending_signups_count +
         pending_closures_count +
         pending_documents_count +
         pending_openings_count +
@@ -142,6 +152,8 @@ def accounts():
         branches=branches,
         stats=stats,
         search=search,
+        signup_requests=signup_requests,
+        pending_signups_count=pending_signups_count,
         closure_requests=closure_requests,
         pending_closures_count=pending_closures_count,
         document_requests=document_requests,
@@ -153,6 +165,114 @@ def accounts():
         password_requests=password_requests,
         pending_passwords_count=pending_passwords_count,
         total_pending_requests=total_pending_requests,
+        can_create_account=session.get("user", {}).get("role") in ("Owner", "Admin"),
+    )
+
+
+@accounts_bp.route("/requests")
+@login_required
+@owner_or_admin_required
+def requests_center():
+    """Unified Operations Requests Center (all bank requests in one dedicated place)."""
+    conn = get_db()
+
+    signup_requests = conn.execute("""
+        SELECT UserID, FullName, Email, DateOfBirth, Phone, Address, NationalID
+        FROM USERS
+        WHERE Role='Customer' AND ApprovalStatus='Pending'
+        ORDER BY UserID DESC
+    """).fetchall()
+    pending_signups_count = len(signup_requests)
+
+    closure_requests = conn.execute("""
+        SELECT r.*, a.AccountNumber, a.Balance, a.CardTier, c.Name as CustomerName
+        FROM ACCOUNT_CLOSURE_REQUEST r
+        JOIN ACCOUNT a ON a.AccountID = r.AccountID
+        JOIN CUSTOMER c ON c.CustomerID = r.CustomerID
+        ORDER BY CASE WHEN r.Status='Pending' THEN 1 ELSE 2 END, r.RequestedAt DESC
+    """).fetchall()
+    pending_closures_count = sum(1 for r in closure_requests if r["Status"] == "Pending")
+
+    document_requests = conn.execute("""
+        SELECT dr.*, c.Name as CustomerName, a.AccountNumber, a.CardTier, a.AccountType
+        FROM DOCUMENT_REQUEST dr
+        JOIN CUSTOMER c ON c.CustomerID = dr.CustomerID
+        LEFT JOIN ACCOUNT a ON a.AccountID = dr.AccountID
+        ORDER BY CASE WHEN dr.Status='Pending' THEN 1 ELSE 2 END, dr.RequestedAt DESC
+    """).fetchall()
+    pending_documents_count = sum(1 for r in document_requests if r["Status"] == "Pending")
+
+    opening_requests = conn.execute("""
+        SELECT aor.*, c.Name as CustomerName, c.Email, c.Phone, b.BranchName
+        FROM ACCOUNT_OPENING_REQUEST aor
+        JOIN CUSTOMER c ON c.CustomerID = aor.CustomerID
+        LEFT JOIN BRANCH b ON b.BranchID = aor.BranchID
+        ORDER BY CASE WHEN aor.Status='Pending' THEN 1 ELSE 2 END, aor.RequestedAt DESC
+    """).fetchall()
+    pending_openings_count = sum(1 for r in opening_requests if r["Status"] == "Pending")
+
+    loan_requests = conn.execute("""
+        SELECT l.*, c.Name as CustomerName, a.AccountNumber as DisbAccount
+        FROM LOAN l
+        JOIN CUSTOMER c ON c.CustomerID = l.CustomerID
+        LEFT JOIN ACCOUNT a ON a.AccountID = l.DisbursementAccountID
+        ORDER BY CASE WHEN l.Status='Pending' THEN 1 ELSE 2 END, l.StartDate DESC
+    """).fetchall()
+    pending_loans_count = sum(1 for r in loan_requests if r["Status"] == "Pending")
+
+    password_requests = conn.execute("""
+        SELECT pr.*, u.Username, u.Email, u.FullName
+        FROM PASSWORD_RESET_REQUEST pr
+        JOIN USERS u ON u.UserID = pr.UserID
+        ORDER BY CASE WHEN pr.Status='Pending' THEN 1 ELSE 2 END, pr.RequestedAt DESC
+    """).fetchall()
+    pending_passwords_count = sum(1 for r in password_requests if r["Status"] == "Pending")
+
+    total_pending_requests = (
+        pending_signups_count +
+        pending_closures_count +
+        pending_documents_count +
+        pending_openings_count +
+        pending_loans_count +
+        pending_passwords_count
+    )
+
+    pending_temporary_passwords = session.get("pending_temporary_passwords", [])
+    active_tab = request.args.get("tab")
+    if not active_tab:
+        if pending_signups_count > 0:
+            active_tab = "signups"
+        elif pending_closures_count > 0:
+            active_tab = "closures"
+        elif pending_documents_count > 0:
+            active_tab = "docs"
+        elif pending_openings_count > 0:
+            active_tab = "openings"
+        elif pending_loans_count > 0:
+            active_tab = "loans"
+        elif pending_passwords_count > 0:
+            active_tab = "passwords"
+        else:
+            active_tab = "signups"
+
+    conn.close()
+    return render_template(
+        "requests_center.html",
+        signup_requests=signup_requests,
+        pending_signups_count=pending_signups_count,
+        closure_requests=closure_requests,
+        pending_closures_count=pending_closures_count,
+        document_requests=document_requests,
+        pending_documents_count=pending_documents_count,
+        opening_requests=opening_requests,
+        pending_openings_count=pending_openings_count,
+        loan_requests=loan_requests,
+        pending_loans_count=pending_loans_count,
+        password_requests=password_requests,
+        pending_passwords_count=pending_passwords_count,
+        total_pending_requests=total_pending_requests,
+        pending_temporary_passwords=pending_temporary_passwords,
+        active_tab=active_tab,
         can_create_account=session.get("user", {}).get("role") in ("Owner", "Admin"),
     )
 

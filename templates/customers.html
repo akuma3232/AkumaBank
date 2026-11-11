@@ -38,76 +38,27 @@
 </div>
 {% endif %}
 
-<div class="card-panel mb-4">
-  <div class="panel-header">
-    <span class="panel-title">Password Reset Requests</span>
-    <span class="badge bg-warning-soft text-warning">{{ reset_requests|length }} pending</span>
-  </div>
-  <div class="panel-body p-0">
-    <div class="table-responsive">
-      <table class="table table-hover align-middle mb-0">
-        <thead><tr><th>Customer</th><th>Email</th><th>Requested</th><th class="text-end">Review</th></tr></thead>
-        <tbody>
-          {% for item in reset_requests %}
-          <tr>
-            <td class="fw-semibold">{{ item.FullName or 'Customer' }}</td>
-            <td>{{ item.Email }}</td>
-            <td>{{ item.RequestedAt }}</td>
-            <td class="text-end text-nowrap">
-              <form method="POST" action="{{ url_for('users.review_password_reset', request_id=item.RequestID, action='approve') }}" class="d-inline">
-                <button class="btn btn-sm btn-success" type="submit">Approve</button>
-              </form>
-              <form method="POST" action="{{ url_for('users.review_password_reset', request_id=item.RequestID, action='reject') }}" class="d-inline">
-                <button class="btn btn-sm btn-outline-danger" type="submit">Reject</button>
-              </form>
-            </td>
-          </tr>
-          {% else %}
-          <tr><td colspan="4" class="text-center text-muted py-4">No pending password reset requests.</td></tr>
-          {% endfor %}
-        </tbody>
-      </table>
+{% if pending_signups|length > 0 or reset_requests|length > 0 %}
+<div class="alert alert-warning py-3 px-4 d-flex justify-content-between align-items-center mb-4 rounded-3 border-0 bg-warning-subtle text-warning-emphasis shadow-sm">
+  <div class="d-flex align-items-center gap-3">
+    <div class="rounded-circle bg-warning text-dark d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+      <i class="bi bi-inbox-fill fs-5"></i>
+    </div>
+    <div>
+      <h6 class="fw-bold mb-0">Pending Operations Requests</h6>
+      <div class="small">
+        {% set req_notes = [] %}
+        {% if pending_signups|length > 0 %}{% set _ = req_notes.append(pending_signups|length ~ ' Customer Signup Request(s)') %}{% endif %}
+        {% if reset_requests|length > 0 %}{% set _ = req_notes.append(reset_requests|length ~ ' Password Reset Request(s)') %}{% endif %}
+        {{ req_notes|join(' &bull; ') }} &bull; All customer requests are managed in the central Requests Center.
+      </div>
     </div>
   </div>
+  <a href="{{ url_for('accounts.requests_center', tab='signups' if pending_signups|length > 0 else 'passwords') }}" class="btn btn-warning btn-sm fw-bold px-3">
+    <i class="bi bi-inbox-fill me-1"></i>Review in Requests Center
+  </a>
 </div>
-
-<div class="card-panel mb-4">
-  <div class="panel-header">
-    <span class="panel-title">Pending Customer Signups</span>
-    <span class="badge bg-warning-soft text-warning">{{ pending_signups|length }} pending</span>
-  </div>
-  <div class="panel-body p-0">
-    <div class="table-responsive">
-      <table class="table table-hover align-middle mb-0">
-        <thead>
-          <tr><th>Name</th><th>Date of Birth</th><th>Email</th><th>Phone</th><th>Address</th><th>National ID</th><th class="text-end">Review</th></tr>
-        </thead>
-        <tbody>
-          {% for signup in pending_signups %}
-          <tr>
-            <td class="fw-semibold">{{ signup.FullName }}</td>
-            <td>{{ signup.DateOfBirth }}</td>
-            <td>{{ signup.Email }}</td>
-            <td>{{ signup.Phone }}</td>
-            <td>{{ signup.Address }}</td>
-            <td class="mono-text">{{ signup.NationalID }}</td>
-            <td class="text-end text-nowrap">
-              <form class="d-inline" method="POST" action="{{ url_for('customers.review_customer_signup', user_id=signup.UserID, decision='approve') }}">
-                <button class="btn btn-sm btn-success" type="submit">Approve</button>
-              </form>
-              <form class="d-inline" method="POST" action="{{ url_for('customers.review_customer_signup', user_id=signup.UserID, decision='reject') }}">
-                <button class="btn btn-sm btn-outline-danger" type="submit">Reject</button>
-              </form>
-            </td>
-          </tr>
-          {% else %}
-          <tr><td colspan="7" class="text-center text-muted py-4">No customer signups are waiting for review.</td></tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  </div>
-</div>
+{% endif %}
 {% endif %}
 
 <!-- Search bar -->
@@ -157,7 +108,10 @@
             <td class="mono-text">{{ c.NationalID[:2] }}****{{ c.NationalID[-2:] }}</td>
             <td><span class="badge bg-primary-soft text-primary">{{ c.account_count }}</span></td>
             <td class="fw-semibold text-success">MAD {{ "{:,.0f}".format(c.total_balance) }}</td>
-            <td class="text-center">
+            <td class="text-center text-nowrap">
+              <a href="{{ url_for('accounts.accounts', q=c.Name) }}" class="btn btn-sm btn-outline-info me-1" title="View Customer Accounts & Official PDF Documents">
+                <i class="bi bi-file-earmark-pdf-fill"></i>
+              </a>
               <button class="btn btn-sm btn-outline-primary me-1"
                 onclick="openEditCustomer({{ c.CustomerID }})"
                 title="Edit">

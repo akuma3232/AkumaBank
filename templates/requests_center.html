@@ -1,0 +1,595 @@
+{% extends "base.html" %}
+{% block title %}Operations Requests Center — AkumaBank{% endblock %}
+{% block page_title %}Operations Requests Center{% endblock %}
+
+{% block content %}
+<!-- Header Row -->
+<div class="page-header-row mb-4">
+  <div>
+    <h4 class="page-heading">Operations Requests Center</h4>
+    <p class="page-sub">Centralized hub for all bank requests: Customer Signups, Account Openings, Closures, Document Certifications, Loans, and Password Resets.</p>
+  </div>
+  <div class="d-flex align-items-center gap-2">
+    {% if total_pending_requests > 0 %}
+    <span class="badge bg-danger fs-6 px-3 py-2 rounded-pill shadow-sm">
+      <i class="bi bi-hourglass-split me-1"></i>{{ total_pending_requests }} Action(s) Required
+    </span>
+    {% else %}
+    <span class="badge bg-success-soft text-success fs-6 px-3 py-2 rounded-pill">
+      <i class="bi bi-check-circle-fill me-1"></i>All Requests Up to Date
+    </span>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Temporary Passwords Delivery Queue (if any) -->
+{% if pending_temporary_passwords %}
+<div class="card-panel mb-4 border border-warning" id="temporaryPasswordQueue">
+  <div class="panel-header bg-warning-subtle text-warning-emphasis">
+    <span class="panel-title fw-bold"><i class="bi bi-key-fill text-warning me-2"></i>Temporary Passwords to Deliver</span>
+  </div>
+  <div class="panel-body">
+    <p class="text-muted small mb-3">Copy each newly generated temporary password below and deliver it to the customer via a verified SMS or secure channel.</p>
+    {% for delivery in pending_temporary_passwords %}
+    <div class="d-flex align-items-center gap-3 flex-wrap border-top py-2" data-password-delivery>
+      <span class="fw-semibold text-body">{{ delivery.email }}</span>
+      <code class="fs-6 bg-body-tertiary px-2 py-1 rounded border font-monospace" id="temporary-password-{{ delivery.id }}">{{ delivery.password }}</code>
+      <button class="btn btn-sm btn-outline-primary" type="button"
+        data-copy-password="{{ delivery.id }}"
+        data-ack-url="{{ url_for('customers.acknowledge_temporary_password', delivery_id=delivery.id) }}">
+        <i class="bi bi-clipboard me-1"></i>Copy &amp; Dismiss
+      </button>
+      <span class="small text-danger" aria-live="polite" data-copy-status></span>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<!-- Unified Requests Center Card Panel -->
+<div class="card-panel">
+  <!-- Navigation Tabs Header -->
+  <div class="panel-header p-0 bg-body-tertiary border-bottom">
+    <ul class="nav nav-tabs border-0 px-3 pt-2" id="requestsMainTab" role="tablist">
+      <li class="nav-item" role="presentation">
+        <button class="nav-link fw-semibold {% if active_tab == 'signups' %}active{% endif %}" id="tab-btn-signups" data-bs-toggle="tab" data-bs-target="#pane-signups" type="button" role="tab">
+          <i class="bi bi-person-plus-fill me-1 text-primary"></i>Customer Signups
+          {% if pending_signups_count > 0 %}<span class="badge bg-danger ms-1">{{ pending_signups_count }}</span>{% endif %}
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link fw-semibold {% if active_tab == 'openings' %}active{% endif %}" id="tab-btn-openings" data-bs-toggle="tab" data-bs-target="#pane-openings" type="button" role="tab">
+          <i class="bi bi-credit-card-2-front-fill me-1 text-success"></i>Account Openings
+          {% if pending_openings_count > 0 %}<span class="badge bg-danger ms-1">{{ pending_openings_count }}</span>{% endif %}
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link fw-semibold {% if active_tab == 'closures' %}active{% endif %}" id="tab-btn-closures" data-bs-toggle="tab" data-bs-target="#pane-closures" type="button" role="tab">
+          <i class="bi bi-x-circle-fill me-1 text-danger"></i>Account Closures
+          {% if pending_closures_count > 0 %}<span class="badge bg-danger ms-1">{{ pending_closures_count }}</span>{% endif %}
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link fw-semibold {% if active_tab == 'docs' %}active{% endif %}" id="tab-btn-docs" data-bs-toggle="tab" data-bs-target="#pane-docs" type="button" role="tab">
+          <i class="bi bi-file-earmark-pdf-fill me-1 text-info"></i>Official Documents
+          {% if pending_documents_count > 0 %}<span class="badge bg-danger ms-1">{{ pending_documents_count }}</span>{% endif %}
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link fw-semibold {% if active_tab == 'loans' %}active{% endif %}" id="tab-btn-loans" data-bs-toggle="tab" data-bs-target="#pane-loans" type="button" role="tab">
+          <i class="bi bi-cash-coin me-1 text-warning"></i>Loan Applications
+          {% if pending_loans_count > 0 %}<span class="badge bg-danger ms-1">{{ pending_loans_count }}</span>{% endif %}
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link fw-semibold {% if active_tab == 'passwords' %}active{% endif %}" id="tab-btn-passwords" data-bs-toggle="tab" data-bs-target="#pane-passwords" type="button" role="tab">
+          <i class="bi bi-key-fill me-1 text-secondary"></i>Password Resets
+          {% if pending_passwords_count > 0 %}<span class="badge bg-danger ms-1">{{ pending_passwords_count }}</span>{% endif %}
+        </button>
+      </li>
+    </ul>
+  </div>
+
+  <div class="panel-body p-0">
+    <div class="tab-content" id="requestsMainTabContent">
+
+      <!-- ════ 1. CUSTOMER SIGNUPS (CREATE REQUEST) ════ -->
+      <div class="tab-pane fade {% if active_tab == 'signups' %}show active{% endif %}" id="pane-signups" role="tabpanel">
+        <div class="p-3 border-bottom bg-light d-flex justify-content-between align-items-center">
+          <div>
+            <h6 class="fw-bold mb-0">Customer Signups / Account Creation Requests</h6>
+            <small class="text-muted">Review incoming customer registrations before issuing their Moroccan banking customer identity.</small>
+          </div>
+          <span class="badge bg-primary-soft text-primary font-monospace">{{ signup_requests|length }} record(s)</span>
+        </div>
+        {% if signup_requests %}
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>Applicant Name</th>
+                <th>Date of Birth</th>
+                <th>Email</th>
+                <th>Phone</th>
+                <th>Address</th>
+                <th>National ID (CIN)</th>
+                <th class="text-end">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for s in signup_requests %}
+              <tr>
+                <td class="fw-bold text-dark">
+                  <div class="d-flex align-items-center gap-2">
+                    <div class="table-avatar bg-primary-subtle text-primary">{{ s.FullName[0]|upper }}</div>
+                    <span>{{ s.FullName }}</span>
+                  </div>
+                </td>
+                <td class="text-muted">{{ s.DateOfBirth }}</td>
+                <td>{{ s.Email }}</td>
+                <td>{{ s.Phone }}</td>
+                <td class="text-truncate" style="max-width: 180px;">{{ s.Address }}</td>
+                <td class="mono-text fw-semibold">{{ s.NationalID }}</td>
+                <td class="text-end text-nowrap">
+                  <form class="d-inline" method="POST" action="{{ url_for('customers.review_customer_signup', user_id=s.UserID, decision='approve') }}">
+                    <button class="btn btn-sm btn-success px-3" type="submit" onclick="return confirm('Approve customer signup for {{ s.FullName }}?');">
+                      <i class="bi bi-check-lg me-1"></i>Approve
+                    </button>
+                  </form>
+                  <form class="d-inline" method="POST" action="{{ url_for('customers.review_customer_signup', user_id=s.UserID, decision='reject') }}">
+                    <button class="btn btn-sm btn-outline-danger" type="submit" onclick="return confirm('Reject customer signup?');">
+                      <i class="bi bi-x-lg me-1"></i>Reject
+                    </button>
+                  </form>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5 text-muted">
+          <i class="bi bi-person-check fs-1 d-block mb-2 text-secondary"></i>
+          No customer signups waiting for review. All registration requests have been processed.
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- ════ 2. ACCOUNT OPENINGS ════ -->
+      <div class="tab-pane fade {% if active_tab == 'openings' %}show active{% endif %}" id="pane-openings" role="tabpanel">
+        <div class="p-3 border-bottom bg-light d-flex justify-content-between align-items-center">
+          <div>
+            <h6 class="fw-bold mb-0">Bank Account Opening Applications</h6>
+            <small class="text-muted">Applications submitted by customers to open additional bank accounts and assign card tiers.</small>
+          </div>
+          <span class="badge bg-success-soft text-success font-monospace">{{ opening_requests|length }} record(s)</span>
+        </div>
+        {% if opening_requests %}
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>Ref &amp; Date</th>
+                <th>Customer</th>
+                <th>Account &amp; Card Tier</th>
+                <th>Initial Deposit &amp; Branch</th>
+                <th>Reason</th>
+                <th>Status</th>
+                <th class="text-end">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for aor in opening_requests %}
+              <tr>
+                <td>
+                  <strong class="font-monospace text-success">#OPN-{{ "%05d"|format(aor.RequestID) }}</strong><br/>
+                  <span class="text-muted small" style="font-size: 0.72rem;">{{ aor.RequestedAt[:16] }}</span>
+                </td>
+                <td>
+                  <strong>{{ aor.CustomerName }}</strong><br/>
+                  <span class="text-muted small">{{ aor.Email or aor.Phone }}</span>
+                </td>
+                <td>
+                  <span class="badge bg-primary-soft text-primary">{{ aor.AccountType }}</span><br/>
+                  <span class="badge bg-secondary-soft text-secondary mt-1">{{ aor.CardTier|title if aor.CardTier else 'Standard' }}</span>
+                </td>
+                <td>
+                  <strong class="text-success">MAD {{ "{:,.2f}".format(aor.InitialDeposit or 0) }}</strong><br/>
+                  <span class="text-muted small">{{ aor.BranchName or 'Headquarters' }}</span>
+                </td>
+                <td class="text-wrap" style="max-width: 170px;">
+                  {{ aor.Reason or 'Additional Account' }}
+                  {% if aor.AdminNote %}
+                  <div class="text-muted fst-italic mt-1 small">Note: {{ aor.AdminNote }}</div>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if aor.Status == 'Pending' %}
+                  <span class="badge bg-warning text-dark"><i class="bi bi-hourglass-split me-1"></i>Pending</span>
+                  {% elif aor.Status == 'Approved' %}
+                  <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Approved</span>
+                  {% else %}
+                  <span class="badge bg-danger"><i class="bi bi-x-circle me-1"></i>Rejected</span>
+                  {% endif %}
+                </td>
+                <td class="text-end text-nowrap">
+                  {% if aor.Status == 'Pending' and can_create_account %}
+                  <div class="d-inline-flex gap-1">
+                    <form method="POST" action="{{ url_for('accounts.approve_opening_request', rid=aor.RequestID) }}">
+                      <button type="submit" class="btn btn-sm btn-success px-3" onclick="return confirm('Approve account opening and generate Moroccan RIB?');">
+                        <i class="bi bi-check-lg me-1"></i>Approve &amp; Open
+                      </button>
+                    </form>
+                    <form method="POST" action="{{ url_for('accounts.reject_opening_request', rid=aor.RequestID) }}">
+                      <button type="submit" class="btn btn-sm btn-outline-danger">
+                        <i class="bi bi-x-lg"></i>
+                      </button>
+                    </form>
+                  </div>
+                  {% elif aor.Status == 'Approved' and aor.CreatedAccountID %}
+                  <a href="{{ url_for('documents.download_opening_certificate', aid=aor.CreatedAccountID) }}" target="_blank" class="btn btn-sm btn-outline-primary" title="Download Welcome Pack PDF">
+                    <i class="bi bi-file-earmark-pdf me-1"></i>Welcome Pack
+                  </a>
+                  {% else %}
+                  <span class="text-muted">—</span>
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5 text-muted">
+          <i class="bi bi-credit-card-2-front fs-1 d-block mb-2 text-secondary"></i>
+          No account opening requests submitted yet.
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- ════ 3. ACCOUNT CLOSURES ════ -->
+      <div class="tab-pane fade {% if active_tab == 'closures' %}show active{% endif %}" id="pane-closures" role="tabpanel">
+        <div class="p-3 border-bottom bg-light d-flex justify-content-between align-items-center">
+          <div>
+            <h6 class="fw-bold mb-0">Account Closure &amp; Liquidation Requests</h6>
+            <small class="text-muted">Customer termination requests requiring liquidation of funds and issuance of the official Quittus PDF.</small>
+          </div>
+          <span class="badge bg-danger-soft text-danger font-monospace">{{ closure_requests|length }} record(s)</span>
+        </div>
+        {% if closure_requests %}
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>ID &amp; Date</th>
+                <th>Customer &amp; Account</th>
+                <th>Current Balance</th>
+                <th>Reason</th>
+                <th>Status</th>
+                <th class="text-end">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for r in closure_requests %}
+              <tr>
+                <td>
+                  <strong>#{{ r.RequestID }}</strong><br/>
+                  <span class="text-muted small" style="font-size: 0.72rem;">{{ r.RequestedAt[:16] }}</span>
+                </td>
+                <td>
+                  <strong>{{ r.CustomerName }}</strong><br/>
+                  <span class="font-monospace text-muted small">{{ r.AccountNumber | format_rib }}</span>
+                </td>
+                <td class="fw-bold {{ 'text-success' if r.Balance > 0 else 'text-muted' }}">
+                  MAD {{ "{:,.2f}".format(r.Balance) }}
+                </td>
+                <td class="text-wrap" style="max-width: 170px;">
+                  {{ r.Reason or 'No reason specified' }}
+                  {% if r.AdminNote %}
+                  <div class="text-muted fst-italic mt-1 small">Note: {{ r.AdminNote }}</div>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if r.Status == 'Pending' %}
+                  <span class="badge bg-warning text-dark"><i class="bi bi-hourglass-split me-1"></i>Pending</span>
+                  {% elif r.Status == 'Approved' %}
+                  <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Approved</span>
+                  {% else %}
+                  <span class="badge bg-danger"><i class="bi bi-x-circle me-1"></i>Rejected</span>
+                  {% endif %}
+                </td>
+                <td class="text-end text-nowrap">
+                  {% if r.Status == 'Pending' and can_create_account %}
+                  <div class="d-inline-flex gap-1">
+                    <form method="POST" action="{{ url_for('accounts.approve_closure_request', rid=r.RequestID) }}">
+                      <button type="submit" class="btn btn-sm btn-success px-3" onclick="return confirm('Approve closure request and liquidate balance to 0 MAD?');">
+                        <i class="bi bi-check-lg me-1"></i>Approve &amp; Liquidate
+                      </button>
+                    </form>
+                    <form method="POST" action="{{ url_for('accounts.reject_closure_request', rid=r.RequestID) }}">
+                      <button type="submit" class="btn btn-sm btn-outline-danger">
+                        <i class="bi bi-x-lg"></i>
+                      </button>
+                    </form>
+                  </div>
+                  {% elif r.Status == 'Approved' %}
+                  <a href="{{ url_for('documents.download_closure_certificate', aid=r.AccountID) }}" target="_blank" class="btn btn-sm btn-outline-danger" title="Download Closure Certificate PDF">
+                    <i class="bi bi-file-earmark-pdf me-1"></i>Closure PDF (Quittus)
+                  </a>
+                  {% else %}
+                  <span class="text-muted">—</span>
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5 text-muted">
+          <i class="bi bi-inbox fs-1 d-block mb-2 text-secondary"></i>
+          No account closure requests have been submitted.
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- ════ 4. OFFICIAL DOCUMENTS ════ -->
+      <div class="tab-pane fade {% if active_tab == 'docs' %}show active{% endif %}" id="pane-docs" role="tabpanel">
+        <div class="p-3 border-bottom bg-light d-flex justify-content-between align-items-center">
+          <div>
+            <h6 class="fw-bold mb-0">Official Document Requests &amp; Physical Signatures</h6>
+            <small class="text-muted">Preview draft PDFs, sign &amp; re-upload stamped files, or issue instant BAM electronic certifications.</small>
+          </div>
+          <span class="badge bg-info-soft text-info font-monospace">{{ document_requests|length }} record(s)</span>
+        </div>
+        {% if document_requests %}
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>Ref &amp; Date</th>
+                <th>Customer &amp; RIB</th>
+                <th>Document Requested</th>
+                <th>Purpose / Justification</th>
+                <th>Status</th>
+                <th class="text-end">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for dr in document_requests %}
+              <tr>
+                <td>
+                  <strong class="font-monospace text-primary">#DOC-{{ "%05d"|format(dr.RequestID) }}</strong><br/>
+                  <span class="text-muted small" style="font-size: 0.72rem;">{{ dr.RequestedAt[:16] }}</span>
+                </td>
+                <td>
+                  <strong>{{ dr.CustomerName }}</strong><br/>
+                  {% if dr.AccountNumber %}
+                  <span class="font-monospace text-muted small">{{ dr.AccountNumber | format_rib }}</span>
+                  {% else %}
+                  <span class="text-muted small">No account</span>
+                  {% endif %}
+                </td>
+                <td>
+                  <div class="fw-semibold text-dark">{{ dr.DocumentTitle }}</div>
+                  <span class="badge bg-light text-secondary border small">{{ dr.DocumentType }}</span>
+                </td>
+                <td class="text-wrap" style="max-width: 180px;">
+                  {{ dr.Purpose or 'Administrative use' }}
+                  {% if dr.AdminNote %}
+                  <div class="text-info fst-italic mt-1 small">Note: {{ dr.AdminNote }}</div>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if dr.Status == 'Pending' %}
+                  <span class="badge bg-warning text-dark"><i class="bi bi-hourglass-split me-1"></i>Pending</span>
+                  {% elif dr.Status == 'Approved' %}
+                  <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Approved</span>
+                  {% elif dr.Status == 'Rejected' %}
+                  <span class="badge bg-danger"><i class="bi bi-x-circle me-1"></i>Rejected</span>
+                  {% else %}
+                  <span class="badge bg-secondary"><i class="bi bi-slash-circle me-1"></i>Cancelled</span>
+                  {% endif %}
+                </td>
+                <td class="text-end text-nowrap">
+                  {% if dr.Status == 'Pending' %}
+                  <div class="d-inline-flex flex-column align-items-end gap-1">
+                    <div class="d-flex gap-1">
+                      <a href="{{ url_for('documents.staff_preview_request_pdf', rid=dr.RequestID) }}" target="_blank" class="btn btn-sm btn-outline-primary" title="Preview draft PDF">
+                        <i class="bi bi-eye me-1"></i>Preview
+                      </a>
+                      <button type="button" class="btn btn-sm btn-success px-3" data-bs-toggle="collapse" data-bs-target="#approveDocCollapseFull{{ dr.RequestID }}" title="Sign and approve">
+                        <i class="bi bi-check-lg me-1"></i>Approve &amp; Sign
+                      </button>
+                      <form method="POST" action="{{ url_for('documents.staff_reject_request', rid=dr.RequestID) }}" class="d-inline" onsubmit="return confirm('Reject this document request?');">
+                        <button type="submit" class="btn btn-sm btn-outline-danger">
+                          <i class="bi bi-x-lg"></i>
+                        </button>
+                      </form>
+                    </div>
+                    <div class="collapse mt-2 text-start" id="approveDocCollapseFull{{ dr.RequestID }}" style="min-width: 270px;">
+                      <div class="card card-body p-2 bg-light border shadow-sm">
+                        <form method="POST" action="{{ url_for('documents.staff_approve_request', rid=dr.RequestID) }}" enctype="multipart/form-data">
+                          <label class="form-label small fw-bold mb-1">Re-upload Signed/Stamped PDF (Optional):</label>
+                          <input type="file" name="signed_pdf" accept="application/pdf" class="form-control form-control-sm mb-2">
+                          <input type="text" name="admin_note" class="form-control form-control-sm mb-2" placeholder="Certification note (optional)">
+                          <button type="submit" class="btn btn-sm btn-success w-100 fw-bold">
+                            <i class="bi bi-file-earmark-check me-1"></i>Certify &amp; Enable Customer Download
+                          </button>
+                        </form>
+                      </div>
+                    </div>
+                  </div>
+                  {% elif dr.Status == 'Approved' %}
+                  <a href="{{ url_for('documents.download_approved_document', rid=dr.RequestID) }}" target="_blank" class="btn btn-sm btn-outline-success">
+                    <i class="bi bi-file-earmark-check me-1"></i>Download PDF
+                  </a>
+                  {% else %}
+                  <span class="text-muted">—</span>
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5 text-muted">
+          <i class="bi bi-folder2-open fs-1 d-block mb-2 text-secondary"></i>
+          No customer document requests submitted yet.
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- ════ 5. LOAN APPLICATIONS ════ -->
+      <div class="tab-pane fade {% if active_tab == 'loans' %}show active{% endif %}" id="pane-loans" role="tabpanel">
+        <div class="p-3 border-bottom bg-light d-flex justify-content-between align-items-center">
+          <div>
+            <h6 class="fw-bold mb-0">Credit Facility &amp; Loan Applications</h6>
+            <small class="text-muted">Review, approve, or disburse customer personal, car, home, and business credit requests.</small>
+          </div>
+          <span class="badge bg-warning-soft text-warning font-monospace">{{ loan_requests|length }} record(s)</span>
+        </div>
+        {% if loan_requests %}
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>Loan ID &amp; Date</th>
+                <th>Customer</th>
+                <th>Type &amp; Amount</th>
+                <th>Interest Rate</th>
+                <th>Status</th>
+                <th class="text-end">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for l in loan_requests %}
+              <tr>
+                <td>
+                  <strong class="font-monospace text-warning">#LOAN-{{ "%04d"|format(l.LoanID) }}</strong><br/>
+                  <span class="text-muted small">{{ l.StartDate }}</span>
+                </td>
+                <td>
+                  <strong>{{ l.CustomerName }}</strong>
+                  {% if l.DisbAccount %}
+                  <div class="font-monospace text-muted small">Disburse: {{ l.DisbAccount | format_rib }}</div>
+                  {% endif %}
+                </td>
+                <td>
+                  <span class="badge bg-secondary-soft text-secondary">{{ l.LoanType }} Loan</span><br/>
+                  <strong class="text-primary">MAD {{ "{:,.2f}".format(l.Amount) }}</strong>
+                </td>
+                <td>
+                  <span class="fw-semibold">{{ l.InterestRate }}%</span>
+                </td>
+                <td>
+                  {% if l.Status == 'Pending' %}
+                  <span class="badge bg-warning text-dark"><i class="bi bi-hourglass-split me-1"></i>Pending</span>
+                  {% elif l.Status == 'Approved' %}
+                  <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Approved</span>
+                  {% elif l.Status == 'Closed' %}
+                  <span class="badge bg-info"><i class="bi bi-check-all me-1"></i>Closed</span>
+                  {% else %}
+                  <span class="badge bg-danger"><i class="bi bi-x-circle me-1"></i>Rejected</span>
+                  {% endif %}
+                </td>
+                <td class="text-end text-nowrap">
+                  <a href="{{ url_for('loans.loans') }}" class="btn btn-sm btn-outline-warning">
+                    <i class="bi bi-box-arrow-up-right me-1"></i>Manage in Loans Module
+                  </a>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5 text-muted">
+          <i class="bi bi-cash-coin fs-1 d-block mb-2 text-secondary"></i>
+          No loan applications currently pending.
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- ════ 6. PASSWORD RESETS ════ -->
+      <div class="tab-pane fade {% if active_tab == 'passwords' %}show active{% endif %}" id="pane-passwords" role="tabpanel">
+        <div class="p-3 border-bottom bg-light d-flex justify-content-between align-items-center">
+          <div>
+            <h6 class="fw-bold mb-0">Customer Password Reset Requests</h6>
+            <small class="text-muted">Issue temporary credentials to customers requesting access recovery.</small>
+          </div>
+          <span class="badge bg-secondary-soft text-secondary font-monospace">{{ password_requests|length }} record(s)</span>
+        </div>
+        {% if password_requests %}
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>Request ID &amp; Date</th>
+                <th>Customer / User</th>
+                <th>Email Address</th>
+                <th>Status</th>
+                <th class="text-end">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for pr in password_requests %}
+              <tr>
+                <td>
+                  <strong class="font-monospace text-info">#PWD-{{ "%04d"|format(pr.RequestID) }}</strong><br/>
+                  <span class="text-muted small">{{ pr.RequestedAt[:16] }}</span>
+                </td>
+                <td>
+                  <strong>{{ pr.Username }}</strong>
+                  {% if pr.FullName %}
+                  <div class="text-muted small">{{ pr.FullName }}</div>
+                  {% endif %}
+                </td>
+                <td>
+                  <span class="font-monospace text-muted">{{ pr.Email or '—' }}</span>
+                </td>
+                <td>
+                  {% if pr.Status == 'Pending' %}
+                  <span class="badge bg-warning text-dark"><i class="bi bi-hourglass-split me-1"></i>Pending</span>
+                  {% elif pr.Status == 'Approved' %}
+                  <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Approved</span>
+                  {% else %}
+                  <span class="badge bg-danger"><i class="bi bi-x-circle me-1"></i>Rejected</span>
+                  {% endif %}
+                </td>
+                <td class="text-end text-nowrap">
+                  {% if pr.Status == 'Pending' and can_create_account %}
+                  <div class="d-inline-flex gap-1">
+                    <form method="POST" action="{{ url_for('users.review_password_reset', request_id=pr.RequestID, action='approve') }}">
+                      <button type="submit" class="btn btn-sm btn-warning px-3" onclick="return confirm('Approve password reset and generate temporary credentials?');">
+                        <i class="bi bi-key-fill me-1"></i>Issue Temp Pass
+                      </button>
+                    </form>
+                    <form method="POST" action="{{ url_for('users.review_password_reset', request_id=pr.RequestID, action='reject') }}">
+                      <button type="submit" class="btn btn-sm btn-outline-danger">
+                        <i class="bi bi-x-lg"></i>
+                      </button>
+                    </form>
+                  </div>
+                  {% else %}
+                  <span class="text-muted">—</span>
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5 text-muted">
+          <i class="bi bi-shield-lock fs-1 d-block mb-2 text-secondary"></i>
+          No password reset requests pending.
+        </div>
+        {% endif %}
+      </div>
+
+    </div>
+  </div>
+</div>
+{% endblock %}

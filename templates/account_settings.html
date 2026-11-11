@@ -58,50 +58,26 @@
             </button>
           </div>
           <div class="form-text text-muted small mt-1">
-            Transformed into {{ 'SVG vector code' if 'svg' in profile_picture else 'Base64 WebP code' }}. No physical image exists on disk.
+            Transformed into Base64 WebP code. No physical image file exists on disk.
           </div>
         </div>
         {% endif %}
 
-        <!-- Tab selection: Upload & Transform OR Generate Algorithmic Avatar -->
-        <ul class="nav nav-pills mb-3 nav-fill gap-2 p-1 bg-body-tertiary rounded border" id="avatarTabs" role="tablist">
-          <li class="nav-item" role="presentation">
-            <button class="nav-link active small py-2" id="upload-tab" data-bs-toggle="pill" data-bs-target="#tab-upload" type="button" role="tab">
-              <i class="bi bi-upload me-1"></i>Upload & Transform
+        <!-- Custom Avatar Upload (Encoded as Code) -->
+        <div class="p-3 bg-body-tertiary rounded-3 border mb-3">
+          <form method="POST" enctype="multipart/form-data">
+            <label class="form-label small fw-semibold" for="profile_picture">
+              <i class="bi bi-upload me-1 text-primary"></i>Upload Custom Profile Picture:
+            </label>
+            <input class="form-control form-control-sm mb-2" type="file" id="profile_picture" name="profile_picture"
+                   accept="image/jpeg,image/png,image/gif,image/webp,.jpg,.jpeg,.png,.gif,.webp" required />
+            <div class="form-text small mb-3">
+              Your photo is securely transformed into Base64 code and stored directly as text (zero image files saved to disk).
+            </div>
+            <button class="btn btn-primary btn-sm" type="submit">
+              <i class="bi bi-cpu me-1"></i>Transform Image to Code &amp; Save
             </button>
-          </li>
-          <li class="nav-item" role="presentation">
-            <button class="nav-link small py-2" id="generate-tab" data-bs-toggle="pill" data-bs-target="#tab-generate" type="button" role="tab">
-              <i class="bi bi-magic me-1"></i>Generate Algorithmic Avatar
-            </button>
-          </li>
-        </ul>
-
-        <div class="tab-content" id="avatarTabContent">
-          <!-- Upload Tab -->
-          <div class="tab-pane fade show active" id="tab-upload" role="tabpanel">
-            <form method="POST" enctype="multipart/form-data">
-              <label class="form-label small fw-semibold" for="profile_picture">Select photo to convert into code:</label>
-              <input class="form-control form-control-sm mb-2" type="file" id="profile_picture" name="profile_picture"
-                     accept="image/jpeg,image/png,image/gif,image/webp,.jpg,.jpeg,.png,.gif,.webp" required />
-              <div class="form-text small mb-3">The image is downscaled to 128&times;128 and encoded directly as Base64 text code.</div>
-              <button class="btn btn-primary btn-sm" type="submit">
-                <i class="bi bi-cpu me-1"></i>Transform Image to Code & Save
-              </button>
-            </form>
-          </div>
-
-          <!-- Generate Tab -->
-          <div class="tab-pane fade" id="tab-generate" role="tabpanel">
-            <p class="text-muted small mb-3">
-              Generate a unique geometric SVG code avatar generated algorithmically from your account seed. Zero image files needed!
-            </p>
-            <form method="POST" action="{{ url_for('profiles.generate_avatar') }}">
-              <button class="btn btn-outline-primary btn-sm" type="submit">
-                <i class="bi bi-shuffle me-1"></i>Generate Algorithmic Code Avatar
-              </button>
-            </form>
-          </div>
+          </form>
         </div>
 
         {% if profile_picture %}

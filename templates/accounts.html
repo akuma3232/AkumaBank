@@ -68,6 +68,7 @@
       <strong>{{ total_pending_requests }} Operational Request(s) Pending Review</strong>
       <div class="small">
         {% set req_summary = [] %}
+        {% if pending_signups_count > 0 %}{% set _ = req_summary.append(pending_signups_count ~ ' Customer Signup(s)') %}{% endif %}
         {% if pending_closures_count > 0 %}{% set _ = req_summary.append(pending_closures_count ~ ' Closure(s)') %}{% endif %}
         {% if pending_documents_count > 0 %}{% set _ = req_summary.append(pending_documents_count ~ ' Document(s)') %}{% endif %}
         {% if pending_openings_count > 0 %}{% set _ = req_summary.append(pending_openings_count ~ ' Account Opening(s)') %}{% endif %}
@@ -77,9 +78,9 @@
       </div>
     </div>
   </div>
-  <button class="btn btn-warning btn-sm fw-bold px-3" data-bs-toggle="modal" data-bs-target="#requestsHubModal">
+  <a href="{{ url_for('accounts.requests_center') }}" class="btn btn-warning btn-sm fw-bold px-3">
     <i class="bi bi-inbox-fill me-1"></i>Open Requests Center
-  </button>
+  </a>
 </div>
 {% endif %}
 
@@ -463,6 +464,12 @@
       <div class="bg-body-tertiary border-bottom px-4 pt-2">
         <ul class="nav nav-tabs border-0" id="requestsTab" role="tablist">
           <li class="nav-item" role="presentation">
+            <button class="nav-link fw-semibold" id="signups-tab" data-bs-toggle="tab" data-bs-target="#tab-signups" type="button" role="tab">
+              <i class="bi bi-person-plus-fill me-1 text-primary"></i>Customer Signups
+              {% if pending_signups_count > 0 %}<span class="badge bg-danger ms-1">{{ pending_signups_count }}</span>{% endif %}
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
             <button class="nav-link active fw-semibold" id="closures-tab" data-bs-toggle="tab" data-bs-target="#tab-closures" type="button" role="tab">
               <i class="bi bi-x-circle me-1 text-danger"></i>Closures
               {% if pending_closures_count > 0 %}<span class="badge bg-danger ms-1">{{ pending_closures_count }}</span>{% endif %}
@@ -497,6 +504,61 @@
 
       <div class="modal-body p-0">
         <div class="tab-content" id="requestsTabContent">
+
+          <!-- 0. CUSTOMER SIGNUPS TAB (CREATE REQUEST) -->
+          <div class="tab-pane fade p-3" id="tab-signups" role="tabpanel">
+            {% if signup_requests %}
+            <div class="table-responsive">
+              <table class="table table-hover align-middle mb-0 small">
+                <thead class="table-light">
+                  <tr>
+                    <th>Applicant Name</th>
+                    <th>Date of Birth</th>
+                    <th>Email</th>
+                    <th>Phone</th>
+                    <th>Address</th>
+                    <th>National ID (CIN)</th>
+                    <th class="text-end">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for s in signup_requests %}
+                  <tr>
+                    <td>
+                      <div class="d-flex align-items-center gap-2">
+                        <div class="table-avatar bg-primary-subtle text-primary">{{ s.FullName[0]|upper }}</div>
+                        <strong>{{ s.FullName }}</strong>
+                      </div>
+                    </td>
+                    <td class="text-muted">{{ s.DateOfBirth }}</td>
+                    <td>{{ s.Email }}</td>
+                    <td>{{ s.Phone }}</td>
+                    <td class="text-truncate" style="max-width: 150px;">{{ s.Address }}</td>
+                    <td class="mono-text fw-semibold">{{ s.NationalID }}</td>
+                    <td class="text-end text-nowrap">
+                      <form class="d-inline" method="POST" action="{{ url_for('customers.review_customer_signup', user_id=s.UserID, decision='approve') }}">
+                        <button class="btn btn-sm btn-success py-1 px-2" type="submit" onclick="return confirm('Approve customer signup for {{ s.FullName }}?');">
+                          <i class="bi bi-check-lg me-1"></i>Approve
+                        </button>
+                      </form>
+                      <form class="d-inline" method="POST" action="{{ url_for('customers.review_customer_signup', user_id=s.UserID, decision='reject') }}">
+                        <button class="btn btn-sm btn-outline-danger py-1 px-2" type="submit" onclick="return confirm('Reject customer signup?');">
+                          <i class="bi bi-x-lg me-1"></i>Reject
+                        </button>
+                      </form>
+                    </td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5 text-muted">
+              <i class="bi bi-person-check fs-1 d-block mb-2 text-secondary"></i>
+              No customer signups waiting for review. All registration requests processed.
+            </div>
+            {% endif %}
+          </div>
 
           <!-- 1. CLOSURE REQUESTS TAB -->
           <div class="tab-pane fade show active p-3" id="tab-closures" role="tabpanel">
@@ -901,7 +963,10 @@
         </div>
       </div>
 
-      <div class="modal-footer bg-light px-4 py-2">
+      <div class="modal-footer bg-light px-4 py-2 d-flex justify-content-between align-items-center">
+        <a href="{{ url_for('accounts.requests_center') }}" class="btn btn-outline-primary btn-sm fw-semibold">
+          <i class="bi bi-box-arrow-up-right me-1"></i>Open Full-Page Requests Center
+        </a>
         <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
       </div>
     </div>
@@ -1109,7 +1174,10 @@
           {% endif %}
         </div>
       </div>
-      <div class="modal-footer bg-light px-4 py-2">
+      <div class="modal-footer bg-light px-4 py-2 d-flex justify-content-between align-items-center">
+        <a href="{{ url_for('accounts.requests_center') }}" class="btn btn-outline-primary btn-sm fw-semibold">
+          <i class="bi bi-box-arrow-up-right me-1"></i>Open Full-Page Requests Center
+        </a>
         <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
       </div>
     </div>

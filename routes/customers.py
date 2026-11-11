@@ -121,7 +121,7 @@ def review_customer_signup(user_id, decision):
         if not signup:
             conn.rollback()
             flash("That signup request is no longer pending.", "warning")
-            return redirect(url_for("customers.customers"))
+            return redirect(request.referrer or url_for("accounts.requests_center", tab="signups"))
 
         if decision == "reject":
             conn.execute(
@@ -130,7 +130,7 @@ def review_customer_signup(user_id, decision):
             )
             conn.commit()
             flash("Customer signup rejected.", "success")
-            return redirect(url_for("customers.customers"))
+            return redirect(request.referrer or url_for("accounts.requests_center", tab="signups"))
 
         duplicate = conn.execute(
             """SELECT 1 FROM CUSTOMER
@@ -144,7 +144,7 @@ def review_customer_signup(user_id, decision):
                 "Resolve the duplicate before approving it.",
                 "danger",
             )
-            return redirect(url_for("customers.customers"))
+            return redirect(request.referrer or url_for("accounts.requests_center", tab="signups"))
 
         conn.execute(
             """INSERT INTO CUSTOMER (Name, DateOfBirth, Email, Phone, Address, NationalID)
@@ -168,7 +168,7 @@ def review_customer_signup(user_id, decision):
         flash(f"Could not approve signup because of a customer data conflict: {error}", "danger")
     finally:
         conn.close()
-    return redirect(url_for("customers.customers"))
+    return redirect(request.referrer or url_for("accounts.requests_center", tab="signups"))
 
 
 @customers_bp.route("/customers/add", methods=["POST"])

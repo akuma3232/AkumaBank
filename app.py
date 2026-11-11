@@ -29,7 +29,8 @@ from routes.documents import documents_bp
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SESSION_SECRET") or os.urandom(32)
-app.config["MAX_CONTENT_LENGTH"] = 6 * 1024 * 1024
+# Multipart framing adds a little overhead on top of the 8 MB image limit.
+app.config["MAX_CONTENT_LENGTH"] = 9 * 1024 * 1024
 
 # Create the schema for a new database without inserting demo banking records.
 init_db(seed_demo_data=False)
@@ -176,6 +177,14 @@ def index():
             return redirect(url_for("customer_portal.home"))
         return redirect(url_for("dashboard.dashboard"))
     return redirect(url_for("auth.login"))
+
+
+@app.errorhandler(413)
+def payload_too_large(e):
+    if "user" not in session:
+        return redirect(url_for("auth.login"))
+    flash("That file is too large. Please upload an image under 8 MB.", "danger")
+    return redirect(url_for("profiles.settings"))
 
 
 @app.errorhandler(404)

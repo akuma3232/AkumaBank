@@ -2,6 +2,7 @@
 
 import re
 import secrets
+import time
 import uuid
 from datetime import date
 
@@ -101,7 +102,9 @@ def login():
                 "username": display_name,
                 "email": user["Email"],
                 "role": user["Role"],
-                "profile_picture": user["ProfilePicture"],
+                # Keep the cookie small: the avatar is served from its own route.
+                "has_pfp": bool(user["ProfilePicture"]),
+                "avatar_version": int(time.time()),
                 "must_change_password": must_change_password,
             }
             if must_change_password:

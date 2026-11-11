@@ -47,12 +47,8 @@
 
   <!-- User info -->
   <div class="sidebar-user" style="cursor: pointer;" onclick="window.openProfileCard({{ session.user.id }})" title="View your Executive Profile Card">
-    {% if session.user.profile_picture %}
-      {% if session.user.profile_picture.startswith('data:') %}
-      <img class="user-avatar" src="{{ session.user.profile_picture }}" alt="" />
-      {% else %}
-      <img class="user-avatar" src="{{ url_for('profiles.picture', filename=session.user.profile_picture) }}" alt="" />
-      {% endif %}
+    {% if session.user.has_pfp or session.user.profile_picture %}
+    <img class="user-avatar" src="{{ url_for('profiles.user_avatar', user_id=session.user.id, v=session.user.avatar_version or 0) }}" alt="" />
     {% else %}
     <div class="user-avatar">{{ session.user.username[0]|upper }}</div>
     {% endif %}
@@ -127,9 +123,15 @@
     {% endif %}
 
     <div class="nav-section-title">Identity &amp; Security</div>
-    <a href="{{ url_for('profiles.settings') }}" class="nav-link {% if request.endpoint and 'profiles.' in request.endpoint %}active{% endif %}">
+    <a href="{{ url_for('profiles.settings') }}" class="nav-link {% if request.endpoint == 'profiles.settings' %}active{% endif %}">
       <i class="bi bi-person-circle"></i><span>Account Settings</span>
     </a>
+    {% if session.user.role == 'Owner' %}
+    <a href="{{ url_for('profiles.owner_studio') }}" class="nav-link nav-link-owner-studio {% if request.endpoint == 'profiles.owner_studio' %}active{% endif %}">
+      <i class="bi bi-patch-check-fill"></i><span>Owner Studio</span>
+      <span class="nav-owner-tag">OWNER</span>
+    </a>
+    {% endif %}
     <a href="{{ url_for('auth.logout') }}" class="nav-link text-danger-soft">
       <i class="bi bi-box-arrow-right"></i><span>Sign Out</span>
     </a>
@@ -245,12 +247,8 @@
       <!-- User Menu -->
       <div class="dropdown">
         <div class="topbar-user-badge dropdown-toggle" id="userMenuBtn" data-bs-toggle="dropdown" aria-expanded="false" role="button">
-          {% if session.user.profile_picture %}
-            {% if session.user.profile_picture.startswith('data:') %}
-            <img class="topbar-avatar" src="{{ session.user.profile_picture }}" alt="" />
-            {% else %}
-            <img class="topbar-avatar" src="{{ url_for('profiles.picture', filename=session.user.profile_picture) }}" alt="" />
-            {% endif %}
+          {% if session.user.has_pfp or session.user.profile_picture %}
+          <img class="topbar-avatar" src="{{ url_for('profiles.user_avatar', user_id=session.user.id, v=session.user.avatar_version or 0) }}" alt="" />
           {% else %}
           <div class="topbar-avatar">{{ session.user.username[0]|upper }}</div>
           {% endif %}
@@ -267,6 +265,9 @@
           <li><a class="dropdown-item" href="{{ url_for('customer_portal.home') }}"><i class="bi bi-wallet2 me-2 text-success"></i>My Banking Portal</a></li>
           {% else %}
           <li><a class="dropdown-item" href="{{ url_for('dashboard.dashboard') }}"><i class="bi bi-speedometer2 me-2 text-primary"></i>Executive Dashboard</a></li>
+          {% endif %}
+          {% if session.user.role == 'Owner' %}
+          <li><a class="dropdown-item" href="{{ url_for('profiles.owner_studio') }}"><i class="bi bi-patch-check-fill me-2 text-warning"></i>Owner Studio</a></li>
           {% endif %}
           <li><hr class="dropdown-divider"></li>
           <li><a class="dropdown-item text-danger" href="{{ url_for('auth.logout') }}"><i class="bi bi-box-arrow-right me-2"></i>Sign Out</a></li>
@@ -335,6 +336,18 @@
   </div>
 </div>
 
+<!-- Badge Hover Card -->
+<div class="badge-hover-card" id="badgeHoverCard" role="tooltip" aria-hidden="true">
+  <div class="badge-hover-card__top">
+    <span class="badge-hover-card__icon" id="badgeHoverIcon"></span>
+    <div class="badge-hover-card__meta">
+      <div class="badge-hover-card__name" id="badgeHoverName"></div>
+      <div class="badge-hover-card__kicker">Official Bank Badge</div>
+    </div>
+  </div>
+  <div class="badge-hover-card__desc" id="badgeHoverDesc"></div>
+</div>
+
 <!-- Futuristic Toast Notification Container -->
 <div class="toast-container position-fixed bottom-0 end-0 p-3" id="cyberToastContainer" style="z-index: 1099;"></div>
 
@@ -345,6 +358,71 @@
 <!-- Custom JS -->
 <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 <script>
+// Shared badge hover card: shows the badge name and description next to the icon.
+(() => {
+  const card = document.getElementById('badgeHoverCard');
+  if (!card) return;
+  const iconEl = document.getElementById('badgeHoverIcon');
+  const nameEl = document.getElementById('badgeHoverName');
+  const descEl = document.getElementById('badgeHoverDesc');
+  let hideTimer = null;
+
+  const hide = () => {
+    card.classList.remove('is-visible');
+    card.setAttribute('aria-hidden', 'true');
+  };
+
+  const place = (el) => {
+    const rect = el.getBoundingClientRect();
+    const boxWidth = card.offsetWidth;
+    const boxHeight = card.offsetHeight;
+    const gap = 10;
+    let top = rect.top - boxHeight - gap;
+    let below = false;
+    if (top < 8) {
+      top = rect.bottom + gap;
+      below = true;
+    }
+    let left = rect.left + rect.width / 2 - boxWidth / 2;
+    left = Math.max(8, Math.min(left, window.innerWidth - boxWidth - 8));
+    card.style.top = `${top}px`;
+    card.style.left = `${left}px`;
+    card.classList.toggle('is-below', below);
+  };
+
+  const show = (el) => {
+    const name = el.dataset.badgeTip;
+    if (!name) return;
+    nameEl.textContent = name;
+    const desc = (el.dataset.badgeDesc || '').trim();
+    descEl.textContent = desc;
+    descEl.style.display = desc ? '' : 'none';
+    const icon = el.dataset.badgeIcon || '';
+    iconEl.innerHTML = icon ? `<img src="${icon}" alt="" />` : '';
+    iconEl.style.display = icon ? '' : 'none';
+    card.classList.add('is-visible');
+    card.setAttribute('aria-hidden', 'false');
+    place(el);
+  };
+
+  document.addEventListener('mouseover', (event) => {
+    const el = event.target.closest('[data-badge-tip]');
+    if (!el) return;
+    clearTimeout(hideTimer);
+    show(el);
+  });
+
+  document.addEventListener('mouseout', (event) => {
+    const el = event.target.closest('[data-badge-tip]');
+    if (!el) return;
+    if (event.relatedTarget && el.contains(event.relatedTarget)) return;
+    hideTimer = setTimeout(hide, 80);
+  });
+
+  window.addEventListener('scroll', hide, true);
+  window.addEventListener('resize', hide);
+})();
+
 window.openProfileCard = function(userId) {
   const modalEl = document.getElementById('globalProfileModal');
   const container = document.getElementById('globalProfileCardContainer');
@@ -353,87 +431,105 @@ window.openProfileCard = function(userId) {
   const modal = new bootstrap.Modal(modalEl);
   modal.show();
 
+  const esc = (value) => String(value ?? '').replace(/[&<>"']/g, ch => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[ch]));
+  const badgeIcon = (badge) => badge.icon_url
+    ? `<img src="${badge.icon_url}" alt="${esc(badge.name)}" class="executive-badge-icon" />`
+    : '';
+
   fetch(`/api/user/${userId}/profile`)
     .then(r => r.json())
     .then(data => {
       if (data.error) {
-        container.innerHTML = `<div class="alert alert-danger">${data.error}</div>`;
+        container.innerHTML = `<div class="alert alert-danger">${esc(data.error)}</div>`;
         return;
       }
       const u = data.user;
-      const avatarHtml = u.profile_picture 
-        ? `<img src="${u.profile_picture}" alt="Avatar" class="profile-avatar-media" />`
-        : `<div class="profile-avatar-fallback">${(u.full_name || u.username)[0].toUpperCase()}</div>`;
-      
-      const bannerStyle = u.banner_image 
-        ? `background-image: url('${u.banner_image}');`
-        : `background: linear-gradient(135deg, ${u.banner_color || '#0f172a'}, #1e293b);`;
+      const roles = data.roles || [];
+      const badges = data.badges || [];
 
-      let badgesHtml = '';
-      if (data.badges && data.badges.length > 0) {
-        data.badges.forEach(b => {
-          badgesHtml += `<img src="${b.icon_url}" alt="${b.name}" class="executive-badge-icon" title="${b.name} &bull; ${b.description || ''}" />`;
-        });
-      } else {
-        badgesHtml = '<span class="text-white-50 small font-monospace" style="font-size:0.65rem;">No badges assigned</span>';
-      }
+      const avatarHtml = u.avatar_url
+        ? `<img src="${u.avatar_url}" alt="Avatar" class="profile-avatar-media" />`
+        : `<div class="profile-avatar-fallback">${esc((u.full_name || u.username)[0].toUpperCase())}</div>`;
 
-      const pronounsHtml = u.pronouns ? `<span class="profile-designation-pill">${u.pronouns}</span>` : '';
+      const bannerStyle = u.banner_url
+        ? `background-image: url('${u.banner_url}');`
+        : `background: linear-gradient(135deg, ${esc(u.banner_color || '#0f172a')}, #1e293b);`;
+
+      const badgeRowHtml = badges.length
+        ? `<div class="profile-badge-row">${badges.map(b => `<span class="profile-badge-icon" data-badge-tip="${esc(b.name)}" data-badge-desc="${esc(b.description || '')}" data-badge-icon="${esc(b.icon_url || '')}">${badgeIcon(b)}</span>`).join('')}</div>`
+        : '';
+
+      const rolePillsHtml = roles.length
+        ? `<div class="discord-role-pills">${roles.map(r => `<span class="discord-role-pill" style="--role-color: ${esc(r.color)};">${r.icon_url ? `<img src="${r.icon_url}" alt="" class="role-icon-img" />` : '<span class="role-color-dot"></span>'}${esc(r.name)}</span>`).join('')}</div>`
+        : `<div class="discord-empty-text">No roles assigned yet.</div>`;
+
+      const pronounsHtml = u.pronouns
+        ? `<span class="profile-designation-pill"><i class="bi bi-briefcase me-1"></i>${esc(u.pronouns)}</span>`
+        : '';
       const statusHtml = u.custom_status ? `
         <div class="profile-status-bar">
           <i class="bi bi-chat-left-quote-fill text-primary"></i>
-          <span>${u.custom_status}</span>
+          <span>${esc(u.custom_status)}</span>
         </div>` : '';
 
       container.innerHTML = `
-        <div class="executive-profile-card shadow-lg mx-auto">
+        <div class="executive-profile-card profile-card--discord shadow-lg mx-auto">
           <div class="profile-banner-hero" style="${bannerStyle}">
             <button type="button" class="btn-close btn-close-white position-absolute top-0 end-0 m-3" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
-          <div class="position-relative" style="min-height: 54px;">
+          <div class="profile-identity-strip">
             <div class="profile-avatar-anchor">
               ${avatarHtml}
               <div class="profile-online-badge" title="Active Banking Session"></div>
             </div>
-            <div class="profile-badges-tray">
-              ${badgesHtml}
-            </div>
+            ${badgeRowHtml}
           </div>
           <div class="profile-card-body">
-            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
-              <div>
-                <h4 class="profile-user-fullname mb-0">${u.full_name}</h4>
-                <div class="profile-user-handle">@${u.username}</div>
-              </div>
-              <span class="badge-role role-${u.role.toLowerCase()} fs-7">${u.role}</span>
+            <h4 class="profile-user-fullname mb-0">${esc(u.full_name)}</h4>
+            <div class="profile-user-handle">
+              <span>@${esc(u.username)}</span>
+              <span class="badge-role role-${esc(u.role.toLowerCase())}">${esc(u.role)}</span>
             </div>
-            ${pronounsHtml}
+            <div class="d-flex flex-wrap align-items-center gap-2 mt-2">${pronounsHtml}</div>
             ${statusHtml}
 
-            <div class="profile-subheading">About &amp; Overview</div>
-            <div class="profile-bio-text">${u.about_me}</div>
+            <div class="discord-profile-section">
+              <div class="discord-section-title">About Me</div>
+              <div class="profile-bio-text">${esc(u.about_me)}</div>
+            </div>
 
-            <div class="profile-subheading">Regulatory Accreditation</div>
-            <div class="p-2 rounded-2 bg-body-tertiary border d-flex align-items-center gap-2 small">
-              <i class="bi bi-shield-check text-success fs-5"></i>
-              <div>
-                <div class="fw-bold">Bank Al-Maghrib Compliance</div>
-                <div class="text-muted font-monospace" style="font-size: 0.68rem;">Ref: BAM/2026/088 &bull; Modulo 97 Verified</div>
+            <div class="discord-profile-section">
+              <div class="discord-section-title">Roles <span class="discord-section-count">${roles.length}</span></div>
+              ${rolePillsHtml}
+            </div>
+
+            <div class="discord-profile-section">
+              <div class="discord-section-title">Regulatory Accreditation</div>
+              <div class="profile-accreditation">
+                <i class="bi bi-shield-check text-success fs-5"></i>
+                <div>
+                  <div class="fw-bold">Bank Al-Maghrib Compliance</div>
+                  <div class="text-muted font-monospace" style="font-size: 0.68rem;">Ref: BAM/2026/088 &bull; Modulo 97 Verified</div>
+                </div>
               </div>
             </div>
 
-            <div class="mt-4 pt-2 border-top d-flex gap-2">
+            <div class="discord-profile-section pt-3 border-top d-flex gap-2">
               <a href="/user/${u.user_id}/profile" class="btn btn-sm btn-outline-primary flex-fill">
                 <i class="bi bi-person-lines-fill me-1"></i>Full Profile Card
               </a>
-              ${data.is_owner_viewer ? `<a href="/account/settings" class="btn btn-sm btn-warning text-dark fw-bold"><i class="bi bi-award-fill"></i> Manage Badges</a>` : ''}
+              ${data.is_owner_viewer ? `<a href="/account/settings" class="btn btn-sm btn-warning text-dark fw-bold"><i class="bi bi-award-fill"></i> Manage</a>` : ''}
             </div>
           </div>
         </div>
       `;
+
+      container.querySelectorAll('[title]').forEach(el => new bootstrap.Tooltip(el, { trigger: 'hover' }));
     })
     .catch(e => {
-      container.innerHTML = `<div class="alert alert-danger m-3">Could not load profile card: ${e}</div>`;
+      container.innerHTML = `<div class="alert alert-danger m-3">Could not load profile card: ${esc(e.message || e)}</div>`;
     });
 };
 </script>

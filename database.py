@@ -298,9 +298,11 @@ def init_db(seed_demo_data=False):
     cur.execute("""
         CREATE TABLE IF NOT EXISTS BADGE (
             BadgeID     INTEGER PRIMARY KEY AUTOINCREMENT,
+            Code        TEXT,
             Name        TEXT    NOT NULL,
             Description TEXT,
             Icon        TEXT    NOT NULL,
+            Color       TEXT    NOT NULL DEFAULT '#5865f2',
             CreatedAt   TEXT    NOT NULL DEFAULT (datetime('now'))
         )
     """)
@@ -316,30 +318,39 @@ def init_db(seed_demo_data=False):
         )
     """)
 
-    # Seed starter official PNG badges if empty
-    starter_badges = [
-        ("Bank Owner", "Sovereign Executive Authority of AkumaBank Core", "badges/owner_crown.png"),
-        ("Official Staff", "Certified AkumaBank Banking Operations Officer", "badges/staff_shield.png"),
-        ("BAM Verified", "Bank Al-Maghrib Regulatory & Modulo 97 Compliance", "badges/bam_verified.png"),
-        ("VIP Vault", "Moroccan High-Volume Dirham Liquidity Tier", "badges/nitro_vault.png"),
-    ]
-    if cur.execute("SELECT COUNT(*) FROM BADGE").fetchone()[0] == 0:
-        for b_name, b_desc, b_icon in starter_badges:
-            cur.execute(
-                "INSERT INTO BADGE (Name, Description, Icon) VALUES (?, ?, ?)",
-                (b_name, b_desc, b_icon),
-            )
+    badge_columns = {row["name"] for row in cur.execute("PRAGMA table_info(BADGE)")}
+    if "Code" not in badge_columns:
+        cur.execute("ALTER TABLE BADGE ADD COLUMN Code TEXT")
+    if "Color" not in badge_columns:
+        cur.execute("ALTER TABLE BADGE ADD COLUMN Color TEXT NOT NULL DEFAULT '#5865f2'")
 
-    # Automatically grant Owner badge to existing Owner users
-    owners = cur.execute("SELECT UserID FROM USERS WHERE Role='Owner'").fetchall()
-    owner_badge = cur.execute("SELECT BadgeID FROM BADGE WHERE Name='Bank Owner'").fetchone()
-    staff_badge = cur.execute("SELECT BadgeID FROM BADGE WHERE Name='Official Staff'").fetchone()
-    for o in owners:
-        uid = o["UserID"]
-        if owner_badge:
-            cur.execute("INSERT OR IGNORE INTO USER_BADGE (UserID, BadgeID) VALUES (?, ?)", (uid, owner_badge["BadgeID"]))
-        if staff_badge:
-            cur.execute("INSERT OR IGNORE INTO USER_BADGE (UserID, BadgeID) VALUES (?, ?)", (uid, staff_badge["BadgeID"]))
+    user_badge_columns = {row["name"] for row in cur.execute("PRAGMA table_info(USER_BADGE)")}
+    if "GrantedAt" not in user_badge_columns:
+        cur.execute("ALTER TABLE USER_BADGE ADD COLUMN GrantedAt TEXT")
+        cur.execute("UPDATE USER_BADGE SET GrantedAt=datetime('now') WHERE GrantedAt IS NULL")
+
+    # ─────────────────────────────────────────────
+    # EXECUTIVE PROFILE CUSTOM ROLES (OWNER MANAGED, PNG ICONS)
+    # ─────────────────────────────────────────────
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS CUSTOM_ROLE (
+            RoleID   INTEGER PRIMARY KEY AUTOINCREMENT,
+            Name     TEXT    NOT NULL UNIQUE,
+            Color    TEXT    NOT NULL DEFAULT '#5865f2',
+            Icon     TEXT,
+            Position INTEGER DEFAULT 0
+        )
+    """)
+
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS USER_CUSTOM_ROLE (
+            UserID INTEGER NOT NULL,
+            RoleID INTEGER NOT NULL,
+            PRIMARY KEY (UserID, RoleID),
+            FOREIGN KEY (UserID) REFERENCES USERS(UserID) ON DELETE CASCADE,
+            FOREIGN KEY (RoleID) REFERENCES CUSTOM_ROLE(RoleID) ON DELETE CASCADE
+        )
+    """)
 
     branch_columns = {row["name"] for row in cur.execute("PRAGMA table_info(BRANCH)")}
     if "IFSCCode" in branch_columns and "BranchCode" not in branch_columns:
@@ -442,6 +453,8 @@ def init_db(seed_demo_data=False):
     cur.execute("CREATE INDEX IF NOT EXISTS idx_account_customer ON ACCOUNT(CustomerID)")
     cur.execute("CREATE INDEX IF NOT EXISTS idx_txn_account     ON TRANSACTIONS(AccountID)")
     cur.execute("CREATE INDEX IF NOT EXISTS idx_loan_customer   ON LOAN(CustomerID)")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_user_badge_user  ON USER_BADGE(UserID)")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_user_role_user    ON USER_CUSTOM_ROLE(UserID)")
 
     # ─────────────────────────────────────────────
     # VIEW: CustomerAccountSummary
@@ -634,7 +647,7 @@ def clear_business_data(include_users=False):
             "BRANCH",
         ]
         if include_users:
-            tables.extend(["USER_BADGE", "USERS"])
+            tables.extend(["USER_CUSTOM_ROLE", "USER_BADGE", "USERS"])
         for table in tables:
             table_exists = conn.execute(
                 "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?", (table,)

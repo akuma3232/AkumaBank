@@ -1,18 +1,22 @@
 """
-Executive Profile Card & Badge System for AkumaBank.
-Features high-resolution PNG badges uploadable by the Bank Owner,
-animated GIF avatars, customizable banners, custom status, and bio.
+Executive Profile Card, Role & Badge System for AkumaBank.
+Features high-resolution PNG badges and PNG role icons managed by the Bank Owner,
+custom assignable profile roles with colors, animated GIF avatars, banners,
+custom status, and bio.
 """
 
 import base64
+import mimetypes
 import os
 import re
+import time
 from functools import wraps
 from io import BytesIO
 from pathlib import Path
 
 from flask import (
     Blueprint,
+    Response,
     abort,
     flash,
     jsonify,
@@ -22,10 +26,10 @@ from flask import (
     session,
     url_for,
 )
-from PIL import Image, UnidentifiedImageError
+from PIL import Image, ImageSequence
 from werkzeug.utils import secure_filename
 
-from database import DATABASE_DIR, get_db
+from database import get_db
 
 profiles_bp = Blueprint("profiles", __name__)
 
@@ -33,6 +37,11 @@ MAX_IMAGE_BYTES = 8 * 1024 * 1024  # 8 MB
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
 UPLOAD_BADGES_DIR = Path("static/uploads/badges")
 UPLOAD_BADGES_DIR.mkdir(parents=True, exist_ok=True)
+
+HEX_COLOR_RE = re.compile(r"^#[0-9a-fA-F]{6}$")
+
+DEFAULT_BADGE_COLOR = "#5865f2"
+DEFAULT_ROLE_COLOR = "#5865f2"
 
 
 def login_required(f):
@@ -51,17 +60,57 @@ def owner_required(f):
         if "user" not in session:
             return redirect(url_for("auth.login"))
         if session["user"].get("role") != "Owner":
-            flash("Only the Bank Owner has authority to create, upload, and assign official bank badges.", "danger")
+            flash("Only the Bank Owner has authority to manage roles and official bank badges.", "danger")
             return redirect(url_for("profiles.settings"))
         return f(*args, **kwargs)
 
     return decorated
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# HELPERS
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _safe_color(value: str, fallback: str = DEFAULT_BADGE_COLOR) -> str:
+    """Return a validated hex color, falling back when the input is invalid."""
+    value = (value or "").strip()
+    return value.lower() if HEX_COLOR_RE.match(value) else fallback
+
+
+def _icon_meta(icon: str):
+    """
+    Resolve a stored icon value into a displayable image URL.
+    Supports Base64 data URIs, bundled PNG paths (img/badges/...) and absolute URLs.
+    Glyph (Bootstrap icon) values are retired and resolve to nothing.
+    """
+    icon = (icon or "").strip()
+    if not icon or icon.startswith(("bi ", "bi-")):
+        return {"icon_url": None}
+    if icon.startswith(("data:", "http://", "https://")):
+        return {"icon_url": icon}
+    return {"icon_url": url_for("static", filename="img/" + icon)}
+
+
+def _decorate_badge(row) -> dict:
+    badge = dict(row)
+    badge["icon_url"] = _icon_meta(badge.get("Icon"))["icon_url"]
+    badge["Color"] = badge.get("Color") or DEFAULT_BADGE_COLOR
+    return badge
+
+
+def _decorate_role(row) -> dict:
+    """Normalise a role row. Roles use an uploaded PNG icon (or a color dot)."""
+    role = dict(row)
+    role["icon_url"] = _icon_meta(role.pop("Icon", None))["icon_url"]
+    role["Color"] = role.get("Color") or DEFAULT_ROLE_COLOR
+    return role
+
+
 def _process_image_upload(file_storage, max_size=(512, 512)):
     """
-    Validate and convert an uploaded image or animated GIF to a data URI.
-    Preserves all animated GIF frames without quality or animation loss.
+    Validate, downscale and compress an uploaded image into a compact data URI.
+    Animated GIFs keep every frame (resized), static images become WebP so they
+    stay small enough to store in the database and serve quickly.
     """
     if not file_storage or not file_storage.filename:
         raise ValueError("No file uploaded.")
@@ -80,31 +129,71 @@ def _process_image_upload(file_storage, max_size=(512, 512)):
         if fmt not in {"JPEG", "PNG", "GIF", "WEBP"}:
             raise ValueError("Unsupported image file format.")
 
-        # Preserve full animation for GIFs
-        if fmt == "GIF":
-            b64 = base64.b64encode(raw_bytes).decode("ascii")
+        # Animated GIF: resize every frame and keep the animation intact.
+        if fmt == "GIF" and getattr(img, "is_animated", False):
+            frame_count = getattr(img, "n_frames", 1)
+            if frame_count > 150:
+                raise ValueError("Animated GIF has too many frames (max 150). Please use a shorter animation.")
+
+            frames, durations = [], []
+            for frame in ImageSequence.Iterator(img):
+                durations.append(frame.info.get("duration", img.info.get("duration", 80)) or 80)
+                resized = frame.convert("RGBA")
+                resized.thumbnail(max_size, Image.Resampling.LANCZOS)
+                frames.append(resized)
+
+            out = BytesIO()
+            frames[0].save(
+                out,
+                format="GIF",
+                save_all=True,
+                append_images=frames[1:],
+                duration=durations,
+                loop=img.info.get("loop", 0),
+                disposal=2,
+                optimize=True,
+            )
+            b64 = base64.b64encode(out.getvalue()).decode("ascii")
             return f"data:image/gif;base64,{b64}"
 
-        # Convert and optimize static images
-        img = img.convert("RGBA" if fmt == "PNG" or "A" in img.getbands() else "RGB")
+        # Static image (including single-frame GIF): normalise to WebP.
+        img = img.convert("RGBA" if "A" in img.getbands() or fmt == "PNG" else "RGB")
         img.thumbnail(max_size, Image.Resampling.LANCZOS)
         out = BytesIO()
-        if fmt == "PNG":
-            img.save(out, format="PNG", optimize=True)
-            mime = "image/png"
-        else:
-            img.save(out, format="WEBP", quality=88)
-            mime = "image/webp"
-
+        img.save(out, format="WEBP", quality=85, method=6)
         b64 = base64.b64encode(out.getvalue()).decode("ascii")
-        return f"data:{mime};base64,{b64}"
+        return f"data:image/webp;base64,{b64}"
+
+
+def _stored_icon_from_png(file_storage, label: str = "Badge icon") -> str:
+    """Validate an uploaded PNG and return an optimized Base64 data URI."""
+    if not file_storage or not file_storage.filename:
+        raise ValueError(f"No {label.lower()} supplied.")
+
+    filename = secure_filename(file_storage.filename)
+    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+    if ext != "png":
+        raise ValueError(f"{label} must be a PNG file format.")
+
+    raw_bytes = file_storage.stream.read(MAX_IMAGE_BYTES + 1)
+    if len(raw_bytes) > MAX_IMAGE_BYTES:
+        raise ValueError(f"{label} exceeds 8 MB.")
+
+    with Image.open(BytesIO(raw_bytes)) as img:
+        if (img.format or "").upper() != "PNG":
+            raise ValueError(f"{label} is not a valid PNG image.")
+        img = img.convert("RGBA")
+        img.thumbnail((64, 64), Image.Resampling.LANCZOS)
+        out = BytesIO()
+        img.save(out, format="PNG", optimize=True)
+        return f"data:image/png;base64,{base64.b64encode(out.getvalue()).decode('ascii')}"
 
 
 def get_user_profile(user_id: int):
-    """Retrieve full user profile data including assigned PNG badges and bank accounts."""
+    """Retrieve full user profile data including roles, badges and bank accounts."""
     conn = get_db()
     user = conn.execute(
-        """SELECT UserID, Username, FullName, Email, Role, ProfilePicture, 
+        """SELECT UserID, Username, FullName, Email, Role, ProfilePicture,
                   BannerImage, BannerColor, AboutMe, CustomStatus, Pronouns
            FROM USERS WHERE UserID=?""",
         (user_id,),
@@ -113,13 +202,23 @@ def get_user_profile(user_id: int):
         conn.close()
         return None
 
-    # Fetch assigned badges
+    # Fetch assigned badges (with grant date)
     badges = conn.execute(
-        """SELECT b.BadgeID, b.Name, b.Description, b.Icon
+        """SELECT b.BadgeID, b.Code, b.Name, b.Description, b.Icon, b.Color, ub.GrantedAt
            FROM BADGE b
            JOIN USER_BADGE ub ON b.BadgeID = ub.BadgeID
            WHERE ub.UserID = ?
            ORDER BY b.BadgeID ASC""",
+        (user_id,),
+    ).fetchall()
+
+    # Fetch assigned custom profile roles
+    roles = conn.execute(
+        """SELECT r.RoleID, r.Name, r.Color, r.Icon, r.Position
+           FROM CUSTOM_ROLE r
+           JOIN USER_CUSTOM_ROLE ur ON r.RoleID = ur.RoleID
+           WHERE ur.UserID = ?
+           ORDER BY r.Position ASC, r.RoleID ASC""",
         (user_id,),
     ).fetchall()
 
@@ -141,7 +240,8 @@ def get_user_profile(user_id: int):
     conn.close()
     return {
         "user": dict(user),
-        "badges": [dict(b) for b in badges],
+        "roles": [_decorate_role(r) for r in roles],
+        "badges": [_decorate_badge(b) for b in badges],
         "accounts": [dict(a) for a in accounts],
         "customer": dict(customer) if customer else None,
     }
@@ -162,21 +262,64 @@ def settings():
         flash("Your session has expired. Please sign in again.", "warning")
         return redirect(url_for("auth.login"))
 
-    conn = get_db()
-    all_badges = conn.execute("SELECT * FROM BADGE ORDER BY BadgeID DESC").fetchall()
-    all_users = conn.execute(
-        "SELECT UserID, Username, FullName, Email, Role FROM USERS ORDER BY Role='Owner' DESC, Role='Admin' DESC, Username ASC"
-    ).fetchall()
-    conn.close()
-
     is_owner = session["user"].get("role") == "Owner"
     return render_template(
         "account_settings.html",
         profile=profile_data,
-        all_badges=[dict(b) for b in all_badges],
-        all_users=[dict(u) for u in all_users],
         is_owner=is_owner,
     )
+
+
+def _owner_studio_context() -> dict:
+    """Collect roles, badges, members and assignments for the Owner Studio."""
+    conn = get_db()
+    all_badges = conn.execute("SELECT * FROM BADGE ORDER BY BadgeID DESC").fetchall()
+    all_roles = conn.execute("SELECT * FROM CUSTOM_ROLE ORDER BY Position ASC, RoleID ASC").fetchall()
+    all_users = conn.execute(
+        "SELECT UserID, Username, FullName, Email, Role, ProfilePicture IS NOT NULL AS HasPicture "
+        "FROM USERS ORDER BY Role='Owner' DESC, Role='Admin' DESC, Username ASC"
+    ).fetchall()
+    user_roles = conn.execute(
+        """SELECT ur.UserID, r.RoleID, r.Name, r.Color, r.Icon
+           FROM USER_CUSTOM_ROLE ur
+           JOIN CUSTOM_ROLE r ON r.RoleID = ur.RoleID
+           ORDER BY r.Position ASC, r.RoleID ASC"""
+    ).fetchall()
+    user_badges = conn.execute(
+        """SELECT ub.UserID, b.BadgeID, b.Name, b.Icon, b.Color
+           FROM USER_BADGE ub
+           JOIN BADGE b ON b.BadgeID = ub.BadgeID"""
+    ).fetchall()
+    role_member_counts = {
+        row["RoleID"]: row["total"]
+        for row in conn.execute(
+            "SELECT RoleID, COUNT(*) AS total FROM USER_CUSTOM_ROLE GROUP BY RoleID"
+        )
+    }
+    conn.close()
+
+    role_map = {}
+    for row in user_roles:
+        role_map.setdefault(row["UserID"], []).append(_decorate_role(row))
+    badge_map = {}
+    for row in user_badges:
+        badge_map.setdefault(row["UserID"], []).append(_decorate_badge(row))
+
+    return {
+        "all_badges": [_decorate_badge(b) for b in all_badges],
+        "all_roles": [_decorate_role(r) for r in all_roles],
+        "all_users": [dict(u) for u in all_users],
+        "user_role_map": role_map,
+        "user_badge_map": badge_map,
+        "role_member_counts": role_member_counts,
+    }
+
+
+@profiles_bp.route("/owner/studio", methods=["GET"])
+@owner_required
+def owner_studio():
+    """Dedicated Owner Studio: create roles & badges and assign them to members."""
+    return render_template("owner_studio.html", **_owner_studio_context())
 
 
 @profiles_bp.post("/account/settings/avatar")
@@ -192,8 +335,11 @@ def upload_avatar():
         conn.commit()
         conn.close()
 
-        session["user"]["profile_picture"] = data_uri
-        flash("Profile picture updated (animated GIFs fully supported)!", "success")
+        # Never place the image itself in the session cookie: only a small flag
+        # and a version so every page can request the avatar from its route.
+        session["user"]["has_pfp"] = True
+        session["user"]["avatar_version"] = int(time.time())
+        flash("Profile picture updated and applied across the bank!", "success")
     except Exception as err:
         flash(f"Could not update avatar: {err}", "danger")
 
@@ -210,9 +356,56 @@ def remove_avatar():
     conn.commit()
     conn.close()
 
-    session["user"]["profile_picture"] = None
+    session["user"]["has_pfp"] = False
+    session["user"]["avatar_version"] = int(time.time())
     flash("Avatar removed. Default profile placeholder restored.", "info")
     return redirect(url_for("profiles.settings"))
+
+
+def _stored_image_response(stored: str):
+    """Return a stored profile image (data URI or legacy file path) as a response."""
+    if not stored:
+        abort(404)
+
+    if stored.startswith("data:"):
+        try:
+            header, encoded = stored.split(",", 1)
+            mime = header[5:].split(";", 1)[0] or "image/webp"
+            payload = base64.b64decode(encoded)
+        except Exception:
+            abort(404)
+    else:
+        filename = secure_filename(stored)
+        path = os.path.join("static", "uploads", "avatars", filename)
+        if not os.path.isfile(path):
+            abort(404)
+        mime = mimetypes.guess_type(path)[0] or "image/png"
+        with open(path, "rb") as fh:
+            payload = fh.read()
+
+    response = Response(payload, mimetype=mime)
+    response.headers["Cache-Control"] = "private, max-age=300"
+    return response
+
+
+@profiles_bp.route("/user/<int:user_id>/avatar")
+@login_required
+def user_avatar(user_id: int):
+    """Serve a member's profile picture from the database (or legacy file path)."""
+    conn = get_db()
+    row = conn.execute("SELECT ProfilePicture FROM USERS WHERE UserID=?", (user_id,)).fetchone()
+    conn.close()
+    return _stored_image_response(row["ProfilePicture"] if row else None)
+
+
+@profiles_bp.route("/user/<int:user_id>/banner")
+@login_required
+def user_banner(user_id: int):
+    """Serve a member's profile banner image from the database."""
+    conn = get_db()
+    row = conn.execute("SELECT BannerImage FROM USERS WHERE UserID=?", (user_id,)).fetchone()
+    conn.close()
+    return _stored_image_response(row["BannerImage"] if row else None)
 
 
 @profiles_bp.post("/account/settings/banner")
@@ -270,7 +463,7 @@ def update_profile_info():
 
     conn = get_db()
     conn.execute(
-        """UPDATE USERS SET 
+        """UPDATE USERS SET
            FullName=COALESCE(NULLIF(?, ''), FullName),
            CustomStatus=?,
            AboutMe=?,
@@ -296,86 +489,63 @@ def update_profile_info():
 @profiles_bp.post("/account/owner/badges/create")
 @owner_required
 def create_badge():
-    """Owner only: Upload a new custom badge with a transparent PNG icon."""
+    """Owner only: register a badge from an uploaded PNG icon."""
     name = request.form.get("name", "").strip()
     description = request.form.get("description", "").strip()
+    color = _safe_color(request.form.get("color"))
     icon_file = request.files.get("badge_icon")
 
     if not name:
         flash("Badge name is required.", "danger")
-        return redirect(url_for("profiles.settings"))
-
+        return redirect(url_for("profiles.owner_studio"))
+    if len(name) > 48:
+        flash("Badge name must be 48 characters or fewer.", "danger")
+        return redirect(url_for("profiles.owner_studio"))
     if not icon_file or not icon_file.filename:
-        flash("Please upload a PNG badge icon file.", "danger")
-        return redirect(url_for("profiles.settings"))
-
-    filename = secure_filename(icon_file.filename)
-    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
-    if ext != "png":
-        flash("Badge icon must be a PNG file format.", "danger")
-        return redirect(url_for("profiles.settings"))
+        flash("Upload a PNG icon for the badge.", "danger")
+        return redirect(url_for("profiles.owner_studio"))
 
     try:
-        # Validate PNG file with PIL
-        raw_bytes = icon_file.stream.read(MAX_IMAGE_BYTES + 1)
-        if len(raw_bytes) > MAX_IMAGE_BYTES:
-            raise ValueError("PNG icon exceeds 8 MB.")
-
-        with Image.open(BytesIO(raw_bytes)) as img:
-            if (img.format or "").upper() != "PNG":
-                raise ValueError("Uploaded file is not a valid PNG image.")
-            # Convert to optimized Base64 PNG data URI for maximum portability and zero-broken-link safety
-            img = img.convert("RGBA")
-            img.thumbnail((64, 64), Image.Resampling.LANCZOS)
-            out = BytesIO()
-            img.save(out, format="PNG", optimize=True)
-            icon_data_uri = f"data:image/png;base64,{base64.b64encode(out.getvalue()).decode('ascii')}"
+        stored_icon = _stored_icon_from_png(icon_file)
 
         conn = get_db()
-        code = re.sub(r'[^a-zA-Z0-9_]', '_', name.lower()) + "_" + os.urandom(3).hex()
-        badge_cols = {row["name"] for row in conn.execute("PRAGMA table_info(BADGE)")}
-        if "Code" in badge_cols:
-            conn.execute(
-                "INSERT INTO BADGE (Code, Name, Description, Icon) VALUES (?, ?, ?, ?)",
-                (code, name, description, icon_data_uri),
-            )
-        else:
-            conn.execute(
-                "INSERT INTO BADGE (Name, Description, Icon) VALUES (?, ?, ?)",
-                (name, description, icon_data_uri),
-            )
+        code = re.sub(r"[^a-zA-Z0-9_]", "_", name.lower()) + "_" + os.urandom(3).hex()
+        conn.execute(
+            "INSERT INTO BADGE (Code, Name, Description, Icon, Color) VALUES (?, ?, ?, ?, ?)",
+            (code, name, description, stored_icon, color),
+        )
         conn.commit()
         conn.close()
-        flash(f"Official PNG badge '{name}' uploaded and registered successfully!", "success")
+        flash(f"Official badge '{name}' registered successfully!", "success")
     except Exception as err:
-        flash(f"Could not upload badge icon: {err}", "danger")
+        flash(f"Could not create badge: {err}", "danger")
 
-    return redirect(url_for("profiles.settings"))
+    return redirect(url_for("profiles.owner_studio"))
 
 
 @profiles_bp.post("/account/owner/badges/<int:badge_id>/delete")
 @owner_required
 def delete_badge(badge_id: int):
-    """Owner only: Delete an uploaded badge from the bank registry."""
+    """Owner only: Delete a badge from the bank registry."""
     conn = get_db()
     badge = conn.execute("SELECT Name FROM BADGE WHERE BadgeID=?", (badge_id,)).fetchone()
     if not badge:
         conn.close()
         flash("Badge not found.", "warning")
-        return redirect(url_for("profiles.settings"))
+        return redirect(url_for("profiles.owner_studio"))
 
     conn.execute("DELETE FROM USER_BADGE WHERE BadgeID=?", (badge_id,))
     conn.execute("DELETE FROM BADGE WHERE BadgeID=?", (badge_id,))
     conn.commit()
     conn.close()
     flash(f"Badge '{badge['Name']}' has been removed from the registry.", "info")
-    return redirect(url_for("profiles.settings"))
+    return redirect(url_for("profiles.owner_studio"))
 
 
 @profiles_bp.post("/account/owner/badges/assign/<int:target_user_id>")
 @owner_required
 def assign_user_badges(target_user_id: int):
-    """Owner only: Assign or remove uploaded PNG badges for any user."""
+    """Owner only: Assign or remove badges for any user."""
     conn = get_db()
     target_user = conn.execute("SELECT UserID, Username FROM USERS WHERE UserID=?", (target_user_id,)).fetchone()
     if not target_user:
@@ -399,11 +569,103 @@ def assign_user_badges(target_user_id: int):
     finally:
         conn.close()
 
-    return redirect(request.referrer or url_for("profiles.settings"))
+    return redirect(request.referrer or url_for("profiles.owner_studio"))
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 3. PROFILE VIEWS & GLOBAL MODAL API
+# 3. OWNER CUSTOM ROLE SYSTEM (CREATE, DELETE, ASSIGN)
+# ─────────────────────────────────────────────────────────────────────────────
+
+@profiles_bp.post("/account/owner/roles/create")
+@owner_required
+def create_role():
+    """Owner only: create a custom profile role with its display color."""
+    name = request.form.get("name", "").strip()
+    color = _safe_color(request.form.get("color"), DEFAULT_ROLE_COLOR)
+    icon_file = request.files.get("role_icon")
+
+    if not name:
+        flash("Role name is required.", "danger")
+        return redirect(url_for("profiles.owner_studio"))
+    if len(name) > 40:
+        flash("Role name must be 40 characters or fewer.", "danger")
+        return redirect(url_for("profiles.owner_studio"))
+
+    conn = get_db()
+    try:
+        exists = conn.execute("SELECT 1 FROM CUSTOM_ROLE WHERE lower(Name)=lower(?)", (name,)).fetchone()
+        if exists:
+            flash(f"A role named '{name}' already exists.", "warning")
+            conn.close()
+            return redirect(url_for("profiles.owner_studio"))
+
+        stored_icon = _stored_icon_from_png(icon_file, "Role icon") if icon_file and icon_file.filename else None
+        next_position = conn.execute("SELECT COALESCE(MAX(Position), 0) + 1 FROM CUSTOM_ROLE").fetchone()[0]
+        conn.execute(
+            "INSERT INTO CUSTOM_ROLE (Name, Color, Icon, Position) VALUES (?, ?, ?, ?)",
+            (name, color, stored_icon, next_position),
+        )
+        conn.commit()
+        flash(f"Custom role '{name}' created successfully!", "success")
+    except Exception as err:
+        conn.rollback()
+        flash(f"Could not create role: {err}", "danger")
+    finally:
+        conn.close()
+
+    return redirect(url_for("profiles.owner_studio"))
+
+
+@profiles_bp.post("/account/owner/roles/<int:role_id>/delete")
+@owner_required
+def delete_role(role_id: int):
+    """Owner only: delete a custom role and revoke it from every user."""
+    conn = get_db()
+    role = conn.execute("SELECT Name FROM CUSTOM_ROLE WHERE RoleID=?", (role_id,)).fetchone()
+    if not role:
+        conn.close()
+        flash("Role not found.", "warning")
+        return redirect(url_for("profiles.owner_studio"))
+
+    conn.execute("DELETE FROM USER_CUSTOM_ROLE WHERE RoleID=?", (role_id,))
+    conn.execute("DELETE FROM CUSTOM_ROLE WHERE RoleID=?", (role_id,))
+    conn.commit()
+    conn.close()
+    flash(f"Role '{role['Name']}' has been deleted.", "info")
+    return redirect(url_for("profiles.owner_studio"))
+
+
+@profiles_bp.post("/account/owner/roles/assign/<int:target_user_id>")
+@owner_required
+def assign_user_roles(target_user_id: int):
+    """Owner only: assign or revoke custom roles for any user."""
+    conn = get_db()
+    target_user = conn.execute("SELECT UserID, Username FROM USERS WHERE UserID=?", (target_user_id,)).fetchone()
+    if not target_user:
+        conn.close()
+        flash("Target user not found.", "danger")
+        return redirect(url_for("profiles.settings"))
+
+    selected_role_ids = request.form.getlist("role_ids")
+    try:
+        conn.execute("BEGIN IMMEDIATE")
+        conn.execute("DELETE FROM USER_CUSTOM_ROLE WHERE UserID=?", (target_user_id,))
+        for rid in selected_role_ids:
+            if rid.isdigit():
+                conn.execute("INSERT OR IGNORE INTO USER_CUSTOM_ROLE (UserID, RoleID) VALUES (?, ?)", (target_user_id, int(rid)))
+        conn.commit()
+        flash(f"Profile roles for @{target_user['Username']} updated successfully!", "success")
+    except Exception as err:
+        conn.rollback()
+        flash(f"Could not update roles: {err}", "danger")
+    finally:
+        conn.close()
+
+    return redirect(request.referrer or url_for("profiles.owner_studio"))
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 4. PROFILE VIEWS & GLOBAL MODAL API
 # ─────────────────────────────────────────────────────────────────────────────
 
 @profiles_bp.route("/user/<int:user_id>/profile")
@@ -419,6 +681,7 @@ def view_profile(user_id: int):
 
     conn = get_db()
     all_badges = conn.execute("SELECT * FROM BADGE ORDER BY BadgeID ASC").fetchall()
+    all_roles = conn.execute("SELECT * FROM CUSTOM_ROLE ORDER BY Position ASC, RoleID ASC").fetchall()
     conn.close()
 
     return render_template(
@@ -426,7 +689,8 @@ def view_profile(user_id: int):
         profile=profile_data,
         is_owner=is_owner,
         is_self=is_self,
-        all_badges=[dict(b) for b in all_badges],
+        all_badges=[_decorate_badge(b) for b in all_badges],
+        all_roles=[_decorate_role(r) for r in all_roles],
     )
 
 
@@ -445,28 +709,52 @@ def api_get_profile(user_id: int):
         "full_name": u["FullName"] or u["Username"],
         "email": u["Email"],
         "role": u["Role"],
-        "profile_picture": u["ProfilePicture"],
-        "banner_image": u["BannerImage"],
+        "avatar_url": (
+            url_for("profiles.user_avatar", user_id=u["UserID"], v=len(u["ProfilePicture"]))
+            if u["ProfilePicture"] else None
+        ),
+        "banner_url": (
+            url_for("profiles.user_banner", user_id=u["UserID"], v=len(u["BannerImage"]))
+            if u["BannerImage"] else None
+        ),
         "banner_color": u["BannerColor"] or "#0f172a",
         "about_me": u["AboutMe"] or "Verified member of AkumaBank Moroccan banking suite.",
         "custom_status": u["CustomStatus"] or "",
         "pronouns": u["Pronouns"] or "",
+        "member_code": f"AKUMA-{u['UserID']:06d}",
     }
 
-    # Format badges with data URIs or paths
-    formatted_badges = []
-    for b in profile_data["badges"]:
-        icon_url = b["Icon"] if b["Icon"].startswith("data:") else url_for("static", filename="img/" + b["Icon"])
-        formatted_badges.append({
+    roles = [
+        {
+            "role_id": r["RoleID"],
+            "name": r["Name"],
+            "color": r["Color"],
+            "icon_url": r["icon_url"],
+        }
+        for r in profile_data["roles"]
+    ]
+
+    badges = [
+        {
             "badge_id": b["BadgeID"],
             "name": b["Name"],
             "description": b["Description"] or "",
-            "icon_url": icon_url,
-        })
+            "icon_url": b["icon_url"],
+            "color": b["Color"],
+            "granted_at": b["GrantedAt"],
+        }
+        for b in profile_data["badges"]
+    ]
 
     return jsonify({
         "user": safe_user,
-        "badges": formatted_badges,
+        "roles": roles,
+        "badges": badges,
         "accounts": profile_data["accounts"],
+        "stats": {
+            "roles": len(roles),
+            "badges": len(badges),
+            "accounts": len(profile_data["accounts"]),
+        },
         "is_owner_viewer": session["user"].get("role") == "Owner",
     })

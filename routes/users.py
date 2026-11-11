@@ -66,7 +66,8 @@ def users():
                 flash(f"Could not create account: {error}", "danger")
 
     staff = conn.execute(
-        "SELECT UserID, Username, Email, Role FROM USERS WHERE Role IN ('Owner','Admin','Employee') ORDER BY "
+        "SELECT UserID, Username, Email, Role, ProfilePicture IS NOT NULL AS HasPicture "
+        "FROM USERS WHERE Role IN ('Owner','Admin','Employee') ORDER BY "
         "CASE Role WHEN 'Owner' THEN 0 WHEN 'Admin' THEN 1 ELSE 2 END, Username"
     ).fetchall()
     conn.close()

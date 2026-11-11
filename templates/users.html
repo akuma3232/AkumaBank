@@ -59,7 +59,11 @@
               <tr>
                 <td class="fw-semibold">
                   <div class="d-flex align-items-center gap-2">
+                    {% if account.HasPicture %}
+                    <img src="{{ url_for('profiles.user_avatar', user_id=account.UserID) }}" class="user-avatar" style="width: 26px; height: 26px; object-fit: cover;" alt="" />
+                    {% else %}
                     <span class="user-avatar" style="width: 26px; height: 26px; font-size: 0.75rem;">{{ account.Username[0]|upper }}</span>
+                    {% endif %}
                     <span>{{ account.Username }}</span>
                   </div>
                 </td>

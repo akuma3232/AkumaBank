@@ -2222,3 +2222,1055 @@ body.login-page {
   line-height: 1.5;
   white-space: pre-line;
 }
+
+/* ══════════════════════════════════════════════════════════════
+   AKUMA EXECUTIVE PROFILE CARD v2 — ROLES, BADGES & STATS
+   ══════════════════════════════════════════════════════════════ */
+.min-w-0 { min-width: 0; }
+
+.executive-profile-card--rich {
+  max-width: 430px;
+  border-radius: 22px;
+}
+
+/* ── Banner overlays & identity chips ── */
+.profile-banner-sheen {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(2, 6, 23, 0.35) 0%, rgba(2, 6, 23, 0) 45%, rgba(2, 6, 23, 0.55) 100%),
+    radial-gradient(120% 90% at 85% 0%, rgba(255, 255, 255, 0.22), transparent 60%);
+  pointer-events: none;
+}
+
+.profile-banner-topline {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  right: 52px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  z-index: 2;
+}
+
+.profile-member-code,
+.profile-verified-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #e2e8f0;
+  background: rgba(2, 6, 23, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 99px;
+  padding: 3px 9px;
+  backdrop-filter: blur(8px);
+  font-family: 'JetBrains Mono', monospace;
+}
+.profile-verified-chip {
+  color: #6ee7b7;
+  border-color: rgba(16, 185, 129, 0.35);
+  background: rgba(6, 78, 59, 0.45);
+}
+
+/* ── Avatar row & badge tray ── */
+.profile-avatar-row {
+  position: relative;
+  min-height: 56px;
+}
+
+.profile-avatar-anchor::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid rgba(56, 189, 248, 0.45);
+  pointer-events: none;
+}
+
+.profile-badges-tray {
+  gap: 6px;
+  padding: 5px 10px;
+  min-height: 34px;
+}
+
+.profile-badge-slot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--badge-color, #5865f2) 20%, transparent);
+  border: 1px solid color-mix(in srgb, var(--badge-color, #5865f2) 45%, transparent);
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease;
+}
+.profile-badge-slot:hover {
+  transform: translateY(-2px) scale(1.12);
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--badge-color, #5865f2) 45%, transparent);
+}
+.profile-badge-slot--sm {
+  width: 22px;
+  height: 22px;
+  border-radius: 7px;
+}
+
+.profile-badge-more {
+  font-size: 0.66rem;
+  font-weight: 800;
+  color: var(--text);
+  background: var(--surface-hover);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 3px 6px;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.profile-badges-empty {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.65rem;
+  color: var(--muted);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* ── Roles, designation and status ── */
+.badge-role--lg {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.64rem;
+  padding: 4px 10px;
+  white-space: nowrap;
+}
+
+.profile-role-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+/* Role icon (uploaded PNG) shown before the role name. */
+.role-icon-img {
+  display: block;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  border-radius: 4px;
+  object-fit: contain;
+}
+
+.profile-role-chip--sm .role-icon-img {
+  width: 13px;
+  height: 13px;
+}
+
+.profile-role-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--chip-color, #93c5fd);
+  background: color-mix(in srgb, var(--chip-color, #5865f2) 16%, transparent);
+  border: 1px solid color-mix(in srgb, var(--chip-color, #5865f2) 42%, transparent);
+  border-radius: 99px;
+  padding: 3px 9px 3px 7px;
+  line-height: 1.35;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+.profile-role-chip:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--chip-color, #5865f2) 30%, transparent);
+}
+.profile-role-chip i { font-size: 0.72rem; }
+.profile-role-chip--sm {
+  font-size: 0.61rem;
+  padding: 2px 7px 2px 6px;
+}
+
+.profile-designation-pill {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.72rem;
+}
+
+/* ── Statistics strip ── */
+.profile-stat-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 14px;
+  padding: 10px;
+  border-radius: 14px;
+  background: var(--surface-hover);
+  border: 1px solid var(--border-light);
+}
+
+.profile-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 2px 4px;
+  position: relative;
+}
+.profile-stat + .profile-stat::before {
+  content: '';
+  position: absolute;
+  left: -4px;
+  top: 12%;
+  height: 76%;
+  width: 1px;
+  background: var(--border-light);
+}
+
+.profile-stat-value {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 1.12rem;
+  font-weight: 800;
+  color: var(--text);
+  line-height: 1;
+}
+
+.profile-stat-label {
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.profile-subheading-count {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: var(--muted);
+  background: var(--surface-hover);
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  padding: 1px 6px;
+  letter-spacing: 0;
+}
+
+/* ── Badge credentials showcase ── */
+.profile-badge-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.profile-badge-tile {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--badge-color, #5865f2) 9%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--badge-color, #5865f2) 30%, var(--border));
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+.profile-badge-tile:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--badge-color, #5865f2) 60%, var(--border));
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--badge-color, #5865f2) 22%, transparent);
+}
+
+.profile-badge-tile-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--badge-color, #5865f2) 20%, transparent);
+  border: 1px solid color-mix(in srgb, var(--badge-color, #5865f2) 40%, transparent);
+  overflow: hidden;
+}
+.profile-badge-tile-icon img {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+}
+.profile-badge-tile-icon i {
+  font-size: 1rem;
+  color: var(--badge-color, #93c5fd);
+}
+
+.profile-badge-tile-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.25;
+}
+.profile-badge-tile-name {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.profile-badge-tile-desc {
+  font-size: 0.64rem;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.profile-empty-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 11px 12px;
+  border-radius: 12px;
+  border: 1px dashed var(--border);
+  background: var(--surface-hover);
+  color: var(--muted);
+  font-size: 0.74rem;
+  line-height: 1.45;
+}
+.profile-empty-note i { font-size: 1.05rem; color: var(--muted); }
+
+/* ── Accounts & accreditation ── */
+.profile-account-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--surface-hover);
+  border: 1px solid var(--border-light);
+  font-size: 0.78rem;
+  font-family: 'JetBrains Mono', monospace;
+}
+.profile-account-number {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--text);
+}
+
+.profile-accreditation {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 11px;
+  border-radius: 10px;
+  background: var(--surface-hover);
+  border: 1px solid var(--border-light);
+  font-size: 0.8rem;
+}
+
+/* ── Owner studio pickers & registry ── */
+.badge-picker-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 9px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+  min-width: 0;
+}
+.badge-picker-option:hover {
+  border-color: color-mix(in srgb, var(--badge-color, #5865f2) 55%, var(--border));
+  background: color-mix(in srgb, var(--badge-color, #5865f2) 8%, var(--surface));
+}
+.badge-picker-option:has(input:checked) {
+  border-color: var(--badge-color, #5865f2);
+  background: color-mix(in srgb, var(--badge-color, #5865f2) 14%, var(--surface));
+}
+
+.badge-picker-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--badge-color, #5865f2) 20%, transparent);
+  border: 1px solid color-mix(in srgb, var(--badge-color, #5865f2) 40%, transparent);
+  color: var(--badge-color, #93c5fd);
+  overflow: hidden;
+}
+.badge-picker-icon img { width: 18px; height: 18px; object-fit: contain; }
+.badge-picker-icon i { font-size: 0.82rem; }
+
+.owner-registry-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 8px;
+}
+
+.owner-registry-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 10px;
+  border-radius: 11px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.owner-registry-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--badge-color, #5865f2) 18%, transparent);
+  border: 1px solid color-mix(in srgb, var(--badge-color, #5865f2) 38%, transparent);
+  color: var(--badge-color, #93c5fd);
+  overflow: hidden;
+}
+.owner-registry-icon img { width: 22px; height: 22px; object-fit: contain; }
+.owner-registry-icon i { font-size: 0.95rem; }
+
+@media (max-width: 576px) {
+  .profile-badge-grid { grid-template-columns: minmax(0, 1fr); }
+  .executive-profile-card--rich { border-radius: 18px; }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   PROFILE CARD v3 — INLINE BADGES, ROLE CLEARANCE & OWNER STUDIO
+   ══════════════════════════════════════════════════════════════ */
+.profile-name-line {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+  min-width: 0;
+}
+
+.profile-name-badges {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+.profile-inline-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--badge-color, #5865f2) 22%, transparent);
+  border: 1px solid color-mix(in srgb, var(--badge-color, #5865f2) 50%, transparent);
+  transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.18s ease;
+}
+.profile-inline-badge:hover {
+  transform: translateY(-2px) scale(1.1);
+  box-shadow: 0 5px 14px color-mix(in srgb, var(--badge-color, #5865f2) 45%, transparent);
+}
+.profile-inline-badge img {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+}
+.profile-inline-badge i {
+  font-size: 0.78rem;
+  color: var(--badge-color, #93c5fd);
+}
+
+.profile-inline-badge-more {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 24px;
+  padding: 0 6px;
+  border-radius: 8px;
+  font-size: 0.64rem;
+  font-weight: 800;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--text-sec);
+  background: var(--surface-hover);
+  border: 1px solid var(--border);
+}
+
+/* ── Roles & Clearance list ── */
+.profile-role-list {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.profile-role-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 10px;
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--chip-color, #5865f2) 10%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--chip-color, #5865f2) 32%, var(--border));
+  transition: transform 0.18s ease, border-color 0.18s ease;
+}
+.profile-role-item:hover {
+  transform: translateX(2px);
+  border-color: color-mix(in srgb, var(--chip-color, #5865f2) 60%, var(--border));
+}
+
+.profile-role-item-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--chip-color, #5865f2) 22%, transparent);
+  border: 1px solid color-mix(in srgb, var(--chip-color, #5865f2) 45%, transparent);
+  color: var(--chip-color, #93c5fd);
+  font-size: 0.88rem;
+}
+
+.profile-role-item-name {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.profile-role-item-sub {
+  font-size: 0.66rem;
+  color: var(--muted);
+  line-height: 1.3;
+}
+
+/* ── Sidebar Owner Studio link ── */
+.nav-link-owner-studio {
+  color: #fcd34d !important;
+  background: linear-gradient(90deg, rgba(245, 158, 11, 0.14), rgba(245, 158, 11, 0.02));
+  border: 1px solid rgba(245, 158, 11, 0.22);
+}
+.nav-link-owner-studio i { color: #fbbf24 !important; }
+.nav-link-owner-studio:hover {
+  background: linear-gradient(90deg, rgba(245, 158, 11, 0.24), rgba(245, 158, 11, 0.05)) !important;
+  color: #fef3c7 !important;
+}
+.nav-link-owner-studio.active {
+  background: linear-gradient(90deg, rgba(245, 158, 11, 0.3), rgba(245, 158, 11, 0.08)) !important;
+  border-color: rgba(245, 158, 11, 0.45);
+  color: #fff7e0 !important;
+}
+.nav-owner-tag {
+  margin-left: auto;
+  font-size: 0.54rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  padding: 2px 6px;
+  border-radius: 99px;
+  color: #0f172a;
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   DARK MODE READABILITY — CONTRAST & SURFACE FIXES
+   ══════════════════════════════════════════════════════════════ */
+[data-theme="dark"] {
+  --muted: #94a3b8;
+  --text-sec: #dbe4f0;
+}
+
+/* Bootstrap utility surfaces that default to light backgrounds */
+[data-theme="dark"] .bg-light,
+[data-theme="dark"] .bg-body-tertiary,
+[data-theme="dark"] .bg-white {
+  background-color: var(--surface-hover) !important;
+  color: var(--text) !important;
+}
+
+[data-theme="dark"] .text-muted { color: #94a3b8 !important; }
+[data-theme="dark"] .text-secondary { color: #cbd5e1 !important; }
+[data-theme="dark"] .text-body { color: var(--text) !important; }
+
+/* Tables */
+[data-theme="dark"] .table {
+  --bs-table-bg: transparent;
+  --bs-table-color: var(--text-sec);
+  --bs-table-border-color: var(--border);
+  --bs-table-striped-bg: rgba(255, 255, 255, 0.03);
+  --bs-table-hover-bg: var(--surface-hover);
+  --bs-table-hover-color: var(--text);
+}
+[data-theme="dark"] .table-light {
+  --bs-table-bg: rgba(255, 255, 255, 0.045);
+  --bs-table-color: var(--text-sec);
+  --bs-table-border-color: var(--border);
+}
+[data-theme="dark"] .table > :not(caption) > * > * {
+  border-color: var(--border);
+  color: var(--text-sec);
+  background-color: transparent;
+}
+[data-theme="dark"] .table thead th { color: #b6c2d4; }
+[data-theme="dark"] .table tbody tr:hover td { background: var(--surface-hover); }
+
+/* Modal surfaces */
+[data-theme="dark"] .modal-footer.bg-light,
+[data-theme="dark"] .modal-header.bg-light,
+[data-theme="dark"] .modal-body.bg-light {
+  background-color: rgba(0, 0, 0, 0.28) !important;
+  color: var(--text) !important;
+}
+[data-theme="dark"] .modal-content { color: var(--text); }
+[data-theme="dark"] .modal-title { color: var(--text); }
+[data-theme="dark"] .modal .form-label { color: var(--text-sec); }
+
+/* Form controls */
+[data-theme="dark"] .form-control::placeholder,
+[data-theme="dark"] textarea.form-control::placeholder {
+  color: #7f8ea6;
+}
+[data-theme="dark"] .form-control-color {
+  background-color: var(--surface-hover);
+  border-color: var(--border);
+}
+[data-theme="dark"] .form-check-input {
+  background-color: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.28);
+}
+[data-theme="dark"] .form-check-input:checked {
+  background-color: var(--primary-light);
+  border-color: var(--primary-light);
+}
+
+/* Badge pickers and owner registry contrast */
+[data-theme="dark"] .badge-picker-option {
+  background: rgba(255, 255, 255, 0.035);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+[data-theme="dark"] .badge-picker-option .small { color: var(--text); }
+[data-theme="dark"] .owner-registry-item { background: rgba(255, 255, 255, 0.035); }
+
+/* Profile card surfaces */
+[data-theme="dark"] .profile-empty-note,
+[data-theme="dark"] .profile-accreditation,
+[data-theme="dark"] .profile-account-row,
+[data-theme="dark"] .profile-stat-strip,
+[data-theme="dark"] .profile-status-bar,
+[data-theme="dark"] .profile-designation-pill {
+  background: rgba(255, 255, 255, 0.045);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: var(--text-sec);
+}
+[data-theme="dark"] .profile-bio-text { color: #dbe4f0; }
+[data-theme="dark"] .profile-role-item-sub { color: #a9b7ca; }
+[data-theme="dark"] .profile-inline-badge-more {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
+/* Misc components that inherit light defaults */
+[data-theme="dark"] .card-panel { color: var(--text); }
+[data-theme="dark"] .panel-title { color: var(--text); }
+[data-theme="dark"] .dropdown-header { color: var(--muted); }
+[data-theme="dark"] .alert { color: #0f172a; }
+[data-theme="dark"] .btn-outline-secondary { color: #cbd5e1; border-color: rgba(255, 255, 255, 0.22); }
+[data-theme="dark"] .btn-outline-secondary:hover { color: #0f172a; }
+
+/* ── Settings tab pills (theme-aware) ── */
+.nav-pills .nav-link {
+  color: var(--text-sec);
+  font-size: 0.84rem;
+  font-weight: 600;
+  border-radius: 10px;
+  padding: 8px 14px;
+  transition: all var(--t) var(--ease);
+}
+.nav-pills .nav-link:hover {
+  color: var(--text);
+  background: var(--surface-hover);
+}
+.nav-pills .nav-link.active {
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  color: #fff;
+  font-weight: 700;
+}
+[data-theme="dark"] .nav-pills .nav-link:not(.active):not(.bg-warning-soft):not(.bg-info-soft) {
+  color: #cbd5e1;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   DISCORD-STYLE PROFILE CARD
+   ══════════════════════════════════════════════════════════════ */
+.executive-profile-card.profile-card--discord {
+  max-width: 420px;
+  border-radius: 16px;
+}
+
+.profile-card--discord .profile-banner-hero {
+  height: 118px;
+}
+
+.profile-identity-strip {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  min-height: 58px;
+  padding: 10px 16px 0;
+}
+
+.profile-card--discord .profile-avatar-anchor {
+  left: 16px;
+  top: -44px;
+  width: 84px;
+  height: 84px;
+  padding: 6px;
+}
+
+.profile-card--discord .profile-avatar-media,
+.profile-card--discord .profile-avatar-fallback {
+  width: 84px;
+  height: 84px;
+}
+
+.profile-card--discord .profile-avatar-fallback {
+  font-size: 2.1rem;
+}
+
+.profile-badge-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-left: auto;
+  min-height: 44px;
+  max-width: 66%;
+  padding: 5px 10px;
+  background: #e6ebf2;
+  border: 1px solid #c3cedc;
+  border-radius: 12px;
+  box-shadow: inset 0 1px 0 #ffffff, 0 1px 4px rgba(15, 23, 42, 0.08);
+}
+
+/* Badges inside the frame: icon only, no colored tile behind them. */
+.profile-badge-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: auto;
+  height: auto;
+  background: none;
+  border: 0;
+  border-radius: 0;
+  transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.profile-badge-icon:hover {
+  transform: translateY(-2px) scale(1.12);
+  box-shadow: none;
+}
+.profile-badge-icon img {
+  width: 30px;
+  height: 30px;
+  object-fit: contain;
+}
+.profile-badge-icon i {
+  font-size: 1.3rem;
+  color: var(--text-sec);
+}
+
+/* ── Badge hover card ── */
+[data-badge-tip] { cursor: help; }
+
+.badge-hover-card {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 2100;
+  width: max-content;
+  max-width: 270px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--surface);
+  border: 1px solid #cbd5e1;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.18);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(4px) scale(0.97);
+  transition: opacity 0.14s var(--ease), transform 0.14s var(--ease), visibility 0.14s;
+  pointer-events: none;
+}
+
+.badge-hover-card.is-visible {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0) scale(1);
+}
+
+.badge-hover-card__top {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.badge-hover-card__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  background: #e6ebf2;
+  border: 1px solid #c3cedc;
+}
+
+.badge-hover-card__icon img {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+}
+
+.badge-hover-card__name {
+  font-size: 0.84rem;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--text);
+}
+
+.badge-hover-card__kicker {
+  margin-top: 2px;
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.badge-hover-card__desc {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+  font-size: 0.72rem;
+  line-height: 1.45;
+  color: var(--text-sec);
+}
+
+[data-theme="dark"] .badge-hover-card {
+  background: #16233d;
+  border-color: #3b4d6b;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.6);
+}
+
+[data-theme="dark"] .badge-hover-card__icon {
+  background: #2b3a55;
+  border-color: #4a5f80;
+}
+
+[data-theme="dark"] .badge-hover-card__kicker {
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .profile-badge-row {
+  background: #2b3a55;
+  border-color: #4a5f80;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 2px 8px rgba(0, 0, 0, 0.28);
+}
+[data-theme="dark"] .profile-badge-icon i {
+  color: #cbd5e1;
+}
+
+.profile-card--discord .profile-card-body {
+  margin: 0;
+  padding: 8px 16px 16px;
+  border-radius: 0;
+}
+
+.profile-card--discord .profile-user-fullname {
+  font-size: 1.3rem;
+  letter-spacing: -0.01em;
+}
+
+.profile-card--discord .profile-user-handle {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 1px;
+}
+
+.profile-card--discord .profile-designation-pill {
+  margin-top: 8px;
+}
+
+.profile-card--discord .profile-status-bar {
+  margin-top: 10px;
+  padding: 8px 11px;
+}
+
+.discord-profile-section {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border-light);
+}
+
+[data-theme="dark"] .discord-profile-section {
+  border-top-color: rgba(255, 255, 255, 0.08);
+}
+
+.discord-section-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+
+.discord-section-count {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  color: var(--muted);
+  background: var(--surface-hover);
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  padding: 0 5px;
+}
+
+.discord-role-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.discord-role-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--role-color, #93c5fd);
+  background: color-mix(in srgb, var(--role-color, #5865f2) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--role-color, #5865f2) 34%, transparent);
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+.discord-role-pill:hover {
+  transform: translateY(-1px);
+  background: color-mix(in srgb, var(--role-color, #5865f2) 20%, transparent);
+}
+.discord-role-pill i { font-size: 0.74rem; }
+
+[data-theme="dark"] .discord-role-pill {
+  color: color-mix(in srgb, var(--role-color, #93c5fd) 68%, #ffffff);
+  background: color-mix(in srgb, var(--role-color, #5865f2) 18%, transparent);
+  border-color: color-mix(in srgb, var(--role-color, #5865f2) 42%, transparent);
+}
+
+.discord-empty-text {
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.discord-account-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.discord-account-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  background: var(--surface-hover);
+  border: 1px solid var(--border-light);
+}
+
+.discord-account-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  border-radius: 7px;
+  background: rgba(59, 130, 246, 0.14);
+  color: #60a5fa;
+  font-size: 0.82rem;
+}
+
+.discord-account-number {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.76rem;
+  color: var(--text);
+}
+
+.discord-account-tags {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: auto;
+}
+
+[data-theme="dark"] .discord-account-row,
+[data-theme="dark"] .discord-account-icon {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.09);
+}
+[data-theme="dark"] .discord-account-icon {
+  background: rgba(59, 130, 246, 0.16);
+  border: 1px solid rgba(59, 130, 246, 0.24);
+}
+
+/* ── Role color dot (fallback when a role has no PNG icon) ── */
+.role-color-dot {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--role-color, var(--badge-color, var(--chip-color, #5865f2)));
+  box-shadow: 0 0 7px color-mix(in srgb, var(--role-color, var(--badge-color, #5865f2)) 60%, transparent);
+}
+
+.discord-role-pill .role-color-dot {
+  width: 8px;
+  height: 8px;
+}
+
+.profile-role-chip--sm .role-color-dot {
+  width: 7px;
+  height: 7px;
+}
+
+.owner-registry-icon .role-color-dot {
+  width: 12px;
+  height: 12px;
+}
+
+.badge-picker-icon .role-color-dot {
+  width: 10px;
+  height: 10px;
+}

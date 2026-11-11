@@ -1,144 +1,397 @@
 {% extends "base.html" %}
-{% block title %}Account Settings — AkumaBank{% endblock %}
-{% block page_title %}Account Settings{% endblock %}
+{% block title %}Account Settings & Discord Profile — AkumaBank{% endblock %}
+{% block page_title %}Profile &amp; Discord Identity{% endblock %}
 
 {% block content %}
 <div class="page-header-row mb-4">
   <div>
-    <h4 class="page-heading">Account & Profile Settings</h4>
-    <p class="page-sub">Manage your security preferences and profile avatar encoded as pure text code.</p>
+    <h4 class="page-heading">Discord Profile &amp; Account Settings</h4>
+    <p class="page-sub">Customize your Discord-style profile card with animated avatars (GIF), banners, custom status, and roles.</p>
   </div>
 </div>
 
 <div class="row g-4">
-  <!-- Profile Picture / Avatar as Code -->
-  <div class="col-lg-6">
-    <div class="card-panel h-100">
+  <!-- Left Column: Live 100% Discord Profile Card Preview -->
+  <div class="col-lg-5">
+    <div class="card-panel sticky-top" style="top: 80px;">
       <div class="panel-header d-flex justify-content-between align-items-center">
-        <span class="panel-title"><i class="bi bi-person-badge me-2 text-primary"></i>Profile Avatar (Code Storage)</span>
-        {% if profile_picture %}
-        <span class="badge bg-success-soft text-success"><i class="bi bi-check-circle me-1"></i>Encoded as Code</span>
-        {% else %}
-        <span class="badge bg-secondary-soft text-secondary">No Avatar Set</span>
-        {% endif %}
+        <span class="panel-title"><i class="bi bi-discord text-primary me-2"></i>Live Profile Card Preview</span>
+        <span class="badge bg-primary-soft text-primary font-monospace">DISCORD v2</span>
       </div>
-      <div class="panel-body">
-        <div class="d-flex align-items-center gap-3 mb-4 p-3 bg-body-tertiary rounded-3 border">
-          <div class="profile-picture-preview" style="width: 80px; height: 80px; min-width: 80px; border-radius: 50%; overflow: hidden; display: flex; align-items: center; justify-content: center; background: rgba(59, 130, 246, 0.1); border: 2px solid var(--border-color);">
-            {% if profile_picture %}
-              {% if profile_picture.startswith('data:') %}
-              <img src="{{ profile_picture }}" alt="Profile avatar" style="width: 100%; height: 100%; object-fit: cover;" />
+      <div class="panel-body p-3 text-center">
+        <!-- 100% DISCORD CARD COMPONENT -->
+        <div class="discord-card-wrapper shadow-lg text-start mx-auto">
+          <!-- Banner -->
+          <div class="discord-banner" id="previewBanner" style="{% if profile.user.BannerImage %}background-image: url('{{ profile.user.BannerImage }}');{% else %}background: {{ profile.user.BannerColor or '#5865f2' }};{% endif %}"></div>
+
+          <!-- Avatar & Badges Bar -->
+          <div class="position-relative" style="min-height: 52px;">
+            <div class="discord-avatar-wrapper">
+              {% if profile.user.ProfilePicture %}
+              <img src="{{ profile.user.ProfilePicture }}" alt="Avatar" class="discord-avatar-img" id="previewAvatar" />
               {% else %}
-              <img src="{{ url_for('profiles.picture', filename=profile_picture) }}" alt="Profile avatar" style="width: 100%; height: 100%; object-fit: cover;" />
+              <div class="discord-avatar-placeholder" id="previewPlaceholder">
+                {{ (profile.user.FullName or profile.user.Username)[0]|upper }}
+              </div>
               {% endif %}
-            {% else %}
-            <div class="profile-picture-placeholder fs-1 text-primary"><i class="bi bi-person-fill"></i></div>
-            {% endif %}
+              <div class="discord-status-badge" title="Online"></div>
+            </div>
+
+            <!-- Badges -->
+            <div class="discord-badges-bar">
+              {% for badge in profile.badges %}
+              <img src="{{ url_for('static', filename='img/' + badge.Icon) }}" 
+                   alt="{{ badge.Name }}" 
+                   class="discord-badge-icon" 
+                   data-bs-toggle="tooltip" 
+                   title="{{ badge.Name }} &bull; {{ badge.Description }}" />
+              {% else %}
+              <span class="text-white-50 small font-monospace" style="font-size: 0.65rem;">No badges</span>
+              {% endfor %}
+            </div>
           </div>
-          <div>
-            <h6 class="mb-1 fw-bold">{{ session.user.username }}</h6>
-            <div class="text-muted small mb-1"><span class="badge-role role-{{ session.user.role|lower }}">{{ session.user.role }}</span></div>
-            <div class="text-secondary small">
-              <i class="bi bi-shield-lock text-primary me-1"></i>Zero picture files saved to disk &bull; Pure code representation
+
+          <!-- Card Body -->
+          <div class="discord-body">
+            <div class="discord-display-name" id="previewDisplayName">{{ profile.user.FullName or profile.user.Username }}</div>
+            <div class="discord-username-handle">@{{ profile.user.Username }}</div>
+            <span class="discord-pronouns" id="previewPronouns" style="{% if not profile.user.Pronouns %}display: none;{% endif %}">{{ profile.user.Pronouns }}</span>
+
+            <div class="discord-custom-status" id="previewStatusWrap" style="{% if not profile.user.CustomStatus %}display: none;{% endif %}">
+              <i class="bi bi-chat-dots-fill text-primary"></i>
+              <span id="previewStatus">{{ profile.user.CustomStatus }}</span>
+            </div>
+
+            <div class="discord-section-header">About Me</div>
+            <div class="discord-about-me" id="previewAboutMe">
+              {{ profile.user.AboutMe or 'Member of AkumaBank Moroccan sovereign digital banking ecosystem.' }}
+            </div>
+
+            <div class="discord-section-header d-flex justify-content-between align-items-center">
+              <span>Roles</span>
+              <span class="badge bg-secondary-soft text-secondary font-monospace" style="font-size: 0.65rem;">{{ profile.roles|length }}</span>
+            </div>
+            <div class="discord-roles-container">
+              {% for role in profile.roles %}
+              <div class="discord-role-pill" style="background: {{ role.Color }}22; border-color: {{ role.Color }}66;">
+                {% if role.Icon %}
+                <img src="{{ url_for('static', filename='img/' + role.Icon if not role.Icon.startswith('uploads/') else role.Icon) }}" alt="" class="discord-role-icon" />
+                {% else %}
+                <span class="discord-role-dot" style="background: {{ role.Color }};"></span>
+                {% endif %}
+                <span>{{ role.Name }}</span>
+              </div>
+              {% else %}
+              <span class="text-muted small fst-italic">No custom roles assigned yet.</span>
+              {% endfor %}
+            </div>
+
+            <div class="discord-section-header">Member Since</div>
+            <div class="d-flex align-items-center gap-2 small text-secondary">
+              <i class="bi bi-bank2 text-primary"></i>
+              <span>AkumaBank Core &bull; Verified Account</span>
             </div>
           </div>
         </div>
 
-        {% if profile_picture %}
-        <!-- Code Inspector Box -->
-        <div class="mb-4 p-3 bg-body-secondary rounded-3 border">
-          <div class="d-flex justify-content-between align-items-center mb-2">
-            <span class="small fw-bold text-body"><i class="bi bi-code-slash me-1 text-primary"></i>Avatar Code Payload</span>
-            <span class="badge bg-primary-soft text-primary font-monospace">{{ profile_picture|length }} characters</span>
-          </div>
-          <div class="input-group input-group-sm">
-            <input type="text" class="form-control font-monospace text-muted small" value="{{ profile_picture[:80] }}…{{ profile_picture[-20:] }}" readonly id="avatarCodePreview" />
-            <button class="btn btn-outline-secondary" type="button" onclick="navigator.clipboard.writeText('{{ profile_picture }}'); alert('Full avatar code copied to clipboard!');" title="Copy raw code">
-              <i class="bi bi-clipboard me-1"></i>Copy Code
-            </button>
-          </div>
-          <div class="form-text text-muted small mt-1">
-            Transformed into Base64 WebP code. No physical image file exists on disk.
-          </div>
+        <div class="mt-3 text-center">
+          <small class="text-muted"><i class="bi bi-info-circle me-1"></i>All users across the platform can view this card when clicking your profile.</small>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right Column: Settings Tabs -->
+  <div class="col-lg-7">
+    <div class="card-panel">
+      <!-- Tabs Navigation -->
+      <ul class="nav nav-pills custom-nav-pills p-3 border-bottom" id="settingsTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+          <button class="nav-link active" id="avatar-tab" data-bs-toggle="tab" data-bs-target="#tab-avatar" type="button" role="tab">
+            <i class="bi bi-image me-1"></i>Avatar &amp; Banner
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="bio-tab" data-bs-toggle="tab" data-bs-target="#tab-bio" type="button" role="tab">
+            <i class="bi bi-person-lines-fill me-1"></i>About Me &amp; Status
+          </button>
+        </li>
+        {% if is_owner %}
+        <li class="nav-item ms-auto" role="presentation">
+          <button class="nav-link bg-warning-soft text-warning fw-bold" id="owner-tab" data-bs-toggle="tab" data-bs-target="#tab-owner" type="button" role="tab">
+            <i class="bi bi-shield-lock-fill me-1"></i>Owner Roles &amp; Badges
+          </button>
+        </li>
         {% endif %}
+      </ul>
 
-        <!-- Custom Avatar Upload (Encoded as Code) -->
-        <div class="p-3 bg-body-tertiary rounded-3 border mb-3">
-          <form method="POST" enctype="multipart/form-data">
-            <label class="form-label small fw-semibold" for="profile_picture">
-              <i class="bi bi-upload me-1 text-primary"></i>Upload Custom Profile Picture:
-            </label>
-            <input class="form-control form-control-sm mb-2" type="file" id="profile_picture" name="profile_picture"
-                   accept="image/jpeg,image/png,image/gif,image/webp,.jpg,.jpeg,.png,.gif,.webp" required />
-            <div class="form-text small mb-3">
-              Your photo is securely transformed into Base64 code and stored directly as text (zero image files saved to disk).
+      <div class="tab-content p-4" id="settingsTabsContent">
+        <!-- ── TAB 1: AVATAR & BANNER ── -->
+        <div class="tab-pane fade show active" id="tab-avatar" role="tabpanel">
+          <h5 class="fw-bold mb-3"><i class="bi bi-camera-fill text-primary me-2"></i>Profile Picture (Avatar)</h5>
+          <p class="text-muted small">Upload your custom avatar. <strong>Animated GIFs</strong>, PNG, JPG, and WebP are fully supported with zero frame loss.</p>
+
+          <form method="POST" action="{{ url_for('profiles.upload_avatar') }}" enctype="multipart/form-data" class="p-3 bg-body-tertiary rounded-3 border mb-3">
+            <label class="form-label small fw-semibold" for="avatar">Choose Avatar File:</label>
+            <input class="form-control form-control-sm mb-2" type="file" id="avatar" name="avatar" accept="image/gif,image/png,image/jpeg,image/webp,.gif,.png,.jpg,.jpeg,.webp" required />
+            <div class="d-flex justify-content-between align-items-center mt-2">
+              <span class="text-muted small"><i class="bi bi-check-circle text-success me-1"></i>GIFs animate smoothly</span>
+              <button class="btn btn-primary btn-sm fw-semibold" type="submit">
+                <i class="bi bi-upload me-1"></i>Save Avatar
+              </button>
             </div>
-            <button class="btn btn-primary btn-sm" type="submit">
-              <i class="bi bi-cpu me-1"></i>Transform Image to Code &amp; Save
+          </form>
+
+          {% if profile.user.ProfilePicture %}
+          <form method="POST" action="{{ url_for('profiles.remove_avatar') }}" class="mb-4">
+            <button class="btn btn-outline-danger btn-sm" type="submit">
+              <i class="bi bi-trash me-1"></i>Remove Custom Avatar
+            </button>
+          </form>
+          {% endif %}
+
+          <hr class="my-4" />
+
+          <h5 class="fw-bold mb-3"><i class="bi bi-card-image text-primary me-2"></i>Profile Banner</h5>
+          <p class="text-muted small">Customize your Discord card banner header using an <strong>animated GIF</strong>, custom image, or solid theme color.</p>
+
+          <form method="POST" action="{{ url_for('profiles.update_banner') }}" enctype="multipart/form-data" class="p-3 bg-body-tertiary rounded-3 border mb-3">
+            <div class="mb-3">
+              <label class="form-label small fw-semibold" for="banner_image">Upload Banner Image or Animated GIF:</label>
+              <input class="form-control form-control-sm" type="file" id="banner_image" name="banner_image" accept="image/gif,image/png,image/jpeg,image/webp,.gif,.png,.jpg,.jpeg,.webp" />
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label small fw-semibold" for="banner_color">Or Pick Solid Banner Color:</label>
+              <div class="d-flex align-items-center gap-2">
+                <input type="color" class="form-control form-control-color" id="banner_color" name="banner_color" value="{{ profile.user.BannerColor or '#5865f2' }}" title="Choose banner color" />
+                <span class="font-monospace small text-muted">{{ profile.user.BannerColor or '#5865f2' }}</span>
+              </div>
+            </div>
+
+            <button class="btn btn-primary btn-sm fw-semibold" type="submit">
+              <i class="bi bi-save me-1"></i>Update Banner
+            </button>
+          </form>
+
+          {% if profile.user.BannerImage %}
+          <form method="POST" action="{{ url_for('profiles.remove_banner') }}">
+            <button class="btn btn-outline-danger btn-sm" type="submit">
+              <i class="bi bi-trash me-1"></i>Remove Banner Image (Reset to Color)
+            </button>
+          </form>
+          {% endif %}
+        </div>
+
+        <!-- ── TAB 2: BIO & STATUS ── -->
+        <div class="tab-pane fade" id="tab-bio" role="tabpanel">
+          <h5 class="fw-bold mb-3"><i class="bi bi-chat-square-text-fill text-primary me-2"></i>Identity &amp; Bio Information</h5>
+          
+          <form method="POST" action="{{ url_for('profiles.update_profile_info') }}">
+            <div class="mb-3">
+              <label class="form-label small fw-semibold" for="full_name">Display Name (Full Name)</label>
+              <input type="text" class="form-control form-control-sm" id="full_name" name="full_name" value="{{ profile.user.FullName or '' }}" placeholder="e.g. Mohammed El Alami" maxlength="120" />
+            </div>
+
+            <div class="row g-3 mb-3">
+              <div class="col-md-8">
+                <label class="form-label small fw-semibold" for="custom_status">Custom Status</label>
+                <div class="input-group input-group-sm">
+                  <span class="input-group-text"><i class="bi bi-emoji-smile"></i></span>
+                  <input type="text" class="form-control" id="custom_status" name="custom_status" value="{{ profile.user.CustomStatus or '' }}" placeholder="e.g. Managing Moroccan Dirham Liquidity 🇲🇦" maxlength="150" />
+                </div>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label small fw-semibold" for="pronouns">Pronouns</label>
+                <input type="text" class="form-control form-control-sm" id="pronouns" name="pronouns" value="{{ profile.user.Pronouns or '' }}" placeholder="e.g. he/him" maxlength="30" />
+              </div>
+            </div>
+
+            <div class="mb-4">
+              <label class="form-label small fw-semibold" for="about_me">About Me (Bio)</label>
+              <textarea class="form-control form-control-sm" id="about_me" name="about_me" rows="4" maxlength="500" placeholder="Write something about yourself, your banking role, or your interests...">{{ profile.user.AboutMe or '' }}</textarea>
+              <div class="form-text small text-muted">Up to 500 characters. Displays cleanly on your Discord profile card.</div>
+            </div>
+
+            <button class="btn btn-primary btn-sm fw-semibold" type="submit">
+              <i class="bi bi-check-circle me-1"></i>Save Profile Information
             </button>
           </form>
         </div>
 
-        {% if profile_picture %}
-        <hr class="my-4" />
-        <form method="POST" action="{{ url_for('profiles.remove_picture') }}">
-          <button class="btn btn-outline-danger btn-sm" type="submit">
-            <i class="bi bi-trash me-1"></i>Remove Avatar Code
-          </button>
-        </form>
+        {% if is_owner %}
+        <!-- ── TAB 3: OWNER DISCORD ROLE & BADGE MANAGER ── -->
+        <div class="tab-pane fade" id="tab-owner" role="tabpanel">
+          <div class="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom">
+            <div>
+              <h5 class="fw-bold mb-0 text-warning"><i class="bi bi-shield-lock-fill me-2"></i>Owner Role &amp; Badge Control Terminal</h5>
+              <div class="text-muted small">Only the Bank Owner has executive power to assign Discord roles and badges with custom PNG icons.</div>
+            </div>
+            <button class="btn btn-sm btn-outline-primary" data-bs-toggle="collapse" data-bs-target="#createRoleCollapse">
+              <i class="bi bi-plus-circle me-1"></i>Create New Role
+            </button>
+          </div>
+
+          <!-- Create Role Collapse Box -->
+          <div class="collapse mb-4" id="createRoleCollapse">
+            <form method="POST" action="{{ url_for('profiles.create_custom_role') }}" enctype="multipart/form-data" class="p-3 bg-body-tertiary rounded-3 border">
+              <h6 class="fw-bold mb-3"><i class="bi bi-tag-fill text-primary me-1"></i>Create New Custom Discord Role</h6>
+              <div class="row g-2 mb-3">
+                <div class="col-md-5">
+                  <label class="form-label small fw-semibold">Role Name</label>
+                  <input type="text" name="name" class="form-control form-control-sm" placeholder="e.g. Treasury Director" required />
+                </div>
+                <div class="col-md-3">
+                  <label class="form-label small fw-semibold">Role Color</label>
+                  <input type="color" name="color" class="form-control form-control-color w-100" value="#5865f2" />
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label small fw-semibold">Role Icon (PNG only)</label>
+                  <input type="file" name="icon" class="form-control form-control-sm" accept="image/png,.png" />
+                </div>
+              </div>
+              <button class="btn btn-success btn-sm fw-semibold" type="submit">
+                <i class="bi bi-plus-lg me-1"></i>Register Role
+              </button>
+            </form>
+          </div>
+
+          <!-- Select User to Manage -->
+          <h6 class="fw-bold mb-2">Select User to Assign Roles &amp; Badges:</h6>
+          <div class="table-responsive">
+            <table class="table table-hover align-middle table-sm border">
+              <thead class="table-light">
+                <tr>
+                  <th>User</th>
+                  <th>System Role</th>
+                  <th>Email</th>
+                  <th class="text-end">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for u in all_users %}
+                <tr>
+                  <td>
+                    <div class="d-flex align-items-center gap-2">
+                      <div class="user-avatar" style="width: 28px; height: 28px; font-size: 0.8rem;">{{ u.Username[0]|upper }}</div>
+                      <div>
+                        <div class="fw-bold">{{ u.FullName or u.Username }}</div>
+                        <div class="text-muted small font-monospace" style="font-size: 0.72rem;">@{{ u.Username }}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td>
+                    <span class="badge-role role-{{ u.Role|lower }}">{{ u.Role }}</span>
+                  </td>
+                  <td><small class="text-muted">{{ u.Email or '—' }}</small></td>
+                  <td class="text-end">
+                    <button class="btn btn-xs btn-outline-warning py-1 px-2 fw-semibold" onclick="openOwnerUserModal({{ u.UserID }}, '{{ u.Username }}', '{{ u.FullName or u.Username }}')">
+                      <i class="bi bi-gear-fill me-1"></i>Configure
+                    </button>
+                    <a href="{{ url_for('profiles.view_profile', user_id=u.UserID) }}" class="btn btn-xs btn-outline-primary py-1 px-2" title="View Discord Card">
+                      <i class="bi bi-eye"></i>
+                    </a>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
         {% endif %}
       </div>
     </div>
   </div>
+</div>
 
-  <!-- Account & Security Information Card -->
-  <div class="col-lg-6">
-    <div class="card-panel h-100">
-      <div class="panel-header">
-        <span class="panel-title"><i class="bi bi-shield-check me-2 text-primary"></i>Security & Session Overview</span>
+{% if is_owner %}
+<!-- Owner Dynamic User Assignment Modal -->
+<div class="modal fade" id="ownerDynamicModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <form method="POST" id="ownerDynamicForm" class="modal-content border-0 shadow-lg">
+      <div class="modal-header bg-dark text-white py-3 px-4">
+        <h5 class="modal-title fw-bold" id="ownerDynamicTitle">
+          <i class="bi bi-shield-lock-fill text-warning me-2"></i>Configure Roles &amp; Badges
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
-      <div class="panel-body">
-        <div class="list-group list-group-flush mb-4">
-          <div class="list-group-item d-flex justify-content-between align-items-center px-0 py-2">
-            <div>
-              <div class="fw-semibold small">Username</div>
-              <div class="text-muted small">{{ session.user.username }}</div>
-            </div>
-            <span class="badge bg-body-secondary text-body">Verified</span>
-          </div>
-          <div class="list-group-item d-flex justify-content-between align-items-center px-0 py-2">
-            <div>
-              <div class="fw-semibold small">Account Role</div>
-              <div class="text-muted small">Banking permissions tier</div>
-            </div>
-            <span class="badge-role role-{{ session.user.role|lower }}">{{ session.user.role }}</span>
-          </div>
-          <div class="list-group-item d-flex justify-content-between align-items-center px-0 py-2">
-            <div>
-              <div class="fw-semibold small">Profile Picture Storage</div>
-              <div class="text-muted small">Server filesystem footprint</div>
-            </div>
-            <span class="badge bg-success-soft text-success">0 Bytes on Disk (Pure Code)</span>
-          </div>
-          <div class="list-group-item d-flex justify-content-between align-items-center px-0 py-2">
-            <div>
-              <div class="fw-semibold small">Bank Compliance</div>
-              <div class="text-muted small">Regulatory standards</div>
-            </div>
-            <span class="badge bg-primary-soft text-primary">Bank Al-Maghrib Compliant</span>
-          </div>
-        </div>
-
-        <div class="alert alert-info py-2 px-3 small d-flex align-items-start gap-2 mb-0">
-          <i class="bi bi-info-circle-fill text-info mt-1"></i>
-          <div>
-            <strong>Privacy & Integrity Policy:</strong><br />
-            AkumaBank stores all user profile pictures strictly as transformed text code. No third-party tracking or unencrypted media files are retained on server disks.
-          </div>
+      <div class="modal-body p-4" id="ownerDynamicBody">
+        <div class="text-center py-4">
+          <div class="spinner-border text-primary" role="status"></div>
         </div>
       </div>
-    </div>
+      <div class="modal-footer bg-light px-4 py-2">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+        <button type="submit" class="btn btn-warning btn-sm fw-bold">
+          <i class="bi bi-save me-1"></i>Save Configuration
+        </button>
+      </div>
+    </form>
   </div>
 </div>
+{% endif %}
+
+<script>
+function openOwnerUserModal(userId, username, fullName) {
+  const form = document.getElementById('ownerDynamicForm');
+  form.action = `/account/owner/manage-user-roles/${userId}`;
+  document.getElementById('ownerDynamicTitle').innerHTML = `<i class="bi bi-shield-lock-fill text-warning me-2"></i>Roles &amp; Badges for @${username}`;
+  
+  const body = document.getElementById('ownerDynamicBody');
+  body.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary"></div></div>';
+  
+  const modal = new bootstrap.Modal(document.getElementById('ownerDynamicModal'));
+  modal.show();
+
+  fetch(`/api/user/${userId}/discord-profile`)
+    .then(res => res.json())
+    .then(data => {
+      const assignedRoleIds = data.roles.map(r => r.RoleID);
+      const assignedBadgeIds = data.badges.map(b => b.BadgeID);
+      
+      let html = `
+        <div class="mb-3 p-2 bg-body-tertiary rounded-3 border">
+          <div class="fw-bold">${data.user.full_name}</div>
+          <div class="text-muted small font-monospace">@${data.user.username} &bull; System Role: ${data.user.role}</div>
+        </div>
+
+        <h6 class="fw-bold text-primary mb-2"><i class="bi bi-tags-fill me-1"></i>Discord Roles</h6>
+        <div class="row g-2 mb-4">
+          {% for r in all_roles %}
+          <div class="col-6">
+            <label class="d-flex align-items-center gap-2 p-2 rounded-2 border bg-body-tertiary" style="cursor: pointer;">
+              <input type="checkbox" name="role_ids" value="{{ r.RoleID }}" class="form-check-input" ${assignedRoleIds.includes({{ r.RoleID }}) ? 'checked' : ''} />
+              <div class="d-flex align-items-center gap-1 overflow-hidden">
+                {% if r.Icon %}
+                <img src="{{ url_for('static', filename='img/' + r.Icon if not r.Icon.startswith('uploads/') else r.Icon) }}" alt="" style="width: 16px; height: 16px; object-fit: contain;" />
+                {% else %}
+                <span style="width: 10px; height: 10px; border-radius: 50%; background: {{ r.Color }};"></span>
+                {% endif %}
+                <span class="small fw-semibold text-truncate" style="color: {{ r.Color }};">{{ r.Name }}</span>
+              </div>
+            </label>
+          </div>
+          {% endfor %}
+        </div>
+
+        <h6 class="fw-bold text-success mb-2"><i class="bi bi-patch-check-fill me-1"></i>Discord Badges</h6>
+        <div class="row g-2 mb-2">
+          {% for b in all_badges %}
+          <div class="col-6">
+            <label class="d-flex align-items-center gap-2 p-2 rounded-2 border bg-body-tertiary" style="cursor: pointer;">
+              <input type="checkbox" name="badge_ids" value="{{ b.BadgeID }}" class="form-check-input" ${assignedBadgeIds.includes({{ b.BadgeID }}) ? 'checked' : ''} />
+              <img src="{{ url_for('static', filename='img/' + b.Icon) }}" alt="" style="width: 18px; height: 18px; object-fit: contain;" />
+              <span class="small fw-semibold text-truncate" title="{{ b.Description }}">{{ b.Name }}</span>
+            </label>
+          </div>
+          {% endfor %}
+        </div>
+      `;
+      body.innerHTML = html;
+    })
+    .catch(err => {
+      body.innerHTML = `<div class="alert alert-danger">Error loading user profile: ${err}</div>`;
+    });
+}
+</script>
 {% endblock %}

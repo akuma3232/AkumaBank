@@ -46,7 +46,7 @@
   </div>
 
   <!-- User info -->
-  <div class="sidebar-user">
+  <div class="sidebar-user" style="cursor: pointer;" onclick="window.openDiscordProfile({{ session.user.id }})" title="View your Discord Profile Card">
     {% if session.user.profile_picture %}
       {% if session.user.profile_picture.startswith('data:') %}
       <img class="user-avatar" src="{{ session.user.profile_picture }}" alt="" />
@@ -261,7 +261,8 @@
         </div>
         <ul class="dropdown-menu dropdown-menu-end cyber-dropdown" aria-labelledby="userMenuBtn">
           <li><h6 class="dropdown-header">Signed in as <strong>{{ session.user.username }}</strong></h6></li>
-          <li><a class="dropdown-item" href="{{ url_for('profiles.settings') }}"><i class="bi bi-person-gear me-2 text-primary"></i>Account Settings</a></li>
+          <li><a class="dropdown-item" href="{{ url_for('profiles.settings') }}"><i class="bi bi-person-gear me-2 text-primary"></i>Account &amp; Discord Profile</a></li>
+          <li><a class="dropdown-item" href="{{ url_for('profiles.view_profile', user_id=session.user.id) }}"><i class="bi bi-discord me-2 text-info"></i>My Discord Card</a></li>
           {% if session.user.role == 'Customer' %}
           <li><a class="dropdown-item" href="{{ url_for('customer_portal.home') }}"><i class="bi bi-wallet2 me-2 text-success"></i>My Banking Portal</a></li>
           {% else %}
@@ -323,6 +324,17 @@
   </div>
 </div>
 
+<!-- Global 100% Discord Profile Modal -->
+<div class="modal fade" id="globalDiscordModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered" style="max-width: 420px;">
+    <div class="modal-content border-0 bg-transparent shadow-none" id="globalDiscordCardContainer">
+      <div class="text-center py-5">
+        <div class="spinner-border text-primary" role="status"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Futuristic Toast Notification Container -->
 <div class="toast-container position-fixed bottom-0 end-0 p-3" id="cyberToastContainer" style="z-index: 1099;"></div>
 
@@ -332,6 +344,117 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <!-- Custom JS -->
 <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+<script>
+window.openDiscordProfile = function(userId) {
+  const modalEl = document.getElementById('globalDiscordModal');
+  const container = document.getElementById('globalDiscordCardContainer');
+  if (!modalEl || !container) return;
+  container.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary"></div></div>';
+  const modal = new bootstrap.Modal(modalEl);
+  modal.show();
+
+  fetch(`/api/user/${userId}/discord-profile`)
+    .then(r => r.json())
+    .then(data => {
+      if (data.error) {
+        container.innerHTML = `<div class="alert alert-danger">${data.error}</div>`;
+        return;
+      }
+      const u = data.user;
+      const avatarHtml = u.profile_picture 
+        ? `<img src="${u.profile_picture}" alt="Avatar" class="discord-avatar-img" />`
+        : `<div class="discord-avatar-placeholder">${(u.full_name || u.username)[0].toUpperCase()}</div>`;
+      
+      const bannerStyle = u.banner_image 
+        ? `background-image: url('${u.banner_image}');`
+        : `background: ${u.banner_color || '#5865f2'};`;
+
+      let badgesHtml = '';
+      if (data.badges && data.badges.length > 0) {
+        data.badges.forEach(b => {
+          badgesHtml += `<img src="/static/img/${b.Icon}" alt="${b.Name}" class="discord-badge-icon" title="${b.Name} • ${b.Description || ''}" />`;
+        });
+      } else {
+        badgesHtml = '<span class="text-white-50 small font-monospace" style="font-size:0.65rem;">No badges</span>';
+      }
+
+      let rolesHtml = '';
+      if (data.roles && data.roles.length > 0) {
+        data.roles.forEach(r => {
+          const iconSrc = r.Icon ? (r.Icon.startsWith('uploads/') ? `/static/${r.Icon}` : `/static/img/${r.Icon}`) : '';
+          const iconHtml = iconSrc 
+            ? `<img src="${iconSrc}" alt="" class="discord-role-icon" />` 
+            : `<span class="discord-role-dot" style="background:${r.Color};"></span>`;
+          rolesHtml += `
+            <div class="discord-role-pill" style="background:${r.Color}22; border-color:${r.Color}66;">
+              ${iconHtml}
+              <span>${r.Name}</span>
+            </div>
+          `;
+        });
+      } else {
+        rolesHtml = '<span class="text-muted small fst-italic">No custom roles assigned yet.</span>';
+      }
+
+      const pronounsHtml = u.pronouns ? `<span class="discord-pronouns">${u.pronouns}</span>` : '';
+      const statusHtml = u.custom_status ? `
+        <div class="discord-custom-status">
+          <i class="bi bi-chat-dots-fill text-primary"></i>
+          <span>${u.custom_status}</span>
+        </div>` : '';
+
+      container.innerHTML = `
+        <div class="discord-card-wrapper shadow-lg mx-auto">
+          <div class="discord-banner" style="${bannerStyle}">
+            <button type="button" class="btn-close btn-close-white position-absolute top-0 end-0 m-2" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="position-relative" style="min-height: 52px;">
+            <div class="discord-avatar-wrapper">
+              ${avatarHtml}
+              <div class="discord-status-badge" title="Online"></div>
+            </div>
+            <div class="discord-badges-bar">
+              ${badgesHtml}
+            </div>
+          </div>
+          <div class="discord-body">
+            <div class="discord-display-name">${u.full_name}</div>
+            <div class="discord-username-handle">@${u.username}</div>
+            ${pronounsHtml}
+            ${statusHtml}
+
+            <div class="discord-section-header">About Me</div>
+            <div class="discord-about-me">${u.about_me}</div>
+
+            <div class="discord-section-header d-flex justify-content-between align-items-center">
+              <span>Roles</span>
+              <span class="badge bg-secondary-soft text-secondary font-monospace" style="font-size:0.65rem;">${data.roles.length}</span>
+            </div>
+            <div class="discord-roles-container">
+              ${rolesHtml}
+            </div>
+
+            <div class="discord-section-header">Member Since</div>
+            <div class="d-flex align-items-center gap-2 small text-secondary">
+              <i class="bi bi-bank2 text-primary"></i>
+              <span>AkumaBank Core &bull; Verified Member</span>
+            </div>
+
+            <div class="mt-3 pt-2 border-top border-secondary border-opacity-25 d-flex gap-2">
+              <a href="/user/${u.user_id}/profile" class="btn btn-sm btn-outline-primary flex-fill">
+                <i class="bi bi-person-lines-fill me-1"></i>Full Profile
+              </a>
+              ${data.is_owner_viewer ? `<a href="/account/settings" class="btn btn-sm btn-warning text-dark fw-bold"><i class="bi bi-shield-lock-fill"></i> Owner Config</a>` : ''}
+            </div>
+          </div>
+        </div>
+      `;
+    })
+    .catch(e => {
+      container.innerHTML = `<div class="alert alert-danger m-3">Could not load Discord profile card: ${e}</div>`;
+    });
+};
+</script>
 {% block scripts %}{% endblock %}
 </body>
 </html>

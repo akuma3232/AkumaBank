@@ -4,4 +4,6 @@ __pycache__/
 routes/__pycache__/
 database/profile_pictures/
 database/signed_documents/
+static/uploads/*
+!static/uploads/.gitkeep
 

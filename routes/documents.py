@@ -70,8 +70,9 @@ DOCUMENT_TYPES = {
 def document_access_required(f):
     """
     Ensure the user is signed in and authorized:
-    - Staff (Owner, Admin, Employee) can access any account's documents.
-    - Customer can only access their own accounts' documents.
+    - Staff (Owner, Admin, Employee) can access direct document generation routes.
+    - Customer is restricted: direct PDF downloads are not permitted;
+      they must formally request documents through the Document Request portal.
     """
     @wraps(f)
     def decorated(aid, *args, **kwargs):
@@ -82,21 +83,16 @@ def document_access_required(f):
         user = session["user"]
         role = user.get("role")
 
+        # Direct document generation is strictly restricted to bank staff officers
+        if role == "Customer":
+            flash("Direct document downloads are restricted to bank officers. Please submit an official document request via My Documents.", "warning")
+            return redirect(url_for("documents.customer_documents"))
+
         conn = get_db()
         account = conn.execute("SELECT * FROM ACCOUNT WHERE AccountID=?", (aid,)).fetchone()
         if not account:
             conn.close()
             abort(404, description="Account not found")
-
-        # If user is Customer, verify ownership
-        if role == "Customer":
-            customer = conn.execute(
-                "SELECT CustomerID FROM CUSTOMER WHERE lower(Email)=lower(?)",
-                (user.get("email"),),
-            ).fetchone()
-            if not customer or account["CustomerID"] != customer["CustomerID"]:
-                conn.close()
-                abort(403, description="Unauthorized access to this account document")
 
         conn.close()
         return f(aid, *args, **kwargs)

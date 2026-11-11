@@ -23,30 +23,32 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
 
   <style>
-    /* ── ADVANCED HIGH-TECH LOGIN STYLES ── */
     :root {
-      --login-card-bg: rgba(13, 21, 39, 0.78);
+      --login-card-bg: rgba(13, 21, 39, 0.82);
       --login-card-border: rgba(255, 255, 255, 0.12);
-      --login-card-border-top: rgba(255, 255, 255, 0.25);
+      --login-card-border-top: rgba(255, 255, 255, 0.28);
       --login-input-bg: rgba(255, 255, 255, 0.05);
       --login-input-border: rgba(255, 255, 255, 0.12);
       --login-focus-ring: rgba(37, 99, 235, 0.35);
       --login-text-primary: #ffffff;
       --login-text-secondary: rgba(255, 255, 255, 0.65);
+      --terminal-bg: rgba(10, 16, 32, 0.88);
+      --terminal-border: rgba(59, 130, 246, 0.22);
     }
 
     [data-theme="light"] {
-      --login-card-bg: rgba(255, 255, 255, 0.92);
-      --login-card-border: rgba(226, 232, 240, 0.85);
-      --login-card-border-top: rgba(255, 255, 255, 0.9);
+      --login-card-bg: rgba(255, 255, 255, 0.94);
+      --login-card-border: rgba(226, 232, 240, 0.9);
+      --login-card-border-top: rgba(255, 255, 255, 0.95);
       --login-input-bg: #f8fafc;
       --login-input-border: #cbd5e1;
-      --login-focus-ring: rgba(37, 99, 235, 0.25);
+      --login-focus-ring: rgba(37, 99, 235, 0.22);
       --login-text-primary: #0f172a;
       --login-text-secondary: #64748b;
+      --terminal-bg: rgba(255, 255, 255, 0.9);
+      --terminal-border: rgba(203, 213, 225, 0.9);
     }
 
-    /* Ambient cyber backdrop */
     .login-page {
       min-height: 100vh;
       display: flex;
@@ -60,37 +62,37 @@
     .login-bg {
       position: fixed;
       inset: 0;
-      background: radial-gradient(circle at 15% 25%, #0d1e4a 0%, #060a17 55%, #04060e 100%);
+      background: radial-gradient(circle at 18% 22%, #0e1e48 0%, #060a17 52%, #03050c 100%);
       z-index: 0;
       pointer-events: none;
     }
 
     [data-theme="light"] .login-bg {
-      background: radial-gradient(circle at 15% 25%, #dbeafe 0%, #f1f5f9 55%, #e2e8f0 100%);
+      background: radial-gradient(circle at 18% 22%, #dbeafe 0%, #f1f5f9 55%, #e2e8f0 100%);
     }
 
     .cyber-grid-overlay {
       position: absolute;
       inset: 0;
       background-image: 
-        linear-gradient(rgba(59, 130, 246, 0.04) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(59, 130, 246, 0.04) 1px, transparent 1px);
+        linear-gradient(rgba(59, 130, 246, 0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(59, 130, 246, 0.05) 1px, transparent 1px);
       background-size: 40px 40px;
-      mask-image: radial-gradient(circle at center, black 40%, transparent 85%);
-      -webkit-mask-image: radial-gradient(circle at center, black 40%, transparent 85%);
+      mask-image: radial-gradient(circle at center, black 40%, transparent 88%);
+      -webkit-mask-image: radial-gradient(circle at center, black 40%, transparent 88%);
     }
 
     .glow-orb {
       position: absolute;
       border-radius: 50%;
-      filter: blur(80px);
-      opacity: 0.22;
+      filter: blur(85px);
+      opacity: 0.24;
       animation: float-orb 14s ease-in-out infinite alternate;
       pointer-events: none;
     }
-    .orb-1 { width: 500px; height: 500px; background: #00f2fe; top: -100px; left: -100px; }
-    .orb-2 { width: 450px; height: 450px; background: #3b82f6; bottom: -80px; left: 30%; animation-delay: -5s; }
-    .orb-3 { width: 380px; height: 380px; background: #8b5cf6; top: 20%; right: -80px; animation-delay: -9s; }
+    .orb-1 { width: 520px; height: 520px; background: #00f2fe; top: -120px; left: -100px; }
+    .orb-2 { width: 480px; height: 480px; background: #3b82f6; bottom: -100px; left: 32%; animation-delay: -5s; }
+    .orb-3 { width: 400px; height: 400px; background: #8b5cf6; top: 15%; right: -100px; animation-delay: -9s; }
 
     @keyframes float-orb {
       0% { transform: translate(0, 0) scale(1); }
@@ -104,7 +106,7 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 16px 28px;
+      padding: 16px 32px;
     }
 
     .morocco-badge-pill {
@@ -112,19 +114,33 @@
       align-items: center;
       gap: 8px;
       background: rgba(255, 255, 255, 0.08);
-      border: 1px solid rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.14);
       backdrop-filter: blur(12px);
-      padding: 6px 14px;
+      padding: 6px 16px;
       border-radius: 99px;
-      font-size: 0.72rem;
+      font-size: 0.73rem;
       font-weight: 700;
       letter-spacing: 0.05em;
       color: var(--login-text-primary);
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1);
     }
     [data-theme="light"] .morocco-badge-pill {
-      background: rgba(255, 255, 255, 0.8);
-      border-color: rgba(203, 213, 225, 0.8);
+      background: rgba(255, 255, 255, 0.85);
+      border-color: rgba(203, 213, 225, 0.85);
+    }
+
+    .pulse-dot-green {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #10b981;
+      box-shadow: 0 0 10px #10b981;
+      animation: pulse-ring 2s infinite;
+    }
+    @keyframes pulse-ring {
+      0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+      70% { box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
     }
 
     /* Main Container Layout */
@@ -138,229 +154,231 @@
 
     /* Left Showcase Panel */
     .login-showcase {
-      flex: 1.15;
+      flex: 1.25;
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 40px 60px;
+      padding: 36px 54px;
     }
 
     .showcase-content {
-      max-width: 520px;
+      max-width: 560px;
       width: 100%;
     }
 
-    /* 3D Holographic Card Component */
-    .card-3d-wrap {
-      perspective: 1200px;
-      margin: 32px 0 28px;
-    }
-
-    .hologram-card {
-      position: relative;
-      width: 100%;
-      height: 250px;
+    /* ── High-Tech Core Terminal Mockup ── */
+    .core-terminal-card {
+      background: var(--terminal-bg);
+      border: 1px solid var(--terminal-border);
+      border-top: 1px solid rgba(255, 255, 255, 0.25);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
       border-radius: 20px;
-      background: linear-gradient(135deg, #090e1f 0%, #152244 50%, #0d1733 100%);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      border-top: 1px solid rgba(255, 255, 255, 0.4);
-      padding: 24px;
-      color: #fff;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
+      padding: 22px;
+      margin: 26px 0 24px;
       box-shadow: 
-        0 24px 48px -12px rgba(0, 0, 0, 0.6),
-        0 0 35px rgba(59, 130, 246, 0.2),
-        inset 0 1px 1px rgba(255, 255, 255, 0.4);
+        0 24px 50px -15px rgba(0, 0, 0, 0.55),
+        0 0 30px rgba(59, 130, 246, 0.15);
+      transition: transform 0.25s ease, box-shadow 0.25s ease;
+      position: relative;
       overflow: hidden;
-      transform-style: preserve-3d;
-      transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.2s ease;
-      cursor: pointer;
     }
-
-    .hologram-card:hover {
+    .core-terminal-card:hover {
+      transform: translateY(-2px);
       box-shadow: 
-        0 30px 60px -10px rgba(0, 0, 0, 0.7),
-        0 0 45px rgba(0, 242, 254, 0.35),
-        inset 0 1px 2px rgba(255, 255, 255, 0.5);
+        0 30px 60px -12px rgba(0, 0, 0, 0.65),
+        0 0 40px rgba(0, 242, 254, 0.22);
     }
 
-    /* Card holographic glare sheen */
-    .card-glare {
-      position: absolute;
-      inset: 0;
-      background: linear-gradient(125deg, rgba(255, 255, 255, 0.3) 0%, rgba(0, 242, 254, 0.15) 30%, transparent 60%);
-      opacity: 0.65;
-      pointer-events: none;
-      mix-blend-mode: overlay;
-    }
-
-    .card-top {
+    .terminal-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      position: relative;
-      z-index: 2;
+      padding-bottom: 14px;
+      margin-bottom: 16px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    [data-theme="light"] .terminal-header {
+      border-bottom-color: rgba(226, 232, 240, 0.9);
     }
 
-    .card-bank-brand {
+    .terminal-dots {
       display: flex;
-      align-items: center;
-      gap: 10px;
+      gap: 6px;
     }
+    .t-dot { width: 10px; height: 10px; border-radius: 50%; }
+    .t-dot-red { background: #ef4444; }
+    .t-dot-yellow { background: #f59e0b; }
+    .t-dot-green { background: #10b981; }
 
-    .card-emv-chip {
-      width: 44px;
-      height: 34px;
-      background: linear-gradient(135deg, #d4af37 0%, #f9d976 50%, #b8860b 100%);
-      border-radius: 7px;
-      position: relative;
-      box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.3);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .chip-line {
-      position: absolute;
-      background: rgba(0, 0, 0, 0.25);
-    }
-    .chip-line-h { width: 100%; height: 1px; top: 50%; left: 0; }
-    .chip-line-v { height: 100%; width: 1px; left: 50%; top: 0; }
-
-    .card-number-display {
+    .terminal-title-tag {
       font-family: 'JetBrains Mono', monospace;
-      font-size: 1.35rem;
-      letter-spacing: 0.22em;
-      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
-      position: relative;
-      z-index: 2;
-      margin: 12px 0;
-      font-weight: 600;
+      font-size: 0.72rem;
+      color: var(--login-text-secondary);
+      letter-spacing: 0.05em;
     }
 
-    .card-bottom {
+    /* Live Interbank Volume Box */
+    .volume-metric-block {
       display: flex;
       justify-content: space-between;
       align-items: flex-end;
-      position: relative;
-      z-index: 2;
+      margin-bottom: 14px;
     }
-
-    .card-holder-title {
-      font-size: 0.62rem;
-      letter-spacing: 0.12em;
+    .volume-label {
+      font-size: 0.72rem;
       text-transform: uppercase;
-      opacity: 0.7;
-      margin-bottom: 2px;
-    }
-    .card-holder-name {
-      font-family: 'Space Grotesk', sans-serif;
-      font-size: 0.95rem;
+      letter-spacing: 0.08em;
       font-weight: 700;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
+      color: var(--login-text-secondary);
+      margin-bottom: 3px;
     }
-
-    .card-badge-tier {
-      background: linear-gradient(135deg, #00f2fe, #4facfe);
-      color: #050814;
+    .volume-amount {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.55rem;
       font-weight: 800;
-      font-size: 0.65rem;
-      padding: 3px 10px;
-      border-radius: 6px;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
+      color: var(--login-text-primary);
+      letter-spacing: -0.02em;
     }
-
-    /* Telemetry pill bar */
-    .telemetry-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-bottom: 24px;
+    .volume-currency {
+      color: #3b82f6;
+      font-size: 1rem;
+      margin-left: 4px;
     }
-    .telemetry-item {
+    .volume-badge {
       display: inline-flex;
       align-items: center;
-      gap: 7px;
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      backdrop-filter: blur(10px);
-      padding: 6px 12px;
+      gap: 4px;
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      color: #10b981;
+      padding: 4px 10px;
       border-radius: 99px;
-      font-size: 0.72rem;
-      font-weight: 600;
-      color: var(--login-text-primary);
-    }
-    [data-theme="light"] .telemetry-item {
-      background: rgba(255, 255, 255, 0.8);
-      border-color: #e2e8f0;
+      font-size: 0.74rem;
+      font-weight: 700;
     }
 
-    .pulse-dot-green {
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-      background: #10b981;
-      box-shadow: 0 0 10px #10b981;
-      animation: pulse-ring 2s infinite;
+    /* SVG Wave Chart */
+    .trend-wave-wrap {
+      width: 100%;
+      height: 72px;
+      margin: 8px 0 16px;
     }
-    @keyframes pulse-ring {
-      0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
-      70% { box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
-      100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+    .trend-wave-svg {
+      width: 100%;
+      height: 100%;
+      overflow: visible;
     }
 
-    /* Showcase feature mini cards */
-    .feature-grid-showcase {
+    /* Currency Ticker Row */
+    .currency-ticker-grid {
       display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 14px;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-bottom: 16px;
     }
-    .feature-mini-card {
+    .ticker-pill {
       background: rgba(255, 255, 255, 0.04);
       border: 1px solid rgba(255, 255, 255, 0.08);
-      backdrop-filter: blur(12px);
-      border-radius: 14px;
-      padding: 14px;
+      border-radius: 10px;
+      padding: 8px 10px;
       display: flex;
-      align-items: flex-start;
-      gap: 12px;
-      transition: transform 0.2s ease, border-color 0.2s ease;
+      flex-direction: column;
     }
-    .feature-mini-card:hover {
-      transform: translateY(-2px);
-      border-color: rgba(59, 130, 246, 0.4);
-      background: rgba(255, 255, 255, 0.07);
-    }
-    [data-theme="light"] .feature-mini-card {
-      background: rgba(255, 255, 255, 0.7);
+    [data-theme="light"] .ticker-pill {
+      background: #f8fafc;
       border-color: #e2e8f0;
     }
-    .feat-icon-box {
-      width: 36px;
-      height: 36px;
-      border-radius: 10px;
+    .ticker-pair {
+      font-size: 0.68rem;
+      font-weight: 700;
+      color: var(--login-text-secondary);
+      text-transform: uppercase;
+    }
+    .ticker-rate {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: var(--login-text-primary);
+      margin-top: 2px;
+    }
+
+    /* Terminal Realtime Log Stream */
+    .terminal-feed-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .feed-item {
       display: flex;
       align-items: center;
-      justify-content: center;
-      font-size: 1.15rem;
+      justify-content: space-between;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      padding: 7px 12px;
+      border-radius: 8px;
+      font-size: 0.74rem;
+    }
+    [data-theme="light"] .feed-item {
+      background: #f1f5f9;
+      border-color: #e2e8f0;
+    }
+    .feed-text {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--login-text-primary);
+    }
+    .feed-status {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 700;
+      font-size: 0.68rem;
+    }
+
+    /* Key Pillars 3-Column Bar */
+    .pillars-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+    .pillar-box {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(10px);
+      border-radius: 12px;
+      padding: 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    [data-theme="light"] .pillar-box {
+      background: rgba(255, 255, 255, 0.75);
+      border-color: #e2e8f0;
+    }
+    .pillar-icon {
+      font-size: 1.25rem;
+      color: #3b82f6;
       flex-shrink: 0;
     }
-    .feat-icon-cyan { background: rgba(0, 242, 254, 0.15); color: #00f2fe; }
-    .feat-icon-blue { background: rgba(59, 130, 246, 0.15); color: #3b82f6; }
-    .feat-icon-amber { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
-    .feat-icon-emerald { background: rgba(16, 185, 129, 0.15); color: #10b981; }
+    .pillar-title {
+      font-size: 0.76rem;
+      font-weight: 700;
+      color: var(--login-text-primary);
+      line-height: 1.2;
+    }
+    .pillar-sub {
+      font-size: 0.66rem;
+      color: var(--login-text-secondary);
+      margin-top: 2px;
+    }
 
-    /* Right Auth Panel */
+    /* ── Right Auth Panel ── */
     .login-auth-panel {
-      width: 540px;
+      width: 520px;
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 40px;
+      padding: 36px 40px;
       position: relative;
     }
 
@@ -389,7 +407,6 @@
       border-radius: 14px;
       padding: 4px;
       margin-bottom: 26px;
-      position: relative;
     }
     [data-theme="light"] .auth-mode-switcher {
       background: #f1f5f9;
@@ -423,7 +440,7 @@
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
     }
 
-    /* Auth Inputs */
+    /* Custom Form Inputs */
     .custom-input-wrap {
       position: relative;
       margin-bottom: 18px;
@@ -452,7 +469,6 @@
       color: #3b82f6;
       font-size: 1.15rem;
       pointer-events: none;
-      transition: color 0.2s ease;
       z-index: 2;
     }
 
@@ -488,12 +504,12 @@
       padding: 6px;
       display: flex;
       align-items: center;
-      transition: color 0.2s ease;
       z-index: 2;
+      transition: color 0.2s ease;
     }
     .btn-toggle-eye:hover { color: var(--login-text-primary); }
 
-    /* Submit Button with High-Tech Shine Sweep */
+    /* High-Tech Submit Button */
     .btn-auth-submit {
       width: 100%;
       padding: 14px 20px;
@@ -513,7 +529,7 @@
       overflow: hidden;
       cursor: pointer;
       transition: transform 0.2s ease, box-shadow 0.2s ease;
-      margin-top: 10px;
+      margin-top: 8px;
     }
     .btn-auth-submit:hover {
       transform: translateY(-2px);
@@ -537,32 +553,6 @@
       30%, 100% { left: 140%; }
     }
 
-    /* Quick Demo Bar */
-    .demo-credentials-box {
-      margin-top: 22px;
-      padding: 12px 14px;
-      background: rgba(255, 255, 255, 0.04);
-      border: 1px dashed var(--login-input-border);
-      border-radius: 12px;
-      font-size: 0.76rem;
-    }
-    .demo-btn-pill {
-      background: rgba(59, 130, 246, 0.12);
-      border: 1px solid rgba(59, 130, 246, 0.3);
-      color: #3b82f6;
-      border-radius: 8px;
-      padding: 4px 10px;
-      font-size: 0.74rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.15s ease;
-    }
-    .demo-btn-pill:hover {
-      background: #3b82f6;
-      color: #ffffff;
-    }
-
-    /* Responsive */
     @media (max-width: 992px) {
       .login-main-container { flex-direction: column; }
       .login-showcase { display: none; }
@@ -573,7 +563,7 @@
 </head>
 <body class="login-page">
 
-<!-- Cyber background elements -->
+<!-- Ambient Cyber Background -->
 <div class="login-bg">
   <div class="cyber-grid-overlay"></div>
   <div class="glow-orb orb-1"></div>
@@ -597,7 +587,7 @@
 </header>
 
 <main class="login-main-container">
-  <!-- Left panel: Next-Gen Moroccan Banking Showcase -->
+  <!-- Left panel: Moroccan Financial Engine & Core Telemetry Showcase -->
   <section class="login-showcase">
     <div class="showcase-content">
       <!-- Brand Header -->
@@ -607,103 +597,121 @@
         </div>
         <div>
           <h1 class="login-heading font-heading mb-0" style="letter-spacing: -0.02em;">Akuma<span class="text-primary">Bank</span></h1>
-          <div class="small opacity-75 font-monospace">Next-Generation Moroccan Digital Core</div>
+          <div class="small opacity-75 font-monospace">Sovereign Moroccan Digital Core Banking</div>
         </div>
       </div>
 
-      <!-- 3D Interactive Hologram Card -->
-      <div class="card-3d-wrap">
-        <div class="hologram-card" id="tiltCard">
-          <div class="card-glare" id="cardGlare"></div>
-          <div class="card-top">
-            <div class="card-bank-brand">
-              <i class="bi bi-bank2 fs-4 text-white"></i>
-              <span class="fw-bold font-heading fs-5 tracking-wide">AKUMA</span>
-            </div>
-            <div class="d-flex align-items-center gap-2">
-              <i class="bi bi-wifi fs-4 opacity-75" title="Contactless NFC"></i>
-              <span class="card-badge-tier">Titanium</span>
+      <!-- Core Engine Live Telemetry Terminal Widget -->
+      <div class="core-terminal-card">
+        <div class="terminal-header">
+          <div class="terminal-dots">
+            <span class="t-dot t-dot-red"></span>
+            <span class="t-dot t-dot-yellow"></span>
+            <span class="t-dot t-dot-green"></span>
+          </div>
+          <div class="terminal-title-tag">
+            <i class="bi bi-cpu me-1 text-primary"></i>AKUMA-CORE-OS &bull; BAM NODE 01 [ONLINE]
+          </div>
+          <span class="badge bg-success-soft text-success font-monospace" style="font-size: 0.65rem;">99.99% RTGS</span>
+        </div>
+
+        <!-- Volume metric block -->
+        <div class="volume-metric-block">
+          <div>
+            <div class="volume-label">Daily Interbank Clearing Volume</div>
+            <div class="volume-amount">
+              148,920,400.00<span class="volume-currency">MAD</span>
             </div>
           </div>
-
-          <div class="d-flex align-items-center gap-3 my-auto">
-            <div class="card-emv-chip">
-              <div class="chip-line chip-line-h"></div>
-              <div class="chip-line chip-line-v"></div>
-            </div>
-            <div class="card-number-display">
-              •••• &nbsp; •••• &nbsp; •••• &nbsp; 8892
-            </div>
+          <div class="volume-badge">
+            <i class="bi bi-graph-up-arrow"></i> +18.4%
           </div>
+        </div>
 
-          <div class="card-bottom">
-            <div>
-              <div class="card-holder-title">Cardholder &bull; Titulaire</div>
-              <div class="card-holder-name">MOHAMMED EL ALAMI</div>
-            </div>
-            <div class="text-end">
-              <div class="card-holder-title">Expires &bull; Exp</div>
-              <div class="font-monospace fw-bold" style="font-size: 0.95rem;">08/29</div>
-            </div>
+        <!-- Dynamic Curved Trend Wave -->
+        <div class="trend-wave-wrap">
+          <svg class="trend-wave-svg" viewBox="0 0 500 80" preserveAspectRatio="none">
+            <defs>
+              <linearGradient id="waveGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#00f2fe" stop-opacity="0.38"/>
+                <stop offset="100%" stop-color="#3b82f6" stop-opacity="0.0"/>
+              </linearGradient>
+              <linearGradient id="strokeGradient" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%" stop-color="#00f2fe"/>
+                <stop offset="50%" stop-color="#3b82f6"/>
+                <stop offset="100%" stop-color="#8b5cf6"/>
+              </linearGradient>
+            </defs>
+            <path d="M 0 65 Q 60 20 130 45 T 260 25 T 390 50 T 500 15 L 500 80 L 0 80 Z" fill="url(#waveGradient)"/>
+            <path d="M 0 65 Q 60 20 130 45 T 260 25 T 390 50 T 500 15" fill="none" stroke="url(#strokeGradient)" stroke-width="3" stroke-linecap="round"/>
+            <circle cx="260" cy="25" r="4" fill="#00f2fe" />
+            <circle cx="500" cy="15" r="5" fill="#3b82f6" />
+          </svg>
+        </div>
+
+        <!-- Live Moroccan Market Rates Grid -->
+        <div class="currency-ticker-grid">
+          <div class="ticker-pill">
+            <span class="ticker-pair">EUR / MAD</span>
+            <span class="ticker-rate">10.8425 <small class="text-success" style="font-size: 0.65rem;">+0.12%</small></span>
+          </div>
+          <div class="ticker-pill">
+            <span class="ticker-pair">USD / MAD</span>
+            <span class="ticker-rate">9.9480 <small class="text-danger" style="font-size: 0.65rem;">-0.08%</small></span>
+          </div>
+          <div class="ticker-pill">
+            <span class="ticker-pair">BAM Policy Rate</span>
+            <span class="ticker-rate">3.00% <small class="text-primary" style="font-size: 0.65rem;">Fixed</small></span>
+          </div>
+        </div>
+
+        <!-- Real-Time Settlement Stream -->
+        <div class="terminal-feed-list">
+          <div class="feed-item">
+            <span class="feed-text">
+              <i class="bi bi-lightning-charge-fill text-warning"></i>
+              <span>RTGS Dirham Instant Clearing &bull; Casablanca</span>
+            </span>
+            <span class="feed-status text-success">SETTLED</span>
+          </div>
+          <div class="feed-item">
+            <span class="feed-text">
+              <i class="bi bi-patch-check-fill text-primary"></i>
+              <span>Bank Al-Maghrib 24-Digit RIB Modulo 97</span>
+            </span>
+            <span class="feed-status text-info">VERIFIED</span>
+          </div>
+          <div class="feed-item">
+            <span class="feed-text">
+              <i class="bi bi-shield-lock-fill text-cyan" style="color: #00f2fe;"></i>
+              <span>Zero-Knowledge 256-Bit Cryptographic Seal</span>
+            </span>
+            <span class="feed-status text-primary">ARMED</span>
           </div>
         </div>
       </div>
 
-      <!-- Real-Time Telemetry Bar -->
-      <div class="telemetry-row">
-        <div class="telemetry-item">
-          <span class="pulse-dot-green"></span>
-          <span>RTGS Core: 99.99% Uptime</span>
-        </div>
-        <div class="telemetry-item">
-          <i class="bi bi-shield-check text-info"></i>
-          <span>24-Digit Modulo 97</span>
-        </div>
-        <div class="telemetry-item">
-          <i class="bi bi-currency-exchange text-warning"></i>
-          <span>EUR/MAD: 10.84</span>
-        </div>
-      </div>
-
-      <!-- Feature Grid Showcase -->
-      <div class="feature-grid-showcase">
-        <div class="feature-mini-card">
-          <div class="feat-icon-box feat-icon-cyan">
-            <i class="bi bi-shield-lock-fill"></i>
-          </div>
+      <!-- Architectural Pillars Row -->
+      <div class="pillars-row">
+        <div class="pillar-box">
+          <i class="bi bi-bank2 pillar-icon"></i>
           <div>
-            <strong class="d-block small" style="color: var(--login-text-primary);">Zero-Knowledge Vault</strong>
-            <span class="text-muted" style="font-size: 0.72rem;">256-bit AES encryption &amp; hardware isolation</span>
+            <div class="pillar-title">Bank Al-Maghrib</div>
+            <div class="pillar-sub">BAM/2026/088 Licensed</div>
           </div>
         </div>
-
-        <div class="feature-mini-card">
-          <div class="feat-icon-box feat-icon-blue">
-            <i class="bi bi-lightning-charge-fill"></i>
-          </div>
+        <div class="pillar-box">
+          <i class="bi bi-file-earmark-check-fill pillar-icon text-success"></i>
           <div>
-            <strong class="d-block small" style="color: var(--login-text-primary);">Instant BAM Transfers</strong>
-            <span class="text-muted" style="font-size: 0.72rem;">Real-time Moroccan RTGS dirham clearing</span>
+            <div class="pillar-title">Certified Seals</div>
+            <div class="pillar-sub">Official RIBs &amp; Quittus</div>
           </div>
         </div>
-
-        <div class="feature-mini-card">
-          <div class="feat-icon-box feat-icon-amber">
-            <i class="bi bi-file-earmark-pdf-fill"></i>
-          </div>
+        <div class="pillar-box">
+          <i class="bi bi-shield-check pillar-icon text-info"></i>
           <div>
-            <strong class="d-block small" style="color: var(--login-text-primary);">Certified Documents</strong>
-            <span class="text-muted" style="font-size: 0.72rem;">Sealed RIB slips, solvencies &amp; quittus PDFs</span>
-          </div>
-        </div>
-
-        <div class="feature-mini-card">
-          <div class="feat-icon-box feat-icon-emerald">
-            <i class="bi bi-credit-card-2-front-fill"></i>
-          </div>
-          <div>
-            <strong class="d-block small" style="color: var(--login-text-primary);">Virtual Card Ceilings</strong>
-            <span class="text-muted" style="font-size: 0.72rem;">Instant freeze &amp; dynamic 3D secure protection</span>
+            <div class="pillar-title">CNDP Protected</div>
+            <div class="pillar-sub">Law 09-08 Compliant</div>
           </div>
         </div>
       </div>
@@ -820,22 +828,6 @@
         </button>
       </form>
 
-      <!-- Quick Demo Credentials Box -->
-      <div class="demo-credentials-box">
-        <div class="d-flex align-items-center justify-content-between mb-2">
-          <span class="fw-bold text-muted"><i class="bi bi-lightning-fill text-warning me-1"></i>Quick Demo Accounts:</span>
-          <span class="badge bg-info-soft text-info" style="font-size: 0.65rem;">1-Click Fill</span>
-        </div>
-        <div class="d-flex gap-2">
-          <button type="button" class="demo-btn-pill flex-fill" onclick="fillDemo('customer')">
-            <i class="bi bi-person me-1"></i>Demo Client
-          </button>
-          <button type="button" class="demo-btn-pill flex-fill" onclick="fillDemo('staff')">
-            <i class="bi bi-shield-lock me-1"></i>Demo Staff
-          </button>
-        </div>
-      </div>
-
       <!-- Customer Onboarding Callout (if client mode) -->
       {% if mode != 'staff' %}
       <div class="mt-4 pt-3 border-top text-center">
@@ -866,7 +858,6 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 <script>
-// 1. Password reveal toggle
 function togglePassword() {
   const inp = document.getElementById('passwordInput');
   const ico = document.getElementById('eyeIcon');
@@ -877,64 +868,6 @@ function togglePassword() {
     inp.type = 'password';
     ico.classList.replace('bi-eye-slash', 'bi-eye');
   }
-}
-
-// 2. Interactive 3D Card Tilt Effect on Mouse Move
-const card = document.getElementById('tiltCard');
-const glare = document.getElementById('cardGlare');
-if (card) {
-  card.addEventListener('mousemove', (e) => {
-    const rect = card.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    
-    const centerX = rect.width / 2;
-    const centerY = rect.height / 2;
-    
-    const rotateX = ((y - centerY) / centerY) * -12;
-    const rotateY = ((x - centerX) / centerX) * 12;
-    
-    card.style.transform = `rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale(1.02)`;
-    
-    // Move glare
-    if (glare) {
-      const glareX = (x / rect.width) * 100;
-      const glareY = (y / rect.height) * 100;
-      glare.style.background = `radial-gradient(circle at ${glareX}% ${glareY}%, rgba(255,255,255,0.4) 0%, rgba(0,242,254,0.15) 40%, transparent 80%)`;
-    }
-  });
-
-  card.addEventListener('mouseleave', () => {
-    card.style.transform = 'rotateX(0deg) rotateY(0deg) scale(1)';
-    if (glare) {
-      glare.style.background = 'linear-gradient(125deg, rgba(255, 255, 255, 0.3) 0%, rgba(0, 242, 254, 0.15) 30%, transparent 60%)';
-    }
-  });
-}
-
-// 3. Quick Demo Autofill Helper
-function fillDemo(type) {
-  const idInput = document.getElementById('identifierInput');
-  const passInput = document.getElementById('passwordInput');
-  const modeInput = document.getElementById('formModeInput');
-  
-  if (type === 'customer') {
-    idInput.value = 'akuma@test.com';
-    passInput.value = 'password123';
-    if (modeInput.value === 'staff') {
-      window.location.href = "{{ url_for('auth.login') }}";
-      return;
-    }
-  } else if (type === 'staff') {
-    idInput.value = 'akuma';
-    passInput.value = 'password123';
-    if (modeInput.value !== 'staff') {
-      window.location.href = "{{ url_for('auth.login', mode='staff') }}";
-      return;
-    }
-  }
-  
-  passInput.focus();
 }
 </script>
 </body>

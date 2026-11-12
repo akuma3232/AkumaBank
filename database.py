@@ -669,7 +669,8 @@ def clear_business_data(include_users=False):
             "BRANCH",
         ]
         if include_users:
-            tables.extend(["USER_CUSTOM_ROLE", "USER_BADGE", "USERS"])
+            # Profile identity data: grants, badge and custom role definitions, then the users.
+            tables.extend(["USER_CUSTOM_ROLE", "USER_BADGE", "BADGE", "CUSTOM_ROLE", "USERS"])
         for table in tables:
             table_exists = conn.execute(
                 "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?", (table,)

@@ -156,7 +156,7 @@
                 <i class="bi bi-shield me-1"></i>Max Balance: {{ tier_data.plafond }}
               </div>
             </td>
-            <td class="fw-semibold {{ 'text-success' if a.Balance > 0 else 'text-muted' }}">MAD {{ "{:,.2f}".format(a.Balance) }}</td>
+            <td class="fw-semibold {{ 'text-success' if a.Balance > 0 else ('text-danger' if a.Balance < 0 else 'text-muted') }}">MAD {{ "{:,.2f}".format(a.Balance) }}</td>
             <td class="text-muted small">{{ a.BranchName or '—' }}</td>
             <td>
               {% if a.AccountStatus == 'Active' %}
@@ -182,9 +182,15 @@
                   </button>
                 </form>
                 {% if can_create_account %}
-                <button type="button" class="btn btn-sm btn-outline-danger py-1 px-2" data-bs-toggle="modal" data-bs-target="#closeAccountModal{{ a.AccountID }}" title="Close & Liquidate Account">
-                  <i class="bi bi-x-circle"></i>
-                </button>
+                  {% if a.Balance < 0 %}
+                  <button type="button" class="btn btn-sm btn-outline-secondary py-1 px-2" disabled title="Overdrawn by MAD {{ '{:,.2f}'.format(-a.Balance) }} — settle the balance before closing">
+                    <i class="bi bi-x-circle"></i>
+                  </button>
+                  {% else %}
+                  <button type="button" class="btn btn-sm btn-outline-danger py-1 px-2" data-bs-toggle="modal" data-bs-target="#closeAccountModal{{ a.AccountID }}" title="Close & Liquidate Account">
+                    <i class="bi bi-x-circle"></i>
+                  </button>
+                  {% endif %}
                 {% endif %}
               </div>
               {% else %}

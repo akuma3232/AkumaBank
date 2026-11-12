@@ -38,7 +38,8 @@
 ## 🚀 What's New in v4.1
 
 * 👥 **Owner &amp; Admin only:** the Employee role has been retired. `USERS.Role` now allows `Owner / Admin / Customer`, existing Employee logins are migrated to Admin automatically, and staff invitations create Admins.
-* 💸 **Time Management in the Owner Studio:** nominate a revenue settlement account by RIB, then press **+ Month** to collect every active card subscription into it. The MAD 10.00 transfer fee and MAD 1.00 deposit fee settle there as well.
+* 💸 **Time Management in the Owner Studio:** nominate a revenue settlement account by RIB, then press **Collect Subscriptions** to charge every active card subscription into it. The MAD 10.00 transfer fee and MAD 1.00 deposit fee settle there as well.
+* 📉 **Overdrafts are allowed and enforced:** a subscription the customer cannot cover pushes the account negative, and an overdrawn account cannot be closed or request closure until it is settled. The closure certificate (Quittus) exists only for accounts that are already closed.
 * ⚡ **Live data everywhere:** open views refresh themselves whenever the database changes, so approvals, balances and requests appear without a manual reload. While a form is being edited or a modal is open, a chip offers the update instead of interrupting.
 * 🧹 **Complete reset utility:** `tools/reset_db.py` also clears badges, custom roles and subscription billing history, and reports exactly what it removed.
 
@@ -234,16 +235,23 @@ The Owner nominates one existing account by its 24-digit RIB. Every fee the bank
 
 Saving an empty RIB detaches the settlement account and the bank stops crediting fees to a customer ledger. Only active accounts can hold revenue.
 
-### Advancing a Billing Month
+### Collecting Subscriptions
 
-The **+ Month** action charges one month of card subscriptions:
+The **Collect Subscriptions** button is a one-click collection: it charges every active account's card subscription fee right now and credits the money to the revenue settlement account.
 
 * Every active account whose card tier carries a monthly fee is debited for that fee.
 * The collected amount is credited to the revenue settlement account in the same atomic transaction.
-* Each charge is stored in `SUBSCRIPTION_CHARGE` with its billing period (`YYYY-MM`), tier, amount, posting status and ledger transaction ID.
-* Accounts that cannot cover the fee are recorded as `Unpaid` instead of being debited.
-* Billing periods are idempotent: re-running the same period never double-charges an account.
-* The studio shows the last billed month, the next period, per-run totals and the most recent individual charges.
+* Each click records a `SUBSCRIPTION_RUN` and one `SUBSCRIPTION_CHARGE` row per account with its tier, amount and resulting balance.
+* Accounts that cannot cover the fee are still charged: the balance simply goes negative, becoming an overdraft.
+* The studio shows total revenue collected, per-run totals and the most recent individual charges.
+
+### Overdrawn Accounts
+
+A negative balance is a real state, not a rejected charge:
+
+* An overdrawn account (including one whose balance is exactly negative after a subscription run) cannot be closed — neither by a staff officer from the Accounts page nor by approving a closure request.
+* Customers cannot submit a closure request for an overdrawn account; the portal labels it **Overdrawn** instead of offering the closure button.
+* The closure certificate (Quittus) is generated only for accounts whose status is `Closed`, so it is unavailable before the account is actually closed — for customers, Admins and the Owner alike.
 
 ### Live Updates (No Manual Refresh)
 

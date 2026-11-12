@@ -337,6 +337,8 @@
                     <span class="badge bg-secondary-soft text-secondary" style="font-size: 0.7rem;"><i class="bi bi-lock-fill"></i> Closed</span>
                     {% elif pending_closure_map.get(account.AccountID) %}
                     <span class="badge bg-warning-soft text-warning p-1" style="font-size: 0.7rem;"><i class="bi bi-hourglass-split"></i> Pending</span>
+                    {% elif account.Balance < 0 %}
+                    <span class="badge bg-danger-soft text-danger p-1" style="font-size: 0.7rem;" title="Settle the negative balance to request closure"><i class="bi bi-exclamation-octagon"></i> Overdrawn</span>
                     {% else %}
                     <button type="button" class="btn btn-xs btn-outline-danger py-1 px-2" data-bs-toggle="modal" data-bs-target="#closeReqModal{{ account.AccountID }}" style="font-size: 0.75rem;" title="Request Account Closure">
                       <i class="bi bi-x-circle"></i>

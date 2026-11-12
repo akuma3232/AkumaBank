@@ -152,6 +152,11 @@ def _fetch_account_context(aid: int):
     return dict(account), dict(customer) if customer else {}, dict(branch), tier
 
 
+def _closed_only(doc_type: str, account: dict) -> bool:
+    """Closure documents are issued only after the account has actually been closed."""
+    return doc_type == "CLOSURE_CERTIFICATE" and account.get("Status") != "Closed"
+
+
 def _generate_pdf_for_doc_type(doc_type: str, account: dict, customer: dict, branch: dict, tier: dict, purpose: str = None):
     """Helper to route and generate the right PDF document bytes."""
     conn = get_db()
@@ -206,6 +211,14 @@ def download_closure_certificate(aid):
     account, customer, branch, _ = _fetch_account_context(aid)
     if not account:
         abort(404)
+    if account.get("Status") != "Closed":
+        flash("The closure certificate (Quittus) is issued only once the account has been closed.", "warning")
+        fallback = (
+            url_for("documents.customer_documents")
+            if session.get("user", {}).get("role") == "Customer"
+            else url_for("accounts.accounts")
+        )
+        return redirect(request.referrer or fallback)
     conn = get_db()
     closure_req = conn.execute(
         "SELECT Reason FROM ACCOUNT_CLOSURE_REQUEST WHERE AccountID=? ORDER BY RequestID DESC LIMIT 1",
@@ -314,12 +327,20 @@ def customer_documents():
 
     conn.close()
 
+    # The closure certificate (Quittus) exists only for accounts already closed.
+    has_closed_account = any(a["Status"] == "Closed" for a in accounts)
+    available_document_types = {
+        key: info
+        for key, info in DOCUMENT_TYPES.items()
+        if key != "CLOSURE_CERTIFICATE" or has_closed_account
+    }
+
     return render_template(
         "customer_documents.html",
         customer=customer,
         accounts=accounts,
         requests=requests,
-        document_types=DOCUMENT_TYPES,
+        document_types=available_document_types,
     )
 
 
@@ -348,10 +369,28 @@ def submit_document_request():
 
     # Verify account belongs to customer if provided
     if aid:
-        acct = conn.execute("SELECT 1 FROM ACCOUNT WHERE AccountID=? AND CustomerID=?", (aid, cid)).fetchone()
+        acct = conn.execute("SELECT Status FROM ACCOUNT WHERE AccountID=? AND CustomerID=?", (aid, cid)).fetchone()
         if not acct:
             conn.close()
             flash("Invalid account selected.", "danger")
+            return redirect(url_for("documents.customer_documents"))
+
+    # A closure certificate can only be requested for an account that is closed.
+    if doc_type == "CLOSURE_CERTIFICATE":
+        closed = (
+            conn.execute(
+                "SELECT 1 FROM ACCOUNT WHERE AccountID=? AND CustomerID=? AND Status='Closed'",
+                (aid, cid),
+            ).fetchone()
+            if aid
+            else None
+        )
+        if not closed:
+            conn.close()
+            flash(
+                "A closure certificate (Quittus) can only be requested for an account that is already closed.",
+                "danger",
+            )
             return redirect(url_for("documents.customer_documents"))
 
     doc_info = DOCUMENT_TYPES[doc_type]
@@ -462,6 +501,9 @@ def staff_preview_request_pdf(rid):
         abort(404)
 
     account, customer, branch, tier = _fetch_account_context(req["AccountID"])
+    if _closed_only(req["DocumentType"], account):
+        flash("A closure certificate can only be issued for a closed account.", "warning")
+        return redirect(request.referrer or url_for("accounts.requests_center", tab="documents"))
     pdf_buffer = _generate_pdf_for_doc_type(req["DocumentType"], account, customer, branch, tier, purpose=req["Purpose"])
     filename = f"Draft_{req['DocumentType']}_{account.get('AccountNumber', '')}.pdf"
     as_attachment = request.args.get("download") == "1"

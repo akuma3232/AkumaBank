@@ -337,6 +337,15 @@ def request_account_closure(aid):
         flash("This account is already closed.", "warning")
         return redirect(url_for("customer_portal.home"))
 
+    if float(account["Balance"] or 0) < 0:
+        conn.close()
+        flash(
+            f"This account is overdrawn by MAD {abs(float(account['Balance'])):,.2f}. "
+            "Settle the negative balance before requesting closure.",
+            "danger",
+        )
+        return redirect(url_for("customer_portal.home"))
+
     # Check for existing pending request
     existing = conn.execute(
         "SELECT 1 FROM ACCOUNT_CLOSURE_REQUEST WHERE AccountID=? AND Status='Pending'",

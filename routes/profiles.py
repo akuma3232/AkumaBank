@@ -30,10 +30,8 @@ from PIL import Image, ImageSequence
 from werkzeug.utils import secure_filename
 
 from database import (
-    BILLING_MONTH_KEY,
     REVENUE_ACCOUNT_KEY,
-    bill_subscriptions,
-    billing_period_start,
+    charge_subscriptions,
     get_bank_setting,
     get_db,
     set_bank_setting,
@@ -342,25 +340,27 @@ def _owner_studio_context() -> dict:
         except (TypeError, ValueError):
             revenue_account = None
 
-    billing_history = conn.execute(
-        """SELECT BillingPeriod,
-                  COUNT(*) AS total,
-                  COALESCE(SUM(CASE WHEN Status='Posted' THEN Amount END), 0) AS collected,
-                  COALESCE(SUM(CASE WHEN Status='Unpaid' THEN 1 ELSE 0 END), 0) AS unpaid
-           FROM SUBSCRIPTION_CHARGE
-           GROUP BY BillingPeriod
-           ORDER BY BillingPeriod DESC
+    billing_runs = conn.execute(
+        """SELECT RunID, ChargedAt, AccountsCharged, TotalAmount
+           FROM SUBSCRIPTION_RUN
+           ORDER BY RunID DESC
            LIMIT 6"""
     ).fetchall()
     recent_charges = conn.execute(
-        """SELECT sc.BillingPeriod, sc.Amount, sc.Status, sc.TierName, a.AccountNumber
+        """SELECT sc.Amount, sc.BalanceAfter, sc.TierName, sc.CreatedAt,
+                  a.AccountNumber, c.Name AS CustomerName
            FROM SUBSCRIPTION_CHARGE sc
            JOIN ACCOUNT a ON a.AccountID = sc.AccountID
+           LEFT JOIN CUSTOMER c ON c.CustomerID = sc.CustomerID
            ORDER BY sc.ChargeID DESC
            LIMIT 8"""
     ).fetchall()
-    last_billed = get_bank_setting(conn, BILLING_MONTH_KEY)
-    next_period = billing_period_start(conn)
+    collected_total = conn.execute(
+        "SELECT COALESCE(SUM(TotalAmount), 0) AS total FROM SUBSCRIPTION_RUN"
+    ).fetchone()["total"]
+    overdrawn_count = conn.execute(
+        "SELECT COUNT(*) FROM ACCOUNT WHERE Status='Active' AND Balance < 0"
+    ).fetchone()[0]
     conn.close()
 
     role_map = {}
@@ -379,10 +379,10 @@ def _owner_studio_context() -> dict:
         "role_member_counts": role_member_counts,
         "billing": {
             "revenue": dict(revenue_account) if revenue_account else None,
-            "last_billed": last_billed,
-            "next_period": next_period,
-            "history": [dict(row) for row in billing_history],
+            "runs": [dict(row) for row in billing_runs],
             "charges": [dict(row) for row in recent_charges],
+            "collected_total": collected_total,
+            "overdrawn_count": overdrawn_count,
         },
     }
 
@@ -429,14 +429,14 @@ def set_revenue_account():
     return redirect(url_for("profiles.owner_studio"))
 
 
-@profiles_bp.post("/owner/studio/billing/advance")
+@profiles_bp.post("/owner/studio/billing/collect")
 @owner_required
-def advance_billing_month():
-    """Bill one more month of card subscriptions into the revenue account."""
+def collect_subscriptions():
+    """Collect every active card subscription fee into the revenue account."""
     conn = get_db()
     try:
         conn.execute("BEGIN IMMEDIATE")
-        result = bill_subscriptions(conn)
+        result = charge_subscriptions(conn, run_by=session["user"]["id"])
         if not result["success"]:
             conn.rollback()
             flash(result["message"], "danger")
@@ -445,7 +445,7 @@ def advance_billing_month():
             flash(result["message"], "success")
     except Exception as error:
         conn.rollback()
-        flash(f"Billing run failed: {error}", "danger")
+        flash(f"Subscription collection failed: {error}", "danger")
     finally:
         conn.close()
     return redirect(url_for("profiles.owner_studio"))

@@ -2,7 +2,6 @@
 
 import sqlite3
 import os
-from datetime import date
 from decimal import Decimal, InvalidOperation
 
 from card_tiers import DEFAULT_TIER, get_card_tier
@@ -155,6 +154,9 @@ def init_db(seed_demo_data=False):
         or "'Employee'" in user_table_sql
     ):
         legacy_columns = user_columns
+        # Keep foreign keys in other tables pointing at USERS: modern SQLite
+        # would otherwise rewrite them to the temporary table name.
+        cur.execute("PRAGMA legacy_alter_table = ON")
         cur.execute("ALTER TABLE USERS RENAME TO USERS_legacy_roles")
         cur.execute("""
             CREATE TABLE USERS (
@@ -194,6 +196,23 @@ def init_db(seed_demo_data=False):
             f"INSERT INTO USERS ({column_list}) SELECT {select_list} FROM USERS_legacy_roles"
         )
         cur.execute("DROP TABLE USERS_legacy_roles")
+        cur.execute("PRAGMA legacy_alter_table = OFF")
+
+    # Repair databases migrated by an earlier build, where the rename rewrote
+    # child foreign keys to the temporary table that was then dropped.
+    broken_refs = cur.execute(
+        "SELECT COUNT(*) FROM sqlite_master WHERE sql LIKE '%USERS_legacy_roles%'"
+    ).fetchone()[0]
+    if broken_refs:
+        schema_version = cur.execute("PRAGMA schema_version").fetchone()[0]
+        cur.execute("PRAGMA writable_schema = ON")
+        cur.execute(
+            "UPDATE sqlite_master SET sql=REPLACE(sql, 'USERS_legacy_roles', 'USERS') "
+            "WHERE sql LIKE '%USERS_legacy_roles%'"
+        )
+        cur.execute("PRAGMA writable_schema = OFF")
+        cur.execute(f"PRAGMA schema_version = {schema_version + 1}")
+        conn.commit()
 
     user_columns = {row["name"] for row in cur.execute("PRAGMA table_info(USERS)")}
     for column, definition in (
@@ -399,29 +418,65 @@ def init_db(seed_demo_data=False):
     """)
 
     # ─────────────────────────────────────────────
-    # MONTHLY CARD SUBSCRIPTION BILLING RUNS
+    # CARD SUBSCRIPTION COLLECTION RUNS (OWNER STUDIO)
     # ─────────────────────────────────────────────
     cur.execute("""
+        CREATE TABLE IF NOT EXISTS SUBSCRIPTION_RUN (
+            RunID           INTEGER PRIMARY KEY AUTOINCREMENT,
+            ChargedAt       TEXT    NOT NULL DEFAULT (datetime('now')),
+            AccountsCharged INTEGER NOT NULL DEFAULT 0,
+            TotalAmount     REAL    NOT NULL DEFAULT 0,
+            RunBy           INTEGER,
+            FOREIGN KEY (RunBy) REFERENCES USERS(UserID) ON DELETE SET NULL
+        )
+    """)
+    cur.execute("""
         CREATE TABLE IF NOT EXISTS SUBSCRIPTION_CHARGE (
-            ChargeID      INTEGER PRIMARY KEY AUTOINCREMENT,
-            BillingPeriod TEXT    NOT NULL,
-            AccountID     INTEGER NOT NULL,
-            CustomerID    INTEGER NOT NULL,
-            CardTier      TEXT,
-            TierName      TEXT,
-            Amount        REAL    NOT NULL,
-            Status        TEXT    NOT NULL DEFAULT 'Posted'
-                          CHECK(Status IN ('Posted','Unpaid')),
-            TransactionID INTEGER,
-            CreatedAt     TEXT    NOT NULL DEFAULT (datetime('now')),
-            UNIQUE (BillingPeriod, AccountID),
-            FOREIGN KEY (AccountID) REFERENCES ACCOUNT(AccountID) ON DELETE CASCADE,
+            ChargeID     INTEGER PRIMARY KEY AUTOINCREMENT,
+            RunID        INTEGER,
+            AccountID    INTEGER NOT NULL,
+            CustomerID   INTEGER NOT NULL,
+            CardTier     TEXT,
+            TierName     TEXT,
+            Amount       REAL    NOT NULL,
+            BalanceAfter REAL,
+            CreatedAt    TEXT    NOT NULL DEFAULT (datetime('now')),
+            FOREIGN KEY (RunID)      REFERENCES SUBSCRIPTION_RUN(RunID) ON DELETE CASCADE,
+            FOREIGN KEY (AccountID)  REFERENCES ACCOUNT(AccountID) ON DELETE CASCADE,
             FOREIGN KEY (CustomerID) REFERENCES CUSTOMER(CustomerID) ON DELETE CASCADE
         )
     """)
+
+    # Retire the month-based billing columns if an earlier build created them.
+    charge_columns = {row["name"] for row in cur.execute("PRAGMA table_info(SUBSCRIPTION_CHARGE)")}
+    if "BillingPeriod" in charge_columns or "TransactionID" in charge_columns:
+        cur.execute("ALTER TABLE SUBSCRIPTION_CHARGE RENAME TO SUBSCRIPTION_CHARGE_monthly")
+        cur.execute("""
+            CREATE TABLE SUBSCRIPTION_CHARGE (
+                ChargeID     INTEGER PRIMARY KEY AUTOINCREMENT,
+                RunID        INTEGER,
+                AccountID    INTEGER NOT NULL,
+                CustomerID   INTEGER NOT NULL,
+                CardTier     TEXT,
+                TierName     TEXT,
+                Amount       REAL    NOT NULL,
+                BalanceAfter REAL,
+                CreatedAt    TEXT    NOT NULL DEFAULT (datetime('now')),
+                FOREIGN KEY (RunID)      REFERENCES SUBSCRIPTION_RUN(RunID) ON DELETE CASCADE,
+                FOREIGN KEY (AccountID)  REFERENCES ACCOUNT(AccountID) ON DELETE CASCADE,
+                FOREIGN KEY (CustomerID) REFERENCES CUSTOMER(CustomerID) ON DELETE CASCADE
+            )
+        """)
+        cur.execute("""
+            INSERT INTO SUBSCRIPTION_CHARGE (AccountID, CustomerID, CardTier, TierName, Amount, CreatedAt)
+            SELECT AccountID, CustomerID, CardTier, TierName, Amount, CreatedAt
+            FROM SUBSCRIPTION_CHARGE_monthly
+        """)
+        cur.execute("DROP TABLE SUBSCRIPTION_CHARGE_monthly")
+
     cur.execute(
-        "CREATE INDEX IF NOT EXISTS idx_subscription_period "
-        "ON SUBSCRIPTION_CHARGE(BillingPeriod)"
+        "CREATE INDEX IF NOT EXISTS idx_subscription_run "
+        "ON SUBSCRIPTION_CHARGE(RunID)"
     )
 
     branch_columns = {row["name"] for row in cur.execute("PRAGMA table_info(BRANCH)")}
@@ -714,6 +769,7 @@ def clear_business_data(include_users=False):
             "PASSWORD_RESET_REQUEST",
             "PROFILE_CHANGE_REQUEST",
             "SUBSCRIPTION_CHARGE",
+            "SUBSCRIPTION_RUN",
             "BANK_SETTING",
             "TRANSACTIONS",
             "LOAN",
@@ -877,6 +933,14 @@ def close_account_permanently(account_id: int, reason: str = None, reviewed_by: 
             return {"success": False, "message": "Account is already closed."}
 
         current_balance = float(acct["Balance"])
+        if current_balance < 0:
+            return {
+                "success": False,
+                "message": (
+                    f"This account is overdrawn by MAD {abs(current_balance):,.2f}. "
+                    "Settle the negative balance before closing it."
+                ),
+            }
 
         # If balance > 0, clear it via settlement withdrawal
         if current_balance > 0:
@@ -916,7 +980,6 @@ def close_account_permanently(account_id: int, reason: str = None, reviewed_by: 
 # BANK SETTINGS, REVENUE SETTLEMENT & MONTHLY SUBSCRIPTION BILLING
 # ─────────────────────────────────────────────────────────────────────────────
 REVENUE_ACCOUNT_KEY = "RevenueAccountID"
-BILLING_MONTH_KEY = "BillingMonth"
 
 
 def get_bank_setting(conn, key, default=None):
@@ -976,33 +1039,19 @@ def credit_bank_revenue(conn, amount, description):
     return True
 
 
-def billing_period_start(conn):
-    """Return the next month to bill (YYYY-MM), following the last billed month."""
-    last = get_bank_setting(conn, BILLING_MONTH_KEY)
-    today = date.today()
-    if not last:
-        return today.strftime("%Y-%m")
-    try:
-        year, month = (int(part) for part in last.split("-")[:2])
-    except (TypeError, ValueError):
-        return today.strftime("%Y-%m")
-    month += 1
-    if month > 12:
-        year, month = year + 1, 1
-    return f"{year:04d}-{month:02d}"
-
-
-def bill_subscriptions(conn):
+def charge_subscriptions(conn, run_by=None):
     """
-    Charge every active account's monthly card subscription for the next billing
-    month and move the collected money into the owner's revenue account.
+    Collect every active account's card subscription fee and move the money into
+    the owner's revenue account, recording one collection run and one charge row
+    per account. Accounts are allowed to go negative: an unpaid subscription
+    becomes an overdraft that blocks closing until it is settled.
     Returns a summary dict; the caller owns the transaction and must commit.
     """
     revenue = get_revenue_account(conn)
     if not revenue:
         return {
             "success": False,
-            "message": "Set the bank revenue account RIB in the Owner Studio before billing.",
+            "message": "Set the bank revenue account RIB in the Owner Studio before collecting subscriptions.",
         }
     if revenue["Status"] != "Active":
         return {
@@ -1010,76 +1059,79 @@ def bill_subscriptions(conn):
             "message": "The revenue account is not active, so subscriptions cannot be collected.",
         }
 
-    period = billing_period_start(conn)
     accounts = conn.execute(
         "SELECT AccountID, CustomerID, CardTier, Balance, Status FROM ACCOUNT ORDER BY AccountID"
     ).fetchall()
 
-    billed = unpaid = skipped = 0
+    run_id = None
+    charged = 0
     collected = Decimal("0.00")
+    overdrawn = 0
     for account in accounts:
         if account["Status"] != "Active" or account["AccountID"] == revenue["AccountID"]:
             continue
         tier = get_card_tier(account["CardTier"] or DEFAULT_TIER)
         amount = Decimal(str(tier.get("monthly_amount") or 0))
         if amount <= 0:
-            skipped += 1
-            continue
-        already = conn.execute(
-            "SELECT 1 FROM SUBSCRIPTION_CHARGE WHERE BillingPeriod=? AND AccountID=?",
-            (period, account["AccountID"]),
-        ).fetchone()
-        if already:
             continue
 
         balance = Decimal(str(account["Balance"]))
-        if balance < amount:
-            conn.execute(
-                """INSERT INTO SUBSCRIPTION_CHARGE
-                   (BillingPeriod, AccountID, CustomerID, CardTier, TierName, Amount, Status)
-                   VALUES (?, ?, ?, ?, ?, ?, 'Unpaid')""",
-                (
-                    period, account["AccountID"], account["CustomerID"],
-                    tier["id"], tier["name"], float(amount),
-                ),
-            )
-            unpaid += 1
-            continue
-
-        txn = conn.execute(
+        new_balance = balance - amount  # may fall below zero: that is the overdraft
+        conn.execute(
             """INSERT INTO TRANSACTIONS (AccountID, TransactionType, Amount, Description, BalanceAfter)
                VALUES (?, 'Withdrawal', ?, ?, ?)""",
             (
                 account["AccountID"],
                 float(amount),
-                f"Card subscription — {tier['name']} — {period}",
-                float(balance - amount),
+                f"Card subscription — {tier['name']}",
+                float(new_balance),
             ),
         )
-        credit_bank_revenue(conn, amount, f"Subscription revenue — {tier['name']} — {period}")
+        credit_bank_revenue(conn, amount, f"Subscription revenue — {tier['name']} — account {account['AccountID']}")
+
+        if run_id is None:
+            run_id = conn.execute(
+                "INSERT INTO SUBSCRIPTION_RUN (AccountsCharged, TotalAmount, RunBy) VALUES (0, 0, ?)",
+                (run_by,),
+            ).lastrowid
         conn.execute(
             """INSERT INTO SUBSCRIPTION_CHARGE
-               (BillingPeriod, AccountID, CustomerID, CardTier, TierName, Amount, Status, TransactionID)
-               VALUES (?, ?, ?, ?, ?, ?, 'Posted', ?)""",
+               (RunID, AccountID, CustomerID, CardTier, TierName, Amount, BalanceAfter)
+               VALUES (?, ?, ?, ?, ?, ?, ?)""",
             (
-                period, account["AccountID"], account["CustomerID"],
-                tier["id"], tier["name"], float(amount), txn.lastrowid,
+                run_id, account["AccountID"], account["CustomerID"],
+                tier["id"], tier["name"], float(amount), float(new_balance),
             ),
         )
-        billed += 1
+        charged += 1
         collected += amount
+        if new_balance < 0:
+            overdrawn += 1
 
-    set_bank_setting(conn, BILLING_MONTH_KEY, period)
+    if run_id is None:
+        return {
+            "success": True,
+            "run_id": None,
+            "charged": 0,
+            "collected": Decimal("0.00"),
+            "overdrawn": 0,
+            "message": "No active account currently carries a paid card subscription.",
+        }
+
+    conn.execute(
+        "UPDATE SUBSCRIPTION_RUN SET AccountsCharged=?, TotalAmount=? WHERE RunID=?",
+        (charged, float(collected), run_id),
+    )
     return {
         "success": True,
-        "period": period,
-        "billed": billed,
-        "unpaid": unpaid,
-        "skipped": skipped,
+        "run_id": run_id,
+        "charged": charged,
         "collected": collected,
+        "overdrawn": overdrawn,
         "message": (
-            f"Billing run {period}: {billed} subscription(s) charged for MAD {collected:,.2f}, "
-            f"{unpaid} unpaid, {skipped} free plan(s) skipped."
+            f"Collection run #{run_id}: {charged} subscription(s) charged for MAD {collected:,.2f} "
+            f"and credited to the revenue account"
+            + (f" · {overdrawn} account(s) now overdrawn and blocked from closing." if overdrawn else ".")
         ),
     }
 

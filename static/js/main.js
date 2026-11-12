@@ -550,6 +550,96 @@ function initCardTemplateClicks() {
   });
 }
 
+// ── Live Sync: refresh the view whenever the database changes ───────────────
+// Every write updates the SQLite file, so the version endpoint changes and the
+// current page reloads itself — no manual refresh needed. Typing in a form or
+// having a modal open is respected: the update is offered instead of forced.
+function initLiveSync() {
+  if (!window.fetch) return;
+
+  const POLL_MS = 4000;
+  const VERSION_URL = '/api/live/version';
+  const scrollKey = `akuma:scroll:${location.pathname}${location.search}`;
+  let currentVersion = null;
+  let reloading = false;
+  let dirty = false;
+  let submittedAt = 0;
+
+  // Restore the reading position after an automatic reload.
+  const savedScroll = sessionStorage.getItem(scrollKey);
+  if (savedScroll !== null) {
+    sessionStorage.removeItem(scrollKey);
+    const y = parseInt(savedScroll, 10);
+    if (!Number.isNaN(y)) window.scrollTo(0, y);
+  }
+
+  document.addEventListener('input', (event) => {
+    if (event.target.closest && event.target.closest('form')) dirty = true;
+  }, true);
+  // A submission normally navigates away; the short window also covers a
+  // cancelled confirm() so live sync recovers instead of staying paused.
+  document.addEventListener('submit', () => { dirty = false; submittedAt = Date.now(); }, true);
+
+  function busy() {
+    if (reloading || dirty) return true;
+    if (Date.now() - submittedAt < 15000) return true;
+    if (document.querySelector('.modal.show')) return true;
+    const el = document.activeElement;
+    if (!el || !el.matches) return false;
+    if (el.matches('input, textarea, select') && (el.value || '').length) return true;
+    if (el.matches('input[type="file"]') && el.files && el.files.length) return true;
+    return false;
+  }
+
+  function showChip() {
+    if (document.getElementById('liveUpdateChip')) return;
+    const button = document.createElement('button');
+    button.id = 'liveUpdateChip';
+    button.type = 'button';
+    button.innerHTML = '<i class="bi bi-arrow-repeat me-1"></i>New bank data — click to update';
+    button.style.cssText = 'position:fixed;right:1rem;bottom:1rem;z-index:1080;border:1px solid rgba(56,189,248,.5);' +
+      'background:#0b1220;color:#7dd3fc;padding:.5rem .9rem;border-radius:999px;font-size:.74rem;' +
+      'font-weight:600;box-shadow:0 10px 30px rgba(2,6,23,.45);';
+    button.addEventListener('click', () => reload());
+    document.body.appendChild(button);
+  }
+
+  function reload() {
+    if (reloading) return;
+    reloading = true;
+    sessionStorage.setItem(scrollKey, String(window.scrollY));
+    location.reload();
+  }
+
+  function check(initial) {
+    fetch(VERSION_URL, { cache: 'no-store', headers: { 'Accept': 'application/json' } })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!data || !data.version) return;
+        if (initial || currentVersion === null) {
+          currentVersion = data.version;
+          return;
+        }
+        if (data.version === currentVersion) return;
+        currentVersion = data.version;
+        if (busy()) {
+          showChip();
+          return;
+        }
+        reload();
+      })
+      .catch(() => {});
+  }
+
+  check(true);
+  setInterval(() => {
+    if (!document.hidden && !reloading) check(false);
+  }, POLL_MS);
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && !reloading) check(false);
+  });
+}
+
 // ── DOM Ready Initializer ───────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
   ThemeManager.init();
@@ -559,6 +649,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initCardTemplateClicks();
   CommandHUD.init();
   animateCounters();
+  initLiveSync();
 
   // Attach sound feedback to primary action buttons
   document.querySelectorAll('.btn-primary, .btn-success, .btn-danger, .btn-topbar-action, .topbar-btn-hud').forEach(btn => {

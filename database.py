@@ -2,8 +2,10 @@
 
 import sqlite3
 import os
+from datetime import date
 from decimal import Decimal, InvalidOperation
 
+from card_tiers import DEFAULT_TIER, get_card_tier
 from morocco_banking import generate_moroccan_rib, generate_card_number
 
 DATABASE_DIR = os.path.join(os.path.dirname(__file__), "database")
@@ -137,8 +139,8 @@ def init_db(seed_demo_data=False):
             ApprovalStatus TEXT NOT NULL DEFAULT 'Approved'
                           CHECK(ApprovalStatus IN ('Pending','Approved','Rejected')),
             MustChangePassword INTEGER NOT NULL DEFAULT 0 CHECK(MustChangePassword IN (0,1)),
-            Role     TEXT    NOT NULL DEFAULT 'Employee'
-                     CHECK(Role IN ('Owner','Admin','Employee','Customer'))
+            Role     TEXT    NOT NULL DEFAULT 'Admin'
+                     CHECK(Role IN ('Owner','Admin','Customer'))
         )
     """)
 
@@ -147,7 +149,11 @@ def init_db(seed_demo_data=False):
     user_table_sql = cur.execute(
         "SELECT sql FROM sqlite_master WHERE type='table' AND name='USERS'"
     ).fetchone()["sql"]
-    if "'Customer'" not in user_table_sql or "ApprovalStatus" not in user_columns:
+    if (
+        "'Customer'" not in user_table_sql
+        or "ApprovalStatus" not in user_columns
+        or "'Employee'" in user_table_sql
+    ):
         legacy_columns = user_columns
         cur.execute("ALTER TABLE USERS RENAME TO USERS_legacy_roles")
         cur.execute("""
@@ -165,8 +171,8 @@ def init_db(seed_demo_data=False):
                 ApprovalStatus TEXT NOT NULL DEFAULT 'Approved'
                               CHECK(ApprovalStatus IN ('Pending','Approved','Rejected')),
                 MustChangePassword INTEGER NOT NULL DEFAULT 0 CHECK(MustChangePassword IN (0,1)),
-                Role     TEXT    NOT NULL DEFAULT 'Employee'
-                         CHECK(Role IN ('Owner','Admin','Employee','Customer'))
+                Role     TEXT    NOT NULL DEFAULT 'Admin'
+                         CHECK(Role IN ('Owner','Admin','Customer'))
             )
         """)
         copy_columns = [
@@ -179,8 +185,13 @@ def init_db(seed_demo_data=False):
             if column in legacy_columns
         ]
         column_list = ", ".join(copy_columns)
+        # Retired roles are remapped while copying: an Employee is now an Admin.
+        select_list = ", ".join(
+            "CASE WHEN Role='Employee' THEN 'Admin' ELSE Role END" if column == "Role" else column
+            for column in copy_columns
+        )
         cur.execute(
-            f"INSERT INTO USERS ({column_list}) SELECT {column_list} FROM USERS_legacy_roles"
+            f"INSERT INTO USERS ({column_list}) SELECT {select_list} FROM USERS_legacy_roles"
         )
         cur.execute("DROP TABLE USERS_legacy_roles")
 
@@ -203,6 +214,9 @@ def init_db(seed_demo_data=False):
     ):
         if column not in user_columns:
             cur.execute(f"ALTER TABLE USERS ADD COLUMN {column} {definition}")
+
+    # The Employee role was retired: every staff member is now an Admin.
+    cur.execute("UPDATE USERS SET Role='Admin' WHERE Role='Employee'")
 
     cur.execute("""
         CREATE TABLE IF NOT EXISTS PASSWORD_RESET_REQUEST (
@@ -372,6 +386,43 @@ def init_db(seed_demo_data=False):
     """)
     cur.execute("CREATE INDEX IF NOT EXISTS idx_profile_request_status ON PROFILE_CHANGE_REQUEST(Status)")
     cur.execute("CREATE INDEX IF NOT EXISTS idx_profile_request_user   ON PROFILE_CHANGE_REQUEST(UserID)")
+
+    # ─────────────────────────────────────────────
+    # BANK SETTINGS (REVENUE ACCOUNT, BILLING MONTH)
+    # ─────────────────────────────────────────────
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS BANK_SETTING (
+            Key       TEXT PRIMARY KEY,
+            Value     TEXT,
+            UpdatedAt TEXT NOT NULL DEFAULT (datetime('now'))
+        )
+    """)
+
+    # ─────────────────────────────────────────────
+    # MONTHLY CARD SUBSCRIPTION BILLING RUNS
+    # ─────────────────────────────────────────────
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS SUBSCRIPTION_CHARGE (
+            ChargeID      INTEGER PRIMARY KEY AUTOINCREMENT,
+            BillingPeriod TEXT    NOT NULL,
+            AccountID     INTEGER NOT NULL,
+            CustomerID    INTEGER NOT NULL,
+            CardTier      TEXT,
+            TierName      TEXT,
+            Amount        REAL    NOT NULL,
+            Status        TEXT    NOT NULL DEFAULT 'Posted'
+                          CHECK(Status IN ('Posted','Unpaid')),
+            TransactionID INTEGER,
+            CreatedAt     TEXT    NOT NULL DEFAULT (datetime('now')),
+            UNIQUE (BillingPeriod, AccountID),
+            FOREIGN KEY (AccountID) REFERENCES ACCOUNT(AccountID) ON DELETE CASCADE,
+            FOREIGN KEY (CustomerID) REFERENCES CUSTOMER(CustomerID) ON DELETE CASCADE
+        )
+    """)
+    cur.execute(
+        "CREATE INDEX IF NOT EXISTS idx_subscription_period "
+        "ON SUBSCRIPTION_CHARGE(BillingPeriod)"
+    )
 
     branch_columns = {row["name"] for row in cur.execute("PRAGMA table_info(BRANCH)")}
     if "IFSCCode" in branch_columns and "BranchCode" not in branch_columns:
@@ -662,6 +713,8 @@ def clear_business_data(include_users=False):
             "ACCOUNT_OPENING_REQUEST",
             "PASSWORD_RESET_REQUEST",
             "PROFILE_CHANGE_REQUEST",
+            "SUBSCRIPTION_CHARGE",
+            "BANK_SETTING",
             "TRANSACTIONS",
             "LOAN",
             "ACCOUNT",
@@ -785,6 +838,12 @@ def transfer_money(from_account_id: int, to_account_id: int, amount: float) -> d
                 float(new_dst_balance),
             ),
         )
+        # The retained fee is bank income: settle it into the owner's revenue account.
+        credit_bank_revenue(
+            conn,
+            TRANSFER_FEE,
+            f"Transfer fee retained — {src['AccountNumber']} → {dst['AccountNumber']}",
+        )
 
         conn.commit()
         return {
@@ -851,4 +910,176 @@ def close_account_permanently(account_id: int, reason: str = None, reviewed_by: 
         return {"success": False, "message": str(e)}
     finally:
         conn.close()
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# BANK SETTINGS, REVENUE SETTLEMENT & MONTHLY SUBSCRIPTION BILLING
+# ─────────────────────────────────────────────────────────────────────────────
+REVENUE_ACCOUNT_KEY = "RevenueAccountID"
+BILLING_MONTH_KEY = "BillingMonth"
+
+
+def get_bank_setting(conn, key, default=None):
+    """Read a BANK_SETTING value, returning `default` when unset or empty."""
+    row = conn.execute("SELECT Value FROM BANK_SETTING WHERE Key=?", (key,)).fetchone()
+    if not row or not row["Value"]:
+        return default
+    return row["Value"]
+
+
+def set_bank_setting(conn, key, value):
+    """Insert or update a BANK_SETTING value."""
+    conn.execute(
+        """INSERT INTO BANK_SETTING (Key, Value, UpdatedAt) VALUES (?, ?, datetime('now'))
+           ON CONFLICT(Key) DO UPDATE SET Value=excluded.Value, UpdatedAt=datetime('now')""",
+        (key, None if value is None else str(value)),
+    )
+
+
+def get_revenue_account(conn):
+    """Return the account that receives bank revenue, or None when unset."""
+    raw = get_bank_setting(conn, REVENUE_ACCOUNT_KEY)
+    if not raw:
+        return None
+    try:
+        account_id = int(raw)
+    except (TypeError, ValueError):
+        return None
+    return conn.execute("SELECT * FROM ACCOUNT WHERE AccountID=?", (account_id,)).fetchone()
+
+
+def credit_bank_revenue(conn, amount, description):
+    """
+    Credit a bank fee into the owner's revenue account using the caller's
+    transaction. Returns True when the fee was posted, False when no revenue
+    account is configured (the fee is then simply absorbed by the bank).
+    """
+    fee = Decimal(str(amount))
+    if fee <= 0:
+        return False
+    account = get_revenue_account(conn)
+    if not account:
+        return False
+    # Re-read the balance: earlier inserts in this transaction may have moved it.
+    fresh = conn.execute(
+        "SELECT AccountID, Balance, Status FROM ACCOUNT WHERE AccountID=?",
+        (account["AccountID"],),
+    ).fetchone()
+    if not fresh or fresh["Status"] != "Active":
+        return False
+    new_balance = Decimal(str(fresh["Balance"])) + fee
+    conn.execute(
+        """INSERT INTO TRANSACTIONS (AccountID, TransactionType, Amount, Description, BalanceAfter)
+           VALUES (?, 'Deposit', ?, ?, ?)""",
+        (fresh["AccountID"], float(fee), description, float(new_balance)),
+    )
+    return True
+
+
+def billing_period_start(conn):
+    """Return the next month to bill (YYYY-MM), following the last billed month."""
+    last = get_bank_setting(conn, BILLING_MONTH_KEY)
+    today = date.today()
+    if not last:
+        return today.strftime("%Y-%m")
+    try:
+        year, month = (int(part) for part in last.split("-")[:2])
+    except (TypeError, ValueError):
+        return today.strftime("%Y-%m")
+    month += 1
+    if month > 12:
+        year, month = year + 1, 1
+    return f"{year:04d}-{month:02d}"
+
+
+def bill_subscriptions(conn):
+    """
+    Charge every active account's monthly card subscription for the next billing
+    month and move the collected money into the owner's revenue account.
+    Returns a summary dict; the caller owns the transaction and must commit.
+    """
+    revenue = get_revenue_account(conn)
+    if not revenue:
+        return {
+            "success": False,
+            "message": "Set the bank revenue account RIB in the Owner Studio before billing.",
+        }
+    if revenue["Status"] != "Active":
+        return {
+            "success": False,
+            "message": "The revenue account is not active, so subscriptions cannot be collected.",
+        }
+
+    period = billing_period_start(conn)
+    accounts = conn.execute(
+        "SELECT AccountID, CustomerID, CardTier, Balance, Status FROM ACCOUNT ORDER BY AccountID"
+    ).fetchall()
+
+    billed = unpaid = skipped = 0
+    collected = Decimal("0.00")
+    for account in accounts:
+        if account["Status"] != "Active" or account["AccountID"] == revenue["AccountID"]:
+            continue
+        tier = get_card_tier(account["CardTier"] or DEFAULT_TIER)
+        amount = Decimal(str(tier.get("monthly_amount") or 0))
+        if amount <= 0:
+            skipped += 1
+            continue
+        already = conn.execute(
+            "SELECT 1 FROM SUBSCRIPTION_CHARGE WHERE BillingPeriod=? AND AccountID=?",
+            (period, account["AccountID"]),
+        ).fetchone()
+        if already:
+            continue
+
+        balance = Decimal(str(account["Balance"]))
+        if balance < amount:
+            conn.execute(
+                """INSERT INTO SUBSCRIPTION_CHARGE
+                   (BillingPeriod, AccountID, CustomerID, CardTier, TierName, Amount, Status)
+                   VALUES (?, ?, ?, ?, ?, ?, 'Unpaid')""",
+                (
+                    period, account["AccountID"], account["CustomerID"],
+                    tier["id"], tier["name"], float(amount),
+                ),
+            )
+            unpaid += 1
+            continue
+
+        txn = conn.execute(
+            """INSERT INTO TRANSACTIONS (AccountID, TransactionType, Amount, Description, BalanceAfter)
+               VALUES (?, 'Withdrawal', ?, ?, ?)""",
+            (
+                account["AccountID"],
+                float(amount),
+                f"Card subscription — {tier['name']} — {period}",
+                float(balance - amount),
+            ),
+        )
+        credit_bank_revenue(conn, amount, f"Subscription revenue — {tier['name']} — {period}")
+        conn.execute(
+            """INSERT INTO SUBSCRIPTION_CHARGE
+               (BillingPeriod, AccountID, CustomerID, CardTier, TierName, Amount, Status, TransactionID)
+               VALUES (?, ?, ?, ?, ?, ?, 'Posted', ?)""",
+            (
+                period, account["AccountID"], account["CustomerID"],
+                tier["id"], tier["name"], float(amount), txn.lastrowid,
+            ),
+        )
+        billed += 1
+        collected += amount
+
+    set_bank_setting(conn, BILLING_MONTH_KEY, period)
+    return {
+        "success": True,
+        "period": period,
+        "billed": billed,
+        "unpaid": unpaid,
+        "skipped": skipped,
+        "collected": collected,
+        "message": (
+            f"Billing run {period}: {billed} subscription(s) charged for MAD {collected:,.2f}, "
+            f"{unpaid} unpaid, {skipped} free plan(s) skipped."
+        ),
+    }
 

@@ -4,7 +4,7 @@ Uses the TransferMoney stored-procedure equivalent and the trigger UpdateBalance
 """
 
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash
-from database import get_db, transfer_money, DEPOSIT_FEE
+from database import get_db, transfer_money, credit_bank_revenue, DEPOSIT_FEE
 from card_tiers import get_card_tier
 from functools import wraps
 
@@ -126,6 +126,8 @@ def deposit():
             INSERT INTO TRANSACTIONS (AccountID, TransactionType, Amount, Description, BalanceAfter)
             VALUES (?, 'Deposit', ?, ?, ?)
         """, (account_id, float(credited_amount), f"{description} (MAD {DEPOSIT_FEE:.2f} bank fee deducted)", float(new_balance)))
+        # The retained fee is bank income: settle it into the owner's revenue account.
+        credit_bank_revenue(conn, DEPOSIT_FEE, f"Deposit fee retained — {description} — account {account_id}")
         conn.commit()
         flash(
             f"MAD {credited_amount:,.2f} credited (MAD {DEPOSIT_FEE:,.2f} bank fee deducted from MAD {deposit_amount:,.2f} deposit).",

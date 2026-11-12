@@ -26,6 +26,7 @@ from routes.users import users_bp
 from routes.profiles import profiles_bp
 from routes.customer_portal import customer_portal_bp
 from routes.documents import documents_bp
+from routes.live import live_bp
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SESSION_SECRET") or os.urandom(32)
@@ -48,6 +49,7 @@ app.register_blueprint(users_bp)
 app.register_blueprint(profiles_bp)
 app.register_blueprint(customer_portal_bp)
 app.register_blueprint(documents_bp)
+app.register_blueprint(live_bp)
 
 # ── Jinja Template Filters for Moroccan Banking & Cards ──────────────────────
 @app.template_filter("format_rib")

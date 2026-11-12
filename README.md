@@ -22,6 +22,7 @@
 <a href="#-unified-operations-requests-center">📥 Requests Center</a> •
 <a href="#-official-bank-al-maghrib-pdf-suite">📄 PDF Suite</a> •
 <a href="#-card-subscription-tiers">💳 Card Tiers</a> •
+<a href="#-time-management--subscription-revenue">💸 Time Management</a> •
 <a href="#-executive-profile--identity-system">🪪 Profiles</a> •
 <a href="#-role-based-access-control-rbac">👥 User Roles</a> •
 <a href="#-quick-start--installation">⚡ Quick Start</a> •
@@ -33,6 +34,15 @@
 </div>
 
 <br/>
+
+## 🚀 What's New in v4.1
+
+* 👥 **Owner &amp; Admin only:** the Employee role has been retired. `USERS.Role` now allows `Owner / Admin / Customer`, existing Employee logins are migrated to Admin automatically, and staff invitations create Admins.
+* 💸 **Time Management in the Owner Studio:** nominate a revenue settlement account by RIB, then press **+ Month** to collect every active card subscription into it. The MAD 10.00 transfer fee and MAD 1.00 deposit fee settle there as well.
+* ⚡ **Live data everywhere:** open views refresh themselves whenever the database changes, so approvals, balances and requests appear without a manual reload. While a form is being edited or a modal is open, a chip offers the update instead of interrupting.
+* 🧹 **Complete reset utility:** `tools/reset_db.py` also clears badges, custom roles and subscription billing history, and reports exactly what it removed.
+
+---
 
 ## 🚀 What's New in v4.0
 
@@ -208,6 +218,39 @@ AkumaBank offers 4 tailored card subscription tiers:
 
 ---
 
+## 💸 Time Management & Subscription Revenue
+
+The Owner Studio (`/owner/studio`) doubles as the bank's billing control centre, turning card subscriptions and transaction fees into real bank income.
+
+### Revenue Settlement Account
+
+The Owner nominates one existing account by its 24-digit RIB. Every fee the bank retains is credited to that account's ledger in the same atomic transaction as the operation that generated it:
+
+| Revenue Source | Amount |
+| :--- | :--- |
+| Deposit administrative fee | MAD 1.00 per deposit |
+| Inter-account transfer fee | MAD 10.00 per transfer |
+| Monthly card subscription | per tier — MAD 0 (free plans) up to MAD 290 |
+
+Saving an empty RIB detaches the settlement account and the bank stops crediting fees to a customer ledger. Only active accounts can hold revenue.
+
+### Advancing a Billing Month
+
+The **+ Month** action charges one month of card subscriptions:
+
+* Every active account whose card tier carries a monthly fee is debited for that fee.
+* The collected amount is credited to the revenue settlement account in the same atomic transaction.
+* Each charge is stored in `SUBSCRIPTION_CHARGE` with its billing period (`YYYY-MM`), tier, amount, posting status and ledger transaction ID.
+* Accounts that cannot cover the fee are recorded as `Unpaid` instead of being debited.
+* Billing periods are idempotent: re-running the same period never double-charges an account.
+* The studio shows the last billed month, the next period, per-run totals and the most recent individual charges.
+
+### Live Updates (No Manual Refresh)
+
+Every page polls `/api/live/version`, a cheap fingerprint of the SQLite file. When any signed-in user changes data, the fingerprint changes and every open view reloads itself, keeping its scroll position. If a form is being edited, a file is selected or a modal is open, the reload waits and a **New bank data — click to update** chip appears instead of interrupting the work.
+
+---
+
 ## 🪪 Executive Profile & Identity System
 
 Every staff member and customer receives a Discord-style executive profile card: banner, overlapping avatar with a status dot, framed badge tray, PNG role pills, and sectioned About Me / Roles / Accounts blocks. Badges and role icons are uploaded PNGs only &mdash; glyph-based badges were retired.
@@ -225,6 +268,7 @@ Every staff member and customer receives a Discord-style executive profile card:
 
 * Create custom profile roles with a color and optional PNG icon (rendered as a 16px pill icon, with a colored dot fallback) and delete them with one click.
 * Register official bank badges from square PNG icons (64&times;64), each with a description and accent color, or delete them from the registry.
+* Nominate the bank's revenue settlement account by RIB and advance subscription billing months from the Time Management panel.
 * Assign badges and roles to any member from the studio member table, a profile card, or the global profile popup.
 * Role member counts and both registries stay visible while you work, and every studio action returns to the studio.
 
@@ -240,22 +284,22 @@ Customers cannot rewrite their own identity fields. Saving **About Me &amp; Stat
 
 ## 👥 Role-Based Access Control (RBAC)
 
-AkumaBank enforces strict operational separation across 4 distinct user roles:
+AkumaBank enforces strict operational separation across 3 distinct user roles — the Employee role was retired in v4.1, and every staff member is now an Admin:
 
-| Capability | 👑 Owner | 🛡️ Admin | 👔 Employee | 👤 Customer |
-| :--- | :---: | :---: | :---: | :---: |
-| **System Dashboard &amp; Telemetry** | ✅ | ✅ | ✅ | ❌ |
-| **Review Customer Signups** | ✅ | ✅ | ❌ | ❌ |
-| **Create &amp; Open Accounts** | ✅ | ✅ | ❌ | ❌ |
-| **Close &amp; Liquidate Accounts** | ✅ | ✅ | ❌ | ❌ |
-| **Approve / Sign Official PDFs** | ✅ | ✅ | ❌ | ❌ |
-| **Underwrite &amp; Disburse Loans** | ✅ | ✅ | 👁️ Review | ❌ |
-| **Manage Staff Users** | ✅ | ❌ | ❌ | ❌ |
-| **Owner Studio (Roles &amp; Badges)** | ✅ | ❌ | ❌ | ❌ |
-| **Approve Profile Change Requests** | ✅ | ✅ | ❌ | ❌ |
-| **Edit Own Profile Identity** | ✅ | ✅ | ✅ | 📝 Request |
-| **Client Portal Self-Service** | ❌ | ❌ | ❌ | ✅ |
-| **Customer Document Requests** | ❌ | ❌ | ❌ | ✅ |
+| Capability | 👑 Owner | 🛡️ Admin | 👤 Customer |
+| :--- | :---: | :---: | :---: |
+| **System Dashboard &amp; Telemetry** | ✅ | ✅ | ❌ |
+| **Review Customer Signups** | ✅ | ✅ | ❌ |
+| **Create &amp; Open Accounts** | ✅ | ✅ | ❌ |
+| **Close &amp; Liquidate Accounts** | ✅ | ✅ | ❌ |
+| **Approve / Sign Official PDFs** | ✅ | ✅ | ❌ |
+| **Underwrite &amp; Disburse Loans** | ✅ | ✅ | ❌ |
+| **Manage Staff Users** | ✅ | ❌ | ❌ |
+| **Owner Studio (Roles, Badges &amp; Billing)** | ✅ | ❌ | ❌ |
+| **Approve Profile Change Requests** | ✅ | ✅ | ❌ |
+| **Edit Own Profile Identity** | ✅ | ✅ | 📝 Request |
+| **Client Portal Self-Service** | ❌ | ❌ | ✅ |
+| **Customer Document Requests** | ❌ | ❌ | ✅ |
 
 ---
 
@@ -323,7 +367,7 @@ http://127.0.0.1:5000
 ```text
 AkumaBank/
 ├── app.py                         # Application factory, blueprints & context processors
-├── database.py                    # SQLite connection engine, triggers & liquidation logic
+├── database.py                    # SQLite engine, triggers, liquidation, billing & revenue settlement
 ├── card_tiers.py                  # Moroccan card subscription tiers (Silver/Titanium/Gold/Obsidian)
 ├── morocco_banking.py             # 24-digit BAM Modulo 97 RIB & 16-digit Luhn card generator
 ├── pdf_generator.py               # ReportLab official PDF compilation & vector card engine
@@ -343,6 +387,7 @@ AkumaBank/
 │   ├── dashboard.py               # Executive telemetry & Chart.js inflow/outflow charts
 │   ├── database_panel.py          # Interactive SQL query console & table explorer
 │   ├── documents.py               # PDF downloads, draft preview, and signature upload
+│   ├── live.py                    # Live-update version endpoint for auto-refresh
 │   ├── loans.py                   # Credit underwriting & loan disbursement
 │   ├── profiles.py                # Profile cards, Owner Studio, roles, badges, avatars & requests
 │   ├── reports.py                 # Financial audit statements & balance sheets
@@ -363,11 +408,11 @@ AkumaBank/
 │   ├── dashboard.html             # Executive telemetry & Chart.js analytics
 │   ├── account_settings.html      # Live profile card preview, avatar/banner uploads & bio requests
 │   ├── profile_card.html          # Standalone executive profile card with Owner assignment modals
-│   ├── owner_studio.html          # Owner Studio for roles, badges & member assignments
+│   ├── owner_studio.html          # Owner Studio: roles, badges, members & subscription billing
 │   └── ...                        # Supporting templates (login, register, loans, reports...)
 └── tools/
     ├── create_owner.py            # Initial administrator provisioner CLI
-    └── reset_db.py                # Database clearing and reset utility
+    └── reset_db.py                # Full reset: banking data, users, badges, roles & billing
 ```
 
 ---
@@ -468,7 +513,7 @@ To purge all business records and test user accounts without altering the schema
 python tools/reset_db.py
 ```
 > [!NOTE]
-> This safely disables foreign keys, flushes all transaction, account, loan, request, and customer tables, resets SQLite sequence counters, and re-enables constraints. Recreate the master administrator using `python tools/create_owner.py`.
+> This safely disables foreign keys, flushes every transaction, account, loan, request, customer, user, badge, custom role and subscription-billing table, resets SQLite sequence counters, clears the revenue settlement setting and re-enables constraints. The command reports what was removed and lists any table that still holds rows. Recreate the master administrator using `python tools/create_owner.py`.
 
 ---
 

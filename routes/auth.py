@@ -43,7 +43,7 @@ def login():
             candidates = conn.execute(
                 """SELECT * FROM USERS
                    WHERE (Username=? OR lower(Email)=lower(?))
-                     AND Role IN ('Owner','Admin','Employee')
+                     AND Role IN ('Owner','Admin')
                      AND ApprovalStatus='Approved'""",
                 (identifier, identifier),
             ).fetchall()

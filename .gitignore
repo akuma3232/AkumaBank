@@ -6,4 +6,4 @@ database/profile_pictures/
 database/signed_documents/
 static/uploads/*
 !static/uploads/.gitkeep
-
+.freebuff/

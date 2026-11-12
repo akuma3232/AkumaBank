@@ -91,7 +91,7 @@ CREATE TABLE IF NOT EXISTS LOAN (
 
 -- ─────────────────────────────────────────────────────────────────────────
 -- 6. TABLE: USERS
---    Application login table (Admin / Employee roles).
+--    Application login table (Owner / Admin staff, plus Customer logins).
 -- ─────────────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS USERS (
     UserID   INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -107,8 +107,8 @@ CREATE TABLE IF NOT EXISTS USERS (
     ApprovalStatus TEXT NOT NULL DEFAULT 'Approved'
                   CHECK(ApprovalStatus IN ('Pending','Approved','Rejected')),
     MustChangePassword INTEGER NOT NULL DEFAULT 0 CHECK(MustChangePassword IN (0,1)),
-    Role     TEXT    NOT NULL DEFAULT 'Employee'
-             CHECK(Role IN ('Owner','Admin','Employee','Customer'))
+    Role     TEXT    NOT NULL DEFAULT 'Admin'
+             CHECK(Role IN ('Owner','Admin','Customer'))
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON USERS(Email) WHERE Email IS NOT NULL;

@@ -70,7 +70,7 @@ DOCUMENT_TYPES = {
 def document_access_required(f):
     """
     Ensure the user is signed in and authorized:
-    - Staff (Owner, Admin, Employee) can access direct document generation routes.
+    - Staff (Owner, Admin) can access direct document generation routes.
     - Customer is restricted: direct PDF downloads are not permitted;
       they must formally request documents through the Document Request portal.
     """
@@ -118,7 +118,7 @@ def staff_required(f):
     def decorated(*args, **kwargs):
         if "user" not in session:
             return redirect(url_for("auth.login"))
-        if session["user"].get("role") not in ("Owner", "Admin", "Employee"):
+        if session["user"].get("role") not in ("Owner", "Admin"):
             flash("Staff privileges required.", "danger")
             return redirect(url_for("customer_portal.home"))
         return f(*args, **kwargs)

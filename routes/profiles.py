@@ -29,7 +29,16 @@ from flask import (
 from PIL import Image, ImageSequence
 from werkzeug.utils import secure_filename
 
-from database import get_db
+from database import (
+    BILLING_MONTH_KEY,
+    REVENUE_ACCOUNT_KEY,
+    bill_subscriptions,
+    billing_period_start,
+    get_bank_setting,
+    get_db,
+    set_bank_setting,
+)
+from morocco_banking import format_moroccan_rib
 
 profiles_bp = Blueprint("profiles", __name__)
 
@@ -318,6 +327,40 @@ def _owner_studio_context() -> dict:
             "SELECT RoleID, COUNT(*) AS total FROM USER_CUSTOM_ROLE GROUP BY RoleID"
         )
     }
+
+    # Time management: revenue settlement account and subscription billing history.
+    revenue_account = None
+    revenue_raw = get_bank_setting(conn, REVENUE_ACCOUNT_KEY)
+    if revenue_raw:
+        try:
+            revenue_account = conn.execute(
+                "SELECT a.AccountID, a.AccountNumber, a.Balance, a.Status, c.Name AS CustomerName "
+                "FROM ACCOUNT a LEFT JOIN CUSTOMER c ON c.CustomerID = a.CustomerID "
+                "WHERE a.AccountID=?",
+                (int(revenue_raw),),
+            ).fetchone()
+        except (TypeError, ValueError):
+            revenue_account = None
+
+    billing_history = conn.execute(
+        """SELECT BillingPeriod,
+                  COUNT(*) AS total,
+                  COALESCE(SUM(CASE WHEN Status='Posted' THEN Amount END), 0) AS collected,
+                  COALESCE(SUM(CASE WHEN Status='Unpaid' THEN 1 ELSE 0 END), 0) AS unpaid
+           FROM SUBSCRIPTION_CHARGE
+           GROUP BY BillingPeriod
+           ORDER BY BillingPeriod DESC
+           LIMIT 6"""
+    ).fetchall()
+    recent_charges = conn.execute(
+        """SELECT sc.BillingPeriod, sc.Amount, sc.Status, sc.TierName, a.AccountNumber
+           FROM SUBSCRIPTION_CHARGE sc
+           JOIN ACCOUNT a ON a.AccountID = sc.AccountID
+           ORDER BY sc.ChargeID DESC
+           LIMIT 8"""
+    ).fetchall()
+    last_billed = get_bank_setting(conn, BILLING_MONTH_KEY)
+    next_period = billing_period_start(conn)
     conn.close()
 
     role_map = {}
@@ -334,6 +377,13 @@ def _owner_studio_context() -> dict:
         "user_role_map": role_map,
         "user_badge_map": badge_map,
         "role_member_counts": role_member_counts,
+        "billing": {
+            "revenue": dict(revenue_account) if revenue_account else None,
+            "last_billed": last_billed,
+            "next_period": next_period,
+            "history": [dict(row) for row in billing_history],
+            "charges": [dict(row) for row in recent_charges],
+        },
     }
 
 
@@ -342,6 +392,63 @@ def _owner_studio_context() -> dict:
 def owner_studio():
     """Dedicated Owner Studio: create roles & badges and assign them to members."""
     return render_template("owner_studio.html", **_owner_studio_context())
+
+
+@profiles_bp.post("/owner/studio/revenue-account")
+@owner_required
+def set_revenue_account():
+    """Nominate the account that receives bank fees and subscription revenue."""
+    rib = "".join((request.form.get("rib") or "").split())
+    conn = get_db()
+    try:
+        if not rib:
+            conn.execute("DELETE FROM BANK_SETTING WHERE Key=?", (REVENUE_ACCOUNT_KEY,))
+            conn.commit()
+            flash("Bank revenue account cleared. Fees are no longer credited to a settlement account.", "info")
+        else:
+            account = conn.execute(
+                "SELECT AccountID, AccountNumber, Status FROM ACCOUNT WHERE REPLACE(AccountNumber,' ','')=?",
+                (rib,),
+            ).fetchone()
+            if not account:
+                flash("No bank account matches that RIB. Copy the 24-digit RIB from the Accounts page.", "danger")
+            elif account["Status"] != "Active":
+                flash("That account is not active, so it cannot hold bank revenue.", "danger")
+            else:
+                set_bank_setting(conn, REVENUE_ACCOUNT_KEY, account["AccountID"])
+                conn.commit()
+                flash(
+                    f"Bank revenue now settles into RIB {format_moroccan_rib(account['AccountNumber'])}.",
+                    "success",
+                )
+    except Exception as error:
+        conn.rollback()
+        flash(f"Could not save the revenue account: {error}", "danger")
+    finally:
+        conn.close()
+    return redirect(url_for("profiles.owner_studio"))
+
+
+@profiles_bp.post("/owner/studio/billing/advance")
+@owner_required
+def advance_billing_month():
+    """Bill one more month of card subscriptions into the revenue account."""
+    conn = get_db()
+    try:
+        conn.execute("BEGIN IMMEDIATE")
+        result = bill_subscriptions(conn)
+        if not result["success"]:
+            conn.rollback()
+            flash(result["message"], "danger")
+        else:
+            conn.commit()
+            flash(result["message"], "success")
+    except Exception as error:
+        conn.rollback()
+        flash(f"Billing run failed: {error}", "danger")
+    finally:
+        conn.close()
+    return redirect(url_for("profiles.owner_studio"))
 
 
 @profiles_bp.post("/account/settings/avatar")

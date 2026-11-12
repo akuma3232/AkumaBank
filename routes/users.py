@@ -41,8 +41,8 @@ def users():
         password_confirmation = request.form.get("password_confirmation", "")
         role = request.form.get("role", "")
 
-        if not username or role not in ("Admin", "Employee"):
-            flash("Enter a username and choose Admin or Employee.", "danger")
+        if not username or role not in ("Admin",):
+            flash("Enter a username; every staff account is an Admin.", "danger")
         elif not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email):
             flash("Enter a valid email address.", "danger")
         elif conn.execute(
@@ -67,8 +67,8 @@ def users():
 
     staff = conn.execute(
         "SELECT UserID, Username, Email, Role, ProfilePicture IS NOT NULL AS HasPicture "
-        "FROM USERS WHERE Role IN ('Owner','Admin','Employee') ORDER BY "
-        "CASE Role WHEN 'Owner' THEN 0 WHEN 'Admin' THEN 1 ELSE 2 END, Username"
+        "FROM USERS WHERE Role IN ('Owner','Admin') ORDER BY "
+        "CASE Role WHEN 'Owner' THEN 0 ELSE 1 END, Username"
     ).fetchall()
     conn.close()
     return render_template(

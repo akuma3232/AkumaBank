@@ -146,6 +146,123 @@
     </div>
   </div>
 
+  <!-- ── TIME MANAGEMENT & SUBSCRIPTION REVENUE ── -->
+  <div class="col-12">
+    <div class="card-panel">
+      <div class="panel-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <span class="panel-title"><i class="bi bi-calendar2-range text-success me-2"></i>Time Management — Subscription Revenue</span>
+        <div class="d-flex align-items-center gap-2">
+          {% if billing.last_billed %}
+          <span class="badge bg-success-soft text-success font-monospace">LAST BILLED {{ billing.last_billed }}</span>
+          {% endif %}
+          <span class="badge bg-info-soft text-info font-monospace">NEXT {{ billing.next_period }}</span>
+        </div>
+      </div>
+      <div class="panel-body p-3">
+        <p class="text-muted small mb-3">
+          Bank revenue settles into the account you nominate: monthly card subscription fees, the MAD 10.00 transfer fee
+          and the MAD 1.00 deposit fee are all credited to its ledger.
+        </p>
+
+        <div class="row g-3">
+          <div class="col-lg-6">
+            <form method="POST" action="{{ url_for('profiles.set_revenue_account') }}" class="p-3 bg-body-tertiary rounded-3 border h-100">
+              <label class="form-label small fw-semibold" for="revenueRib">Revenue Settlement Account (RIB)</label>
+              <input type="text" id="revenueRib" name="rib" class="form-control form-control-sm font-monospace mb-2"
+                     value="{{ billing.revenue.AccountNumber if billing.revenue else '' }}"
+                     placeholder="24-digit RIB from the Accounts page" maxlength="40" />
+              <div class="form-text mb-2">
+                {% if billing.revenue %}
+                  Settlement account: <strong>{{ billing.revenue.CustomerName or 'Bank account' }}</strong>
+                  &bull; balance MAD {{ '{:,.2f}'.format(billing.revenue.Balance or 0) }}
+                {% else %}
+                  No revenue account set yet — bank fees stay with the ledger.
+                {% endif %}
+              </div>
+              <button class="btn btn-success btn-sm fw-semibold" type="submit">
+                <i class="bi bi-save me-1"></i>Save Revenue RIB
+              </button>
+              <div class="form-text mt-2">Save an empty field to detach the settlement account.</div>
+            </form>
+          </div>
+          <div class="col-lg-6">
+            <div class="p-3 bg-body-tertiary rounded-3 border h-100 d-flex flex-column">
+              <div class="fw-bold small mb-1">Advance Billing Month</div>
+              <div class="text-muted mb-3" style="font-size: 0.74rem;">
+                Charges every active account's card subscription for
+                <span class="font-monospace">{{ billing.next_period }}</span> and credits the collected amount to the revenue account.
+                Accounts that cannot cover the fee are recorded as unpaid.
+              </div>
+              <form method="POST" action="{{ url_for('profiles.advance_billing_month') }}" class="mt-auto"
+                    onsubmit="return confirm('Bill all active card subscriptions for {{ billing.next_period }} into the revenue account?');">
+                <button class="btn btn-warning btn-sm fw-bold w-100" type="submit" {{ 'disabled' if not billing.revenue }}>
+                  <i class="bi bi-plus-circle me-1"></i>+ Month
+                </button>
+              </form>
+              {% if not billing.revenue %}
+              <div class="form-text text-warning mt-2">Save a revenue account before running a billing month.</div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+
+        <div class="row g-3 mt-1">
+          <div class="col-lg-6">
+            <div class="fw-bold small mb-2"><i class="bi bi-clock-history me-1"></i>Billing Runs</div>
+            <div class="table-responsive border rounded-3">
+              <table class="table table-sm table-hover align-middle mb-0">
+                <thead><tr><th>Period</th><th>Charges</th><th>Collected</th><th>Unpaid</th></tr></thead>
+                <tbody>
+                  {% for run in billing.history %}
+                  <tr>
+                    <td class="font-monospace">{{ run.BillingPeriod }}</td>
+                    <td>{{ run.total }}</td>
+                    <td class="font-monospace text-success">MAD {{ '{:,.2f}'.format(run.collected or 0) }}</td>
+                    <td>
+                      {% if run.unpaid %}
+                      <span class="badge bg-danger-soft text-danger">{{ run.unpaid }}</span>
+                      {% else %}
+                      <span class="text-muted">—</span>
+                      {% endif %}
+                    </td>
+                  </tr>
+                  {% else %}
+                  <tr><td colspan="4" class="text-center text-muted py-3">No billing runs yet.</td></tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="col-lg-6">
+            <div class="fw-bold small mb-2"><i class="bi bi-receipt me-1"></i>Latest Subscription Charges</div>
+            <div class="table-responsive border rounded-3">
+              <table class="table table-sm table-hover align-middle mb-0">
+                <thead><tr><th>Period</th><th>Account</th><th>Tier</th><th>Amount</th><th>Status</th></tr></thead>
+                <tbody>
+                  {% for charge in billing.charges %}
+                  <tr>
+                    <td class="font-monospace">{{ charge.BillingPeriod }}</td>
+                    <td class="font-monospace small">{{ charge.AccountNumber }}</td>
+                    <td class="small text-truncate" style="max-width: 160px;">{{ charge.TierName }}</td>
+                    <td class="font-monospace">MAD {{ '{:,.2f}'.format(charge.Amount or 0) }}</td>
+                    <td>
+                      <span class="badge {{ 'bg-success-soft text-success' if charge.Status == 'Posted' else 'bg-danger-soft text-danger' }}">
+                        {{ charge.Status }}
+                      </span>
+                    </td>
+                  </tr>
+                  {% else %}
+                  <tr><td colspan="5" class="text-center text-muted py-3">No subscription charges recorded.</td></tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- ── MEMBERS ── -->
   <div class="col-12">
     <div class="card-panel">

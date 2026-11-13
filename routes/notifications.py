@@ -1,0 +1,57 @@
+"""Notification inbox endpoints: open one, or mark everything as read."""
+
+from flask import Blueprint, redirect, request, session, url_for
+
+from database import get_db
+from notifications import ensure_schema
+
+notifications_bp = Blueprint("notifications", __name__)
+
+
+def _home_for(user):
+    return url_for(
+        "customer_portal.home" if user.get("role") == "Customer" else "dashboard.dashboard"
+    )
+
+
+@notifications_bp.get("/notifications/<int:nid>/open")
+def open_notification(nid):
+    """Mark a notification read and follow its link (or fall back home)."""
+    user = session.get("user")
+    if not user:
+        return redirect(url_for("auth.login"))
+
+    conn = get_db()
+    ensure_schema(conn)
+    row = conn.execute(
+        "SELECT Link FROM NOTIFICATION WHERE NotificationID=? AND UserID=?",
+        (nid, user["id"]),
+    ).fetchone()
+    if row:
+        conn.execute(
+            "UPDATE NOTIFICATION SET IsRead=1 WHERE NotificationID=? AND UserID=?",
+            (nid, user["id"]),
+        )
+        conn.commit()
+    conn.close()
+
+    target = (row["Link"] if row else None) or ""
+    if not target.startswith("/") or target.startswith("//"):
+        target = _home_for(user)
+    return redirect(target)
+
+
+@notifications_bp.post("/notifications/read-all")
+def read_all():
+    """Clear the unread badge for the signed-in user."""
+    user = session.get("user")
+    if not user:
+        return redirect(url_for("auth.login"))
+
+    conn = get_db()
+    ensure_schema(conn)
+    conn.execute("UPDATE NOTIFICATION SET IsRead=1 WHERE UserID=? AND IsRead=0", (user["id"],))
+    conn.commit()
+    conn.close()
+
+    return redirect(request.referrer or _home_for(user))

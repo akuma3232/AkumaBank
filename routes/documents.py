@@ -21,6 +21,7 @@ from flask import (
     url_for,
 )
 from database import get_db, SIGNED_DOCS_DIR
+from notifications import notify_customer
 from card_tiers import get_card_tier
 from pdf_generator import (
     generate_opening_certificate_pdf,
@@ -141,10 +142,10 @@ def _fetch_account_context(aid: int):
 
     if not branch:
         branch = {
-            "BranchName": "Casablanca Central Agency",
+            "BranchName": "Rabat Central Agency",
             "BranchCode": "810",
-            "Address": "Boulevard Mohammed V",
-            "City": "Casablanca",
+            "Address": "Avenue Mohammed V",
+            "City": "Rabat",
         }
 
     tier = get_card_tier(account["CardTier"] if "CardTier" in account.keys() else "standard")
@@ -534,6 +535,9 @@ def staff_approve_request(rid):
         signed_upload.save(dest_path)
 
     conn = get_db()
+    doc = conn.execute(
+        "SELECT CustomerID, DocumentTitle FROM DOCUMENT_REQUEST WHERE RequestID=?", (rid,)
+    ).fetchone()
     conn.execute("""
         UPDATE DOCUMENT_REQUEST
         SET Status='Approved', ProcessedAt=datetime('now'), ProcessedBy=?, AdminNote=?, SignedPdfFile=?
@@ -542,6 +546,15 @@ def staff_approve_request(rid):
     conn.commit()
     conn.close()
 
+    if doc:
+        notify_customer(
+            doc["CustomerID"],
+            "Document ready",
+            f"Your {doc['DocumentTitle']} is certified and ready to download from My Documents.",
+            category="success",
+            icon="file-earmark-check-fill",
+            link="/my-documents",
+        )
     flash(f"Document request #{rid} approved and marked ready for customer download.", "success")
     return redirect(request.referrer or url_for("accounts.accounts"))
 
@@ -554,6 +567,9 @@ def staff_reject_request(rid):
     admin_note = request.form.get("admin_note", "Rejected by branch administration").strip()
 
     conn = get_db()
+    doc = conn.execute(
+        "SELECT CustomerID, DocumentTitle FROM DOCUMENT_REQUEST WHERE RequestID=?", (rid,)
+    ).fetchone()
     conn.execute("""
         UPDATE DOCUMENT_REQUEST
         SET Status='Rejected', ProcessedAt=datetime('now'), ProcessedBy=?, AdminNote=?
@@ -562,5 +578,15 @@ def staff_reject_request(rid):
     conn.commit()
     conn.close()
 
+    if doc:
+        notify_customer(
+            doc["CustomerID"],
+            "Document request declined",
+            f"Your request for {doc['DocumentTitle']} was reviewed and declined."
+            + (f" Note: {admin_note}" if admin_note else ""),
+            category="warning",
+            icon="file-earmark-x-fill",
+            link="/my-documents",
+        )
     flash(f"Document request #{rid} has been rejected.", "info")
     return redirect(request.referrer or url_for("accounts.accounts"))

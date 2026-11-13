@@ -11,6 +11,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, sessio
 from werkzeug.security import generate_password_hash
 
 from database import get_db
+from notifications import notify
 
 customers_bp = Blueprint("customers", __name__)
 
@@ -129,6 +130,13 @@ def review_customer_signup(user_id, decision):
                 (user_id,),
             )
             conn.commit()
+            notify(
+                user_id,
+                "Signup request declined",
+                "Your Akuma Bank signup was reviewed and declined. Contact your branch for the next steps.",
+                category="danger",
+                icon="x-circle-fill",
+            )
             flash("Customer signup rejected.", "success")
             return redirect(request.referrer or url_for("accounts.requests_center", tab="signups"))
 
@@ -159,6 +167,14 @@ def review_customer_signup(user_id, decision):
             (user_id,),
         )
         conn.commit()
+        notify(
+            user_id,
+            "Signup approved",
+            "Your customer account is approved. You can sign in now; a banker can open your first bank account.",
+            category="success",
+            icon="check-circle-fill",
+            link="/my-banking",
+        )
         flash(
             f"Customer '{signup['FullName']}' approved and added. An owner or admin can now open a bank account.",
             "success",

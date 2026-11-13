@@ -194,9 +194,27 @@ CREATE TABLE IF NOT EXISTS ACCOUNT_OPENING_REQUEST (
 );
 
 
+-- ─────────────────────────────────────────────────────────────────────────
+-- 11. TABLE: NOTIFICATION
+--     In-app alerts delivered to a single USERS row (customer or staff).
+-- ─────────────────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS NOTIFICATION (
+    NotificationID INTEGER PRIMARY KEY AUTOINCREMENT,
+    UserID     INTEGER NOT NULL,
+    Title      TEXT    NOT NULL,
+    Body       TEXT,
+    Category   TEXT    NOT NULL DEFAULT 'info',
+    Icon       TEXT    DEFAULT 'bell-fill',
+    Link       TEXT,
+    IsRead     INTEGER NOT NULL DEFAULT 0 CHECK(IsRead IN (0,1)),
+    CreatedAt  TEXT    NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (UserID) REFERENCES USERS(UserID) ON DELETE CASCADE
+);
+
 -- ═══════════════════════════════════════════════════════════════════════════
 -- INDEXES — for faster lookups on foreign-key columns
 -- ═══════════════════════════════════════════════════════════════════════════
+CREATE INDEX IF NOT EXISTS idx_notification_user ON NOTIFICATION(UserID, IsRead);
 CREATE INDEX IF NOT EXISTS idx_account_customer ON ACCOUNT(CustomerID);
 CREATE INDEX IF NOT EXISTS idx_txn_account      ON TRANSACTIONS(AccountID);
 CREATE INDEX IF NOT EXISTS idx_loan_customer    ON LOAN(CustomerID);

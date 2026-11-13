@@ -752,6 +752,28 @@ def init_db(seed_demo_data=False):
             loans,
         )
 
+    # ─────────────────────────────────────────────
+    # TABLE: NOTIFICATION (in-app alerts per user)
+    # ─────────────────────────────────────────────
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS NOTIFICATION (
+            NotificationID INTEGER PRIMARY KEY AUTOINCREMENT,
+            UserID     INTEGER NOT NULL,
+            Title      TEXT    NOT NULL,
+            Body       TEXT,
+            Category   TEXT    NOT NULL DEFAULT 'info',
+            Icon       TEXT    DEFAULT 'bell-fill',
+            Link       TEXT,
+            IsRead     INTEGER NOT NULL DEFAULT 0 CHECK(IsRead IN (0,1)),
+            CreatedAt  TEXT    NOT NULL DEFAULT (datetime('now')),
+            FOREIGN KEY (UserID) REFERENCES USERS(UserID) ON DELETE CASCADE
+        )
+    """)
+    cur.execute(
+        "CREATE INDEX IF NOT EXISTS idx_notification_user "
+        "ON NOTIFICATION(UserID, IsRead)"
+    )
+
     conn.commit()
     conn.close()
 

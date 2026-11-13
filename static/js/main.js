@@ -1,7 +1,7 @@
 /**
  * main.js – AkumaBank Future UI & Cyber Core Engine
  * Complete interactive suite: Dark/Light Mode, Command HUD (Ctrl+K),
- * 3D Holographic Card physics, Casablanca Financial Clock,
+ * 3D Holographic Card physics, Rabat Financial Clock,
  * Web Audio synthetic micro-feedback, and toast notifications.
  */
 
@@ -70,9 +70,9 @@ const ThemeManager = {
   }
 };
 
-// ── Casablanca Financial Clock ───────────────────────────────────────────────
-function initCasablancaClock() {
-  const clockEl = document.getElementById('casablancaClockText');
+// ── Rabat Financial Clock ────────────────────────────────────────────────
+function initRabatClock() {
+  const clockEl = document.getElementById('rabatClockText');
   if (!clockEl) return;
 
   function update() {
@@ -644,7 +644,7 @@ function initLiveSync() {
 document.addEventListener('DOMContentLoaded', () => {
   ThemeManager.init();
   initSidebar();
-  initCasablancaClock();
+  initRabatClock();
   initHolographicCards();
   initCardTemplateClicks();
   CommandHUD.init();

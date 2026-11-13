@@ -27,6 +27,7 @@ from routes.profiles import profiles_bp
 from routes.customer_portal import customer_portal_bp
 from routes.documents import documents_bp
 from routes.live import live_bp
+from routes.notifications import notifications_bp
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SESSION_SECRET") or os.urandom(32)
@@ -50,6 +51,7 @@ app.register_blueprint(profiles_bp)
 app.register_blueprint(customer_portal_bp)
 app.register_blueprint(documents_bp)
 app.register_blueprint(live_bp)
+app.register_blueprint(notifications_bp)
 
 # ── Jinja Template Filters for Moroccan Banking & Cards ──────────────────────
 @app.template_filter("format_rib")
@@ -113,6 +115,61 @@ def inject_card_tiers():
     }
 
 
+def _relative_time(value):
+    """Render a SQLite datetime as a short "5m ago" label."""
+    from datetime import datetime, timezone
+
+    if not value:
+        return ""
+    try:
+        stamp = datetime.strptime(str(value)[:19], "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
+    except ValueError:
+        return str(value)
+    seconds = int((datetime.now(timezone.utc) - stamp).total_seconds())
+    if seconds < 60:
+        return "Just now"
+    if seconds < 3600:
+        return f"{seconds // 60}m ago"
+    if seconds < 86400:
+        return f"{seconds // 3600}h ago"
+    if seconds < 604800:
+        return f"{seconds // 86400}d ago"
+    return stamp.strftime("%d %b %Y")
+
+
+@app.template_filter("time_ago")
+def filter_time_ago(value):
+    return _relative_time(value)
+
+
+@app.context_processor
+def inject_notifications():
+    """Latest notifications and unread counter for the top-bar bell."""
+    user = session.get("user")
+    if not user:
+        return {}
+    try:
+        from notifications import ensure_schema
+
+        conn = get_db()
+        ensure_schema(conn)
+        rows = conn.execute(
+            """SELECT NotificationID, Title, Body, Category, Icon, Link, IsRead, CreatedAt
+               FROM NOTIFICATION WHERE UserID=?
+               ORDER BY NotificationID DESC LIMIT 8""",
+            (user.get("id"),),
+        ).fetchall()
+        unread = conn.execute(
+            "SELECT COUNT(*) FROM NOTIFICATION WHERE UserID=? AND IsRead=0",
+            (user.get("id"),),
+        ).fetchone()[0]
+        conn.commit()
+        conn.close()
+        return {"nav_notifications": rows, "nav_unread_count": unread}
+    except Exception:
+        return {"nav_notifications": [], "nav_unread_count": 0}
+
+
 @app.context_processor
 def inject_operations_requests_counts():
     user = session.get("user")
@@ -167,7 +224,7 @@ def restrict_customer_routes():
     ):
         return redirect(url_for("auth.change_password"))
     if user and user.get("role") == "Customer" and not endpoint.startswith(
-        ("customer_portal.", "profiles.", "auth.", "static", "documents.")
+        ("customer_portal.", "profiles.", "auth.", "static", "documents.", "notifications.")
     ):
         return redirect(url_for("customer_portal.home"))
     return None

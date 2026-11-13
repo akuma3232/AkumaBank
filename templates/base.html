@@ -169,11 +169,11 @@
 
     <!-- Center Tickers & Widgets (Visible on Larger Screens) -->
     <div class="topbar-center d-none d-xl-flex align-items-center gap-3">
-      <!-- Casablanca Financial Clock -->
-      <div class="topbar-pill topbar-clock" id="topbarClockPill" title="Casablanca Banking Local Time (GMT+1)">
+      <!-- Rabat Financial Clock -->
+      <div class="topbar-pill topbar-clock" id="topbarClockPill" title="Rabat Banking Local Time (GMT+1)">
         <i class="bi bi-clock-history text-primary"></i>
-        <span id="casablancaClockText">--:--:--</span>
-        <span class="topbar-pill-sub">CAS</span>
+        <span id="rabatClockText">--:--:--</span>
+        <span class="topbar-pill-sub">RBT</span>
       </div>
 
       <!-- Live Moroccan Interbank FX Ticker -->
@@ -201,45 +201,51 @@
 
       <!-- Notifications & Telemetry Dropdown -->
       <div class="dropdown">
-        <button class="topbar-icon-btn position-relative" id="notifDropdownBtn" data-bs-toggle="dropdown" aria-expanded="false" title="Security & Notifications">
+        <button class="topbar-icon-btn position-relative" id="notifDropdownBtn" data-bs-toggle="dropdown" aria-expanded="false" title="Notifications">
           <i class="bi bi-bell-fill"></i>
+          {% if nav_unread_count %}
           <span class="notif-ping-dot"></span>
+          <span class="notif-count-badge">{{ nav_unread_count if nav_unread_count < 10 else '9+' }}</span>
+          {% endif %}
         </button>
         <div class="dropdown-menu dropdown-menu-end cyber-dropdown p-0 shadow-lg" aria-labelledby="notifDropdownBtn">
           <div class="cyber-dropdown-header">
             <div class="d-flex align-items-center justify-content-between">
-              <span class="fw-bold fs-7"><i class="bi bi-broadcast me-2 text-primary"></i>Security Telemetry</span>
-              <span class="badge bg-primary-soft text-primary font-monospace">RTGS ACTIVE</span>
+              <span class="fw-bold fs-7"><i class="bi bi-bell me-2 text-primary"></i>Notifications</span>
+              <span class="badge bg-primary-soft text-primary font-monospace">
+                {% if nav_unread_count %}{{ nav_unread_count }} NEW{% else %}UP TO DATE{% endif %}
+              </span>
             </div>
           </div>
           <div class="cyber-dropdown-body">
-            <div class="cyber-notif-item unread">
-              <div class="notif-icon bg-success-soft text-success"><i class="bi bi-shield-lock-fill"></i></div>
+            {% for n in nav_notifications %}
+            <a class="cyber-notif-item text-decoration-none {{ '' if n.IsRead else 'unread' }}" href="{{ url_for('notifications.open_notification', nid=n.NotificationID) }}">
+              <div class="notif-icon bg-{{ n.Category }}-soft text-{{ n.Category }}"><i class="bi bi-{{ n.Icon or 'bell-fill' }}"></i></div>
               <div class="notif-content">
-                <div class="notif-title">Quantum Layer Active</div>
-                <div class="notif-desc">256-bit AES end-to-end security handshake validated.</div>
-                <div class="notif-time">Just now</div>
+                <div class="notif-title">{{ n.Title }}</div>
+                <div class="notif-desc">{{ n.Body }}</div>
+                <div class="notif-time">{{ n.CreatedAt|time_ago }}</div>
               </div>
+            </a>
+            {% else %}
+            <div class="px-4 py-4 text-center">
+              <i class="bi bi-bell-slash fs-4 text-muted d-block mb-2"></i>
+              <div class="notif-title">No notifications yet</div>
+              <div class="notif-desc">Decisions on your requests will appear here.</div>
             </div>
-            <div class="cyber-notif-item">
-              <div class="notif-icon bg-primary-soft text-primary"><i class="bi bi-bank"></i></div>
-              <div class="notif-content">
-                <div class="notif-title">Bank Al-Maghrib Gateway</div>
-                <div class="notif-desc">Direct interbank clearing gateway connected and synced.</div>
-                <div class="notif-time">14m ago</div>
-              </div>
-            </div>
-            <div class="cyber-notif-item">
-              <div class="notif-icon bg-info-soft text-info"><i class="bi bi-cpu-fill"></i></div>
-              <div class="notif-content">
-                <div class="notif-title">Core Performance Nominal</div>
-                <div class="notif-desc">Database query latency: 4ms &bull; Zero anomalies detected.</div>
-                <div class="notif-time">1h ago</div>
-              </div>
-            </div>
+            {% endfor %}
           </div>
-          <div class="cyber-dropdown-footer text-center">
-            <small class="text-muted"><i class="bi bi-check2-circle me-1 text-success"></i>All banking systems operating optimally</small>
+          <div class="cyber-dropdown-footer d-flex align-items-center justify-content-between">
+            {% if nav_unread_count %}
+            <form method="POST" action="{{ url_for('notifications.read_all') }}" class="mb-0">
+              <button type="submit" class="btn btn-link btn-sm p-0 text-primary fw-semibold text-decoration-none">
+                <i class="bi bi-check2-all me-1"></i>Mark all read
+              </button>
+            </form>
+            {% else %}
+            <small class="text-muted"><i class="bi bi-check2-circle me-1 text-success"></i>You are all caught up</small>
+            {% endif %}
+            <small class="text-muted font-monospace">{% if nav_notifications %}latest {{ nav_notifications|length }}{% endif %}</small>
           </div>
         </div>
       </div>

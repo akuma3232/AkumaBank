@@ -6,6 +6,7 @@ from decimal import Decimal, InvalidOperation
 
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify
 from database import get_db
+from notifications import notify_customer
 from functools import wraps
 
 loans_bp = Blueprint("loans", __name__)
@@ -215,6 +216,14 @@ def update_loan(lid):
                 flash("This loan has already been processed.", "warning")
                 return redirect(url_for("loans.loans"))
             conn.commit()
+            notify_customer(
+                loan["CustomerID"],
+                "Loan approved",
+                f"Your loan of MAD {loan['Amount']:,.2f} was approved and disbursed to account {account['AccountNumber']}.",
+                category="success",
+                icon="cash-coin",
+                link="/my-banking",
+            )
             flash(
                 f"Loan approved. MAD {loan['Amount']:,.2f} was deposited into {account['AccountNumber']}.",
                 "success",
@@ -226,6 +235,14 @@ def update_loan(lid):
                 return redirect(url_for("loans.loans"))
             conn.execute("UPDATE LOAN SET Status='Rejected' WHERE LoanID=? AND Status='Pending'", (lid,))
             conn.commit()
+            notify_customer(
+                loan["CustomerID"],
+                "Loan application declined",
+                f"Your loan application of MAD {loan['Amount']:,.2f} was reviewed and declined.",
+                category="warning",
+                icon="cash-stack",
+                link="/my-banking",
+            )
             flash("Loan rejected.", "success")
         else:
             if loan["Status"] != "Approved":

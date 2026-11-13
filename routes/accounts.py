@@ -5,6 +5,7 @@ Uses CustomerAccountSummary VIEW and JOIN queries.
 
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify
 from database import get_db, close_account_permanently
+from notifications import notify_customer
 from functools import wraps
 import random
 
@@ -424,6 +425,14 @@ def approve_closure_request(rid):
         reviewed_by=session["user"]["id"],
     )
     if result["success"]:
+        notify_customer(
+            req["CustomerID"],
+            "Account closure approved",
+            f"Your closure request for account #{req['AccountID']} was approved and the account is now closed. The closure certificate is ready in My Documents.",
+            category="success",
+            icon="folder-check",
+            link="/my-documents",
+        )
         flash(f"Closure request #{rid} approved. {result['message']} Closure Certificate is ready.", "success")
     else:
         flash(f"Error approving closure request: {result['message']}", "danger")
@@ -437,6 +446,9 @@ def reject_closure_request(rid):
     """Reject a customer's account closure request."""
     admin_note = request.form.get("admin_note", "Request rejected by administration").strip()
     conn = get_db()
+    closure = conn.execute(
+        "SELECT CustomerID, AccountID FROM ACCOUNT_CLOSURE_REQUEST WHERE RequestID=?", (rid,)
+    ).fetchone()
     conn.execute("""
         UPDATE ACCOUNT_CLOSURE_REQUEST
         SET Status='Rejected', ReviewedBy=?, ReviewedAt=datetime('now'), AdminNote=?
@@ -444,6 +456,16 @@ def reject_closure_request(rid):
     """, (session["user"]["id"], admin_note, rid))
     conn.commit()
     conn.close()
+    if closure:
+        notify_customer(
+            closure["CustomerID"],
+            "Account closure declined",
+            f"Your closure request for account #{closure['AccountID']} was reviewed and declined."
+            + (f" Note: {admin_note}" if admin_note else ""),
+            category="warning",
+            icon="shield-x",
+            link="/my-banking",
+        )
     flash(f"Closure request #{rid} has been rejected.", "info")
     return redirect(url_for("accounts.accounts"))
 
@@ -499,6 +521,14 @@ def approve_opening_request(rid):
         """, (session["user"]["id"], admin_note, new_aid, rid))
 
         conn.commit()
+        notify_customer(
+            cid,
+            "Account opened",
+            f"Your {atype} account was approved and created with RIB {format_moroccan_rib(acc_no)}. Your card is active.",
+            category="success",
+            icon="wallet2",
+            link="/my-banking",
+        )
         flash(f"Account opening request #{rid} approved! Account created with RIB: {format_moroccan_rib(acc_no)}", "success")
     except Exception as e:
         conn.rollback()
@@ -516,6 +546,9 @@ def reject_opening_request(rid):
     """Reject customer account opening request."""
     admin_note = request.form.get("admin_note", "Rejected by bank administration").strip()
     conn = get_db()
+    opening = conn.execute(
+        "SELECT CustomerID, AccountType FROM ACCOUNT_OPENING_REQUEST WHERE RequestID=?", (rid,)
+    ).fetchone()
     conn.execute("""
         UPDATE ACCOUNT_OPENING_REQUEST
         SET Status='Rejected', ReviewedBy=?, ReviewedAt=datetime('now'), AdminNote=?
@@ -523,6 +556,16 @@ def reject_opening_request(rid):
     """, (session["user"]["id"], admin_note, rid))
     conn.commit()
     conn.close()
+    if opening:
+        notify_customer(
+            opening["CustomerID"],
+            "Account opening declined",
+            f"Your request for a new {opening['AccountType']} account was reviewed and declined."
+            + (f" Note: {admin_note}" if admin_note else ""),
+            category="warning",
+            icon="shield-x",
+            link="/my-banking",
+        )
     flash(f"Account opening request #{rid} has been rejected.", "info")
     return redirect(url_for("accounts.accounts"))
 

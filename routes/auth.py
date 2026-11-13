@@ -21,16 +21,13 @@ def valid_date_of_birth(value):
         return False
 
 
-@auth_bp.route("/login", methods=["GET", "POST"])
-def login():
-    """Handle customer login by name/email and staff login by username/email."""
+def _login_view(mode="customer"):
+    """Render and process the sign-in form for the customer or staff portal."""
     if "user" in session:
         endpoint = "customer_portal.home" if session["user"]["role"] == "Customer" else "dashboard.dashboard"
         return redirect(url_for(endpoint))
 
-    mode = "staff" if request.args.get("mode") == "staff" else "customer"
     if request.method == "POST":
-        mode = request.form.get("mode", "customer")
         identifier = request.form.get("identifier", "").strip()
         password = request.form.get("password", "")
 
@@ -117,6 +114,18 @@ def login():
         flash("Invalid username or password.", "danger")
 
     return render_template("login.html", mode=mode)
+
+
+@auth_bp.route("/login", methods=["GET", "POST"])
+def login():
+    """Customer sign-in. Staff credentials are rejected on this public endpoint."""
+    return _login_view("customer")
+
+
+@auth_bp.route("/staff-access", methods=["GET", "POST"])
+def staff_login():
+    """Unlisted staff terminal. No public page links here."""
+    return _login_view("staff")
 
 
 @auth_bp.route("/forgot-password", methods=["GET", "POST"])

@@ -8,6 +8,7 @@ from flask import Blueprint, flash, redirect, render_template, request, session,
 from werkzeug.security import generate_password_hash
 
 from database import get_db
+from notifications import notify
 from routes.customers import queue_temporary_password
 
 users_bp = Blueprint("users", __name__)
@@ -119,6 +120,16 @@ def review_profile_request(request_id, action):
             ("Approved" if action == "approve" else "Rejected", session["user"]["id"], request_id),
         )
         conn.commit()
+        notify(
+            change["UserID"],
+            "Profile change approved" if action == "approve" else "Profile change declined",
+            "Your requested profile update is live on your card."
+            if action == "approve"
+            else "Your requested profile update was reviewed and not applied.",
+            category="success" if action == "approve" else "warning",
+            icon="person-check-fill" if action == "approve" else "person-x-fill",
+            link="/my-banking",
+        )
         flash(
             "Profile change approved and applied to the customer's card."
             if action == "approve"
@@ -172,6 +183,16 @@ def review_password_reset(request_id, action):
             (new_status, session["user"]["id"], request_id),
         )
         conn.commit()
+        notify(
+            reset_request["UserID"],
+            "Password reset approved" if action == "approve" else "Password reset declined",
+            "Your password reset was approved. Sign in with the temporary password from your branch, then set a new one."
+            if action == "approve"
+            else "Your password reset request was reviewed and declined. Visit your branch for assistance.",
+            category="warning" if action == "approve" else "danger",
+            icon="key-fill" if action == "approve" else "shield-x",
+            link="/login",
+        )
     except Exception as error:
         conn.rollback()
         flash(f"Could not review password reset request: {error}", "danger")

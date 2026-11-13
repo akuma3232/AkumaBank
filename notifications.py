@@ -105,3 +105,22 @@ def notify_customer(customer_id, title, body="", **kwargs):
     finally:
         if owned:
             conn.close()
+
+
+def notify_account(account_id, title, body="", **kwargs):
+    """Send a notification to the owner of an account."""
+    conn = kwargs.pop("conn", None)
+    owned = conn is None
+    conn = conn or get_db()
+    try:
+        row = conn.execute(
+            "SELECT CustomerID FROM ACCOUNT WHERE AccountID=?", (account_id,)
+        ).fetchone()
+        if row:
+            kwargs["conn"] = conn
+            notify_customer(row["CustomerID"], title, body, **kwargs)
+        if owned:
+            conn.commit()
+    finally:
+        if owned:
+            conn.close()

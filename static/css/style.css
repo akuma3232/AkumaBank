@@ -997,6 +997,43 @@ h1, h2, h3, h4, h5, h6, .font-heading {
   text-shadow: 0 0 12px rgba(255, 255, 255, 0.4);
 }
 
+/* Card artwork runs from deep navy to bright gold and rose, so plain white
+   text disappears on the lighter tiers in both themes. A theme-independent
+   scrim under the card content keeps every label, the number and the balance
+   readable without changing the tier colours. */
+.cyber-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    rgba(2, 6, 23, 0.30) 0%,
+    rgba(2, 6, 23, 0.16) 45%,
+    rgba(2, 6, 23, 0.55) 100%
+  );
+  mix-blend-mode: multiply;
+}
+
+.cyber-card .card-meta-label {
+  color: rgba(255, 255, 255, 0.85);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+}
+.cyber-card .card-meta-val,
+.cyber-card .brand-title,
+.cyber-card .card-tier-pill,
+.cyber-card .card-network-badge {
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.65);
+}
+.cyber-card .card-balance-highlight {
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.75);
+}
+.cyber-card .cyber-card-shimmer {
+  opacity: 0.6;
+}
+
 .card-network-badge {
   font-family: var(--font-sans);
   font-size: 0.72rem;

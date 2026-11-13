@@ -5,7 +5,7 @@ Uses CustomerAccountSummary VIEW and JOIN queries.
 
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify
 from database import get_db, close_account_permanently
-from notifications import notify_customer
+from notifications import notify_account, notify_customer
 from functools import wraps
 import random
 
@@ -373,6 +373,24 @@ def toggle_status(aid):
             new_status = "Active" if current["Status"] == "Frozen" else "Frozen"
             conn.execute("UPDATE ACCOUNT SET Status=? WHERE AccountID=?", (new_status, aid))
             conn.commit()
+            if new_status == "Frozen":
+                notify_account(
+                    aid,
+                    "Account frozen",
+                    "Your account has been frozen by the bank. Contact your branch to restore normal operations.",
+                    category="warning",
+                    icon="snow",
+                    link="/my-banking",
+                )
+            else:
+                notify_account(
+                    aid,
+                    "Account reactivated",
+                    "Your account is active again. Deposits, withdrawals and transfers are available.",
+                    category="success",
+                    icon="check-circle-fill",
+                    link="/my-banking",
+                )
             flash(f"Account status changed to {new_status}.", "success")
     except Exception as e:
         flash(f"Error: {e}", "danger")
@@ -400,6 +418,14 @@ def close_account(aid):
     reason = request.form.get("reason", "Administrative closure").strip()
     result = close_account_permanently(aid, reason=reason, reviewed_by=session["user"]["id"])
     if result["success"]:
+        notify_account(
+            aid,
+            "Account closed",
+            "Your account has been closed by the bank and its balance settled. The closure certificate is available in My Documents.",
+            category="danger",
+            icon="lock-fill",
+            link="/my-documents",
+        )
         flash(f"{result['message']} Official Closure Certificate (PDF) is now available for download.", "success")
     else:
         flash(f"Error: {result['message']}", "danger")

@@ -376,7 +376,16 @@ def submit_document_request():
             flash("Invalid account selected.", "danger")
             return redirect(url_for("documents.customer_documents"))
 
-    # A closure certificate can only be requested for an account that is closed.
+    # A closed account can only produce its closure certificate, and the
+    # closure certificate does not exist for an account that is still open.
+    if aid and acct["Status"] == "Closed" and doc_type != "CLOSURE_CERTIFICATE":
+        conn.close()
+        flash(
+            "This account is closed. Only the Account Closure Certificate can be requested for it.",
+            "danger",
+        )
+        return redirect(url_for("documents.customer_documents"))
+
     if doc_type == "CLOSURE_CERTIFICATE":
         closed = (
             conn.execute(

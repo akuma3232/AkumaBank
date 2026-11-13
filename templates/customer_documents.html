@@ -1,6 +1,68 @@
 {% extends "base.html" %}
-{% block title %}My Documents — AkumaBank{% endblock %}
-{% block page_title %}Official Banking Documents{% endblock %}
+{% block title %}My Documents — AkumaBank<script>
+// Only a closed account can produce a closure certificate, and a closed
+// account cannot produce any other document.
+(function () {
+  const accountSelect = document.getElementById('account_id');
+  const typeSelect = document.getElementById('document_type');
+  const hint = document.getElementById('closedAccountHint');
+  if (!accountSelect || !typeSelect) return;
+
+  function syncDocumentTypes() {
+    const option = accountSelect.selectedOptions[0];
+    const isClosed = option ? option.dataset.status === 'Closed' : false;
+
+    Array.from(typeSelect.options).forEach(function (item) {
+      const closedOnly = item.dataset.closedOnly === '1';
+      const allowed = isClosed ? closedOnly : !closedOnly;
+      item.hidden = !allowed;
+      item.disabled = !allowed;
+    });
+
+    if (typeSelect.selectedOptions[0] && typeSelect.selectedOptions[0].disabled) {
+      const first = Array.from(typeSelect.options).find(function (item) { return !item.disabled; });
+      if (first) typeSelect.value = first.value;
+    }
+    if (hint) hint.classList.toggle('d-none', !isClosed);
+  }
+
+  accountSelect.addEventListener('change', syncDocumentTypes);
+  syncDocumentTypes();
+})();
+</script>
+{% endblock %}
+{% block page_title %}Official Banking Documents<script>
+// Only a closed account can produce a closure certificate, and a closed
+// account cannot produce any other document.
+(function () {
+  const accountSelect = document.getElementById('account_id');
+  const typeSelect = document.getElementById('document_type');
+  const hint = document.getElementById('closedAccountHint');
+  if (!accountSelect || !typeSelect) return;
+
+  function syncDocumentTypes() {
+    const option = accountSelect.selectedOptions[0];
+    const isClosed = option ? option.dataset.status === 'Closed' : false;
+
+    Array.from(typeSelect.options).forEach(function (item) {
+      const closedOnly = item.dataset.closedOnly === '1';
+      const allowed = isClosed ? closedOnly : !closedOnly;
+      item.hidden = !allowed;
+      item.disabled = !allowed;
+    });
+
+    if (typeSelect.selectedOptions[0] && typeSelect.selectedOptions[0].disabled) {
+      const first = Array.from(typeSelect.options).find(function (item) { return !item.disabled; });
+      if (first) typeSelect.value = first.value;
+    }
+    if (hint) hint.classList.toggle('d-none', !isClosed);
+  }
+
+  accountSelect.addEventListener('change', syncDocumentTypes);
+  syncDocumentTypes();
+})();
+</script>
+{% endblock %}
 
 {% block content %}
 <div class="page-header-row mb-4">
@@ -151,19 +213,22 @@
           <label class="form-label small fw-bold" for="account_id">Linked Bank Account</label>
           <select name="account_id" id="account_id" class="form-select form-select-sm" required>
             {% for a in accounts %}
-            <option value="{{ a.AccountID }}">
+            <option value="{{ a.AccountID }}" data-status="{{ a.Status }}">
               {{ a.AccountType }} — {{ a.AccountNumber | format_rib }} ({{ a.Status }})
             </option>
             {% endfor %}
           </select>
           <div class="form-text small">Select the account for which the document is requested.</div>
+          <div class="form-text small text-warning d-none" id="closedAccountHint">
+            <i class="bi bi-info-circle me-1"></i>This account is closed: only the Account Closure Certificate can be requested for it.
+          </div>
         </div>
 
         <div class="mb-3">
           <label class="form-label small fw-bold" for="document_type">Document Type Requested</label>
           <select name="document_type" id="document_type" class="form-select form-select-sm" required>
             {% for dtype, info in document_types.items() %}
-            <option value="{{ dtype }}">
+            <option value="{{ dtype }}" data-closed-only="{{ '1' if dtype == 'CLOSURE_CERTIFICATE' else '0' }}">
               {{ info.title }}
             </option>
             {% endfor %}
@@ -192,4 +257,35 @@
     </form>
   </div>
 </div>
+<script>
+// Only a closed account can produce a closure certificate, and a closed
+// account cannot produce any other document.
+(function () {
+  const accountSelect = document.getElementById('account_id');
+  const typeSelect = document.getElementById('document_type');
+  const hint = document.getElementById('closedAccountHint');
+  if (!accountSelect || !typeSelect) return;
+
+  function syncDocumentTypes() {
+    const option = accountSelect.selectedOptions[0];
+    const isClosed = option ? option.dataset.status === 'Closed' : false;
+
+    Array.from(typeSelect.options).forEach(function (item) {
+      const closedOnly = item.dataset.closedOnly === '1';
+      const allowed = isClosed ? closedOnly : !closedOnly;
+      item.hidden = !allowed;
+      item.disabled = !allowed;
+    });
+
+    if (typeSelect.selectedOptions[0] && typeSelect.selectedOptions[0].disabled) {
+      const first = Array.from(typeSelect.options).find(function (item) { return !item.disabled; });
+      if (first) typeSelect.value = first.value;
+    }
+    if (hint) hint.classList.toggle('d-none', !isClosed);
+  }
+
+  accountSelect.addEventListener('change', syncDocumentTypes);
+  syncDocumentTypes();
+})();
+</script>
 {% endblock %}

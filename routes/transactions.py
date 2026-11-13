@@ -5,6 +5,7 @@ Uses the TransferMoney stored-procedure equivalent and the trigger UpdateBalance
 
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash
 from database import get_db, transfer_money, credit_bank_revenue, DEPOSIT_FEE
+from notifications import notify_account
 from card_tiers import get_card_tier
 from functools import wraps
 
@@ -129,6 +130,14 @@ def deposit():
         # The retained fee is bank income: settle it into the owner's revenue account.
         credit_bank_revenue(conn, DEPOSIT_FEE, f"Deposit fee retained — {description} — account {account_id}")
         conn.commit()
+        notify_account(
+            account_id,
+            "Deposit received",
+            f"MAD {credited_amount:,.2f} was credited to your account (MAD {DEPOSIT_FEE:,.2f} bank fee deducted). New balance: MAD {new_balance:,.2f}.",
+            category="success",
+            icon="arrow-down-circle-fill",
+            link="/my-banking",
+        )
         flash(
             f"MAD {credited_amount:,.2f} credited (MAD {DEPOSIT_FEE:,.2f} bank fee deducted from MAD {deposit_amount:,.2f} deposit).",
             "success",
@@ -171,6 +180,14 @@ def withdraw():
             VALUES (?, 'Withdrawal', ?, ?, ?)
         """, (account_id, amount, description, new_balance))
         conn.commit()
+        notify_account(
+            account_id,
+            "Withdrawal processed",
+            f"MAD {amount:,.2f} was withdrawn from your account. New balance: MAD {new_balance:,.2f}.",
+            category="warning",
+            icon="arrow-up-circle-fill",
+            link="/my-banking",
+        )
         flash(f"MAD {amount:,.2f} withdrawn successfully.", "success")
     except Exception as e:
         flash(f"Error: {e}", "danger")
@@ -195,5 +212,22 @@ def transfer():
         return redirect(url_for("transactions.transactions"))
 
     result = transfer_money(from_id, to_id, amount)
+    if result["success"]:
+        notify_account(
+            from_id,
+            "Transfer sent",
+            f"MAD {amount:,.2f} was debited from your account and sent to account #{to_id}.",
+            category="warning",
+            icon="arrow-left-right",
+            link="/my-banking",
+        )
+        notify_account(
+            to_id,
+            "Transfer received",
+            f"Your account was credited by a transfer of MAD {amount:,.2f}.",
+            category="success",
+            icon="arrow-down-circle-fill",
+            link="/my-banking",
+        )
     flash(result["message"], "success" if result["success"] else "danger")
     return redirect(url_for("transactions.transactions"))

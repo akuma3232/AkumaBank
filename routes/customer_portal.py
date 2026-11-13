@@ -6,6 +6,7 @@ from functools import wraps
 from flask import Blueprint, flash, redirect, render_template, request, session, url_for
 
 from database import TRANSFER_FEE, get_db
+from notifications import notify_account
 
 customer_portal_bp = Blueprint("customer_portal", __name__)
 CENT = Decimal("0.01")
@@ -156,6 +157,14 @@ def withdraw():
             (account["AccountID"], float(amount), balance_after),
         )
         conn.commit()
+        notify_account(
+            account["AccountID"],
+            "Withdrawal processed",
+            f"MAD {amount:,.2f} was withdrawn from your account. New balance: MAD {balance_after:,.2f}.",
+            category="warning",
+            icon="arrow-up-circle-fill",
+            link="/my-banking",
+        )
         flash(f"MAD {amount:,.2f} withdrawn successfully.", "success")
     except Exception as error:
         conn.rollback()
@@ -244,6 +253,22 @@ def transfer():
             ),
         )
         conn.commit()
+        notify_account(
+            source["AccountID"],
+            "Transfer sent",
+            f"MAD {amount:,.2f} was debited from your account and sent to {destination['AccountNumber']}.",
+            category="warning",
+            icon="arrow-left-right",
+            link="/my-banking",
+        )
+        notify_account(
+            destination["AccountID"],
+            "Transfer received",
+            f"Your account was credited with MAD {received_amount:,.2f} (after the MAD {TRANSFER_FEE:,.2f} bank fee).",
+            category="success",
+            icon="arrow-down-circle-fill",
+            link="/my-banking",
+        )
         flash(
             f"MAD {amount:,.2f} sent. Recipient receives MAD {received_amount:,.2f} after the MAD {TRANSFER_FEE:,.2f} bank fee.",
             "success",

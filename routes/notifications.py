@@ -1,6 +1,8 @@
 """Notification inbox endpoints: open one, or mark everything as read."""
 
-from flask import Blueprint, redirect, request, session, url_for
+from urllib.parse import urlparse
+
+from flask import Blueprint, jsonify, redirect, request, session, url_for
 
 from database import get_db
 from notifications import ensure_schema
@@ -41,6 +43,27 @@ def open_notification(nid):
     return redirect(target)
 
 
+@notifications_bp.post("/notifications/<int:nid>/read")
+def mark_read(nid):
+    """Mark one notification read in place, without leaving the page."""
+    user = session.get("user")
+    if not user:
+        return jsonify({"ok": False}), 401
+
+    conn = get_db()
+    ensure_schema(conn)
+    conn.execute(
+        "UPDATE NOTIFICATION SET IsRead=1 WHERE NotificationID=? AND UserID=?",
+        (nid, user["id"]),
+    )
+    conn.commit()
+    unread = conn.execute(
+        "SELECT COUNT(*) FROM NOTIFICATION WHERE UserID=? AND IsRead=0", (user["id"],)
+    ).fetchone()[0]
+    conn.close()
+    return jsonify({"ok": True, "unread": unread})
+
+
 @notifications_bp.post("/notifications/read-all")
 def read_all():
     """Clear the unread badge for the signed-in user."""
@@ -54,4 +77,7 @@ def read_all():
     conn.commit()
     conn.close()
 
-    return redirect(request.referrer or _home_for(user))
+    referrer = request.referrer
+    if referrer and urlparse(referrer).netloc != request.host:
+        referrer = None  # never bounce to another origin
+    return redirect(referrer or _home_for(user))

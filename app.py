@@ -149,10 +149,7 @@ def inject_notifications():
     if not user:
         return {}
     try:
-        from notifications import ensure_schema
-
         conn = get_db()
-        ensure_schema(conn)
         rows = conn.execute(
             """SELECT NotificationID, Title, Body, Category, Icon, Link, IsRead, CreatedAt
                FROM NOTIFICATION WHERE UserID=?
@@ -163,7 +160,6 @@ def inject_notifications():
             "SELECT COUNT(*) FROM NOTIFICATION WHERE UserID=? AND IsRead=0",
             (user.get("id"),),
         ).fetchone()[0]
-        conn.commit()
         conn.close()
         return {"nav_notifications": rows, "nav_unread_count": unread}
     except Exception:

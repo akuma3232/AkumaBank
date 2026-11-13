@@ -3357,3 +3357,17 @@ body.login-page {
 .cyber-notif-item:hover { background: var(--surface-hover); }
 .cyber-dropdown-body { max-height: 360px; overflow-y: auto; }
 .cyber-notif-item .notif-desc { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+/* Notification row: whole row toggles read, arrow opens the page */
+.cyber-notif-item { cursor: pointer; align-items: flex-start; }
+.cyber-notif-item .notif-open {
+  margin-left: 6px;
+  align-self: center;
+  color: var(--muted);
+  text-decoration: none;
+  padding: 2px 4px;
+  border-radius: 6px;
+  transition: all var(--t-fast) var(--ease);
+}
+.cyber-notif-item .notif-open:hover { color: var(--primary); background: var(--surface-hover); }
+.cyber-notif-item:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }

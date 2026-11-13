@@ -666,3 +666,62 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 5500);
   });
 });
+
+// ── Notification inbox: act without the panel vanishing ─────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  document.addEventListener('submit', async (event) => {
+    const form = event.target.closest('form[action$="/notifications/read-all"]');
+    if (!form) return;
+    event.preventDefault();
+
+    const menu = form.closest('.dropdown-menu');
+    try {
+      await fetch(form.action, { method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+    } catch (error) {
+      form.submit();
+      return;
+    }
+
+    menu?.querySelectorAll('.cyber-notif-item.unread').forEach((item) => item.classList.remove('unread'));
+    document.querySelectorAll('.notif-count-badge, .notif-ping-dot').forEach((el) => el.remove());
+
+    const badge = menu?.querySelector('.cyber-dropdown-header .badge');
+    if (badge) badge.textContent = 'UP TO DATE';
+
+    const note = document.createElement('small');
+    note.className = 'text-muted';
+    note.innerHTML = '<i class="bi bi-check2-circle me-1 text-success"></i>You are all caught up';
+    form.replaceWith(note);
+  });
+});
+
+// ── Notification rows: mark read in place, open only from the arrow ─────────
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('[data-notification]').forEach((row) => {
+    const markRead = async () => {
+      if (!row.classList.contains('unread')) return;
+      const url = row.dataset.readUrl;
+      if (!url) return;
+      try {
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        });
+        if (!response.ok) return;
+        const data = await response.json();
+        row.classList.remove('unread');
+        document.querySelectorAll('.notif-ping-dot, .notif-count-badge').forEach((el) => el.remove());
+        const header = document.querySelector('#notifDropdownBtn ~ .dropdown-menu .cyber-dropdown-header .badge');
+        if (header) header.textContent = data.unread ? `${data.unread} NEW` : 'UP TO DATE';
+      } catch (error) {
+        /* offline: leave the row as it is */
+      }
+    };
+
+    row.addEventListener('click', (event) => {
+      if (event.target.closest('.notif-open')) return; // the arrow navigates
+      event.preventDefault();
+      markRead();
+    });
+  });
+});

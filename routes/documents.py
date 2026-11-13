@@ -538,7 +538,7 @@ def staff_approve_request(rid):
     doc = conn.execute(
         "SELECT CustomerID, DocumentTitle FROM DOCUMENT_REQUEST WHERE RequestID=?", (rid,)
     ).fetchone()
-    conn.execute("""
+    updated = conn.execute("""
         UPDATE DOCUMENT_REQUEST
         SET Status='Approved', ProcessedAt=datetime('now'), ProcessedBy=?, AdminNote=?, SignedPdfFile=?
         WHERE RequestID=?
@@ -546,7 +546,7 @@ def staff_approve_request(rid):
     conn.commit()
     conn.close()
 
-    if doc:
+    if doc and updated.rowcount == 1:
         notify_customer(
             doc["CustomerID"],
             "Document ready",

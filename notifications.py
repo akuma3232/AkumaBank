@@ -24,15 +24,24 @@ CREATE TABLE IF NOT EXISTS NOTIFICATION (
 """
 
 ALLOWED_CATEGORIES = ("info", "success", "danger", "warning", "primary")
+_schema_ready = False
 
 
 def ensure_schema(conn):
-    """Create the notification table on databases created before it existed."""
-    conn.execute(_SCHEMA)
-    conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_notification_user "
-        "ON NOTIFICATION(UserID, IsRead)"
-    )
+    """Create the notification table once per process, on old databases only."""
+    global _schema_ready
+    if _schema_ready:
+        return
+    exists = conn.execute(
+        "SELECT 1 FROM sqlite_master WHERE type='table' AND name='NOTIFICATION'"
+    ).fetchone()
+    if not exists:
+        conn.execute(_SCHEMA)
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_notification_user "
+            "ON NOTIFICATION(UserID, IsRead)"
+        )
+    _schema_ready = True
 
 
 def notify(

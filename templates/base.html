@@ -201,14 +201,14 @@
 
       <!-- Notifications & Telemetry Dropdown -->
       <div class="dropdown">
-        <button class="topbar-icon-btn position-relative" id="notifDropdownBtn" data-bs-toggle="dropdown" aria-expanded="false" title="Notifications">
+        <button class="topbar-icon-btn position-relative" id="notifDropdownBtn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" title="Notifications">
           <i class="bi bi-bell-fill"></i>
           {% if nav_unread_count %}
           <span class="notif-ping-dot"></span>
           <span class="notif-count-badge">{{ nav_unread_count if nav_unread_count < 10 else '9+' }}</span>
           {% endif %}
         </button>
-        <div class="dropdown-menu dropdown-menu-end cyber-dropdown p-0 shadow-lg" aria-labelledby="notifDropdownBtn">
+        <div class="dropdown-menu dropdown-menu-end cyber-dropdown p-0 shadow-lg" aria-labelledby="notifDropdownBtn" data-bs-auto-close="outside">
           <div class="cyber-dropdown-header">
             <div class="d-flex align-items-center justify-content-between">
               <span class="fw-bold fs-7"><i class="bi bi-bell me-2 text-primary"></i>Notifications</span>
@@ -219,14 +219,19 @@
           </div>
           <div class="cyber-dropdown-body">
             {% for n in nav_notifications %}
-            <a class="cyber-notif-item text-decoration-none {{ '' if n.IsRead else 'unread' }}" href="{{ url_for('notifications.open_notification', nid=n.NotificationID) }}">
+            <div class="cyber-notif-item {{ '' if n.IsRead else 'unread' }}"
+                 data-notification
+                 data-read-url="{{ url_for('notifications.mark_read', nid=n.NotificationID) }}">
               <div class="notif-icon bg-{{ n.Category }}-soft text-{{ n.Category }}"><i class="bi bi-{{ n.Icon or 'bell-fill' }}"></i></div>
               <div class="notif-content">
                 <div class="notif-title">{{ n.Title }}</div>
                 <div class="notif-desc">{{ n.Body }}</div>
                 <div class="notif-time">{{ n.CreatedAt|time_ago }}</div>
               </div>
-            </a>
+              <a class="notif-open" href="{{ url_for('notifications.open_notification', nid=n.NotificationID) }}" title="Open" aria-label="Open notification">
+                <i class="bi bi-arrow-up-right"></i>
+              </a>
+            </div>
             {% else %}
             <div class="px-4 py-4 text-center">
               <i class="bi bi-bell-slash fs-4 text-muted d-block mb-2"></i>
